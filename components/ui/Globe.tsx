@@ -1,11 +1,13 @@
 "use client";
 
-import createGlobe, { COBEOptions } from "cobe";
+import createGlobe from "cobe";
 import { useEffect, useRef, useState } from "react";
 
-type COBEOptionsWithRender = COBEOptions & {
-  onRender?: (state: Record<string, number>) => void;
-};
+declare module "cobe" {
+  interface COBEOptions {
+    onRender?: (state: Record<string, number>) => void;
+  }
+}
 
 type GlobeProps = {
   className?: string;
@@ -62,7 +64,7 @@ export default function Globe({ className = "", size = 240 }: GlobeProps) {
         // Only advance rotation while the globe is on-screen.
         if (isVisible) phi += 0.0035;
       },
-    } satisfies COBEOptionsWithRender);
+    });
 
     // Pause rotation while the canvas is off-screen.
     const observer = new IntersectionObserver(
