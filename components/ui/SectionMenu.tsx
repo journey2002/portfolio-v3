@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 
 const SECTIONS = [
@@ -12,14 +12,47 @@ const SECTIONS = [
 
 export default function SectionMenu() {
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Detect touch / coarse-pointer devices once on mount — they don't fire
+  // mouseenter/mouseleave, so the desktop hover behavior would leave the
+  // menu unreachable. On those devices we rely on tap/click + outside-tap
+  // to close. On fine-pointer devices we keep the hover-to-open behavior.
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(hover: none), (pointer: coarse)");
+    setIsTouch(mq.matches);
+  }, []);
+
+  // Close on outside tap when in touch mode
+  useEffect(() => {
+    if (!isTouch || !open) return;
+    const handler = (e: PointerEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
+  }, [isTouch, open]);
+
+  // Close after navigating to a section (any link click)
+  const handleLinkClick = () => setOpen(false);
+
+  const hoverHandlers = isTouch
+    ? {}
+    : {
+        onMouseEnter: () => setOpen(true),
+        onMouseLeave: () => setOpen(false),
+        onFocus: () => setOpen(true),
+        onBlur: () => setOpen(false),
+      };
 
   return (
     <div
+      ref={containerRef}
       className="fixed bottom-6 right-6 z-40 flex flex-col items-end"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
+      {...hoverHandlers}
     >
       <ul
         aria-hidden={!open}
@@ -44,6 +77,7 @@ export default function SectionMenu() {
                 href={section.href}
                 tabIndex={open ? 0 : -1}
                 data-cursor-hover
+                onClick={handleLinkClick}
                 className="block whitespace-nowrap rounded-full border border-hairline bg-[#0c0c0c]/90 px-4 py-2 text-sm text-neutral-300 backdrop-blur-md transition-colors duration-200 hover:border-white/20 hover:text-white"
               >
                 {section.label}
@@ -55,8 +89,9 @@ export default function SectionMenu() {
 
       <button
         type="button"
-        aria-label="Open section menu"
+        aria-label={open ? "Close section menu" : "Open section menu"}
         aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
         className="group relative flex h-12 w-12 items-center justify-center rounded-full border border-hairline bg-[#0c0c0c]/90 text-neutral-300 backdrop-blur-md transition-[border-color,color,transform] duration-200 hover:border-white/20 hover:text-white active:scale-95"
       >
         <span className="pointer-events-none absolute -inset-px rounded-full bg-accent-gradient opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-40" />

@@ -134,7 +134,7 @@ export default function Work() {
             own motion children. */}
         <div
           ref={ref}
-          className="relative mt-16 flex flex-col gap-6"
+          className="relative mt-16 flex flex-col gap-10 md:gap-6"
         >
           {/* Row 1: expanding pair — 2 equal-width cards. */}
           <motion.div
@@ -162,7 +162,7 @@ export default function Work() {
           </motion.div>
 
           {/* Row 3: 2 equal-width cards */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:gap-6">
             <motion.div
               initial={cardFromLeftInitial}
               whileInView={cardSettled}
