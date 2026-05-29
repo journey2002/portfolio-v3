@@ -82,16 +82,17 @@ type Feature = {
   tools: string[];
 };
 
-// A card that tilts toward the cursor in 3D. On hover the content layers
-// lift toward the viewer at staggered depths, a spotlight tracks the pointer,
-// and the tool chips cascade up from the base of the card.
+// A card that tilts toward the cursor in 3D and reads like a pane of glass:
+// on hover the content layers lift toward the viewer at staggered depths,
+// a white specular glint pools under the pointer, a diagonal sheen slides
+// across as the card tilts, and the tool chips cascade up from the base.
 function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   const ref = useRef<HTMLDivElement>(null);
 
   // Pointer position within the card, normalised to -0.5..0.5.
   const px = useMotionValue(0);
   const py = useMotionValue(0);
-  // Raw pointer position in %, drives the spotlight gradient.
+  // Raw pointer position in %, drives the specular glint gradient.
   const gx = useMotionValue(50);
   const gy = useMotionValue(50);
 
@@ -104,7 +105,10 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
     damping: 16,
   });
 
-  const spotlight = useMotionTemplate`radial-gradient(220px circle at ${gx}% ${gy}%, rgba(99,102,241,0.22), transparent 65%)`;
+  // Specular glint that pools under the cursor, like light catching glass.
+  const glint = useMotionTemplate`radial-gradient(240px circle at ${gx}% ${gy}%, rgba(255,255,255,0.18), transparent 62%)`;
+  // A diagonal reflection band that slides across as the card tilts.
+  const sheenX = useTransform(rotateY, [-9, 9], ["-45%", "45%"]);
 
   function handleMove(e: React.PointerEvent<HTMLDivElement>) {
     const el = ref.current;
@@ -135,18 +139,38 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
         onPointerMove={handleMove}
         onPointerLeave={handleLeave}
         style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-        className="relative flex h-full flex-col gap-5 rounded-2xl border border-hairline bg-surface/40 p-7 backdrop-blur transition-colors duration-500 group-hover:border-indigo-accent/40"
+        className="relative flex h-full flex-col gap-5 rounded-2xl border border-hairline bg-surface/30 p-7 backdrop-blur-xl transition-colors duration-500 group-hover:border-white/20"
       >
-        {/* Static accent wash, brightens on hover */}
+        {/* Glass reflections — clipped to the rounded card via this wrapper.
+            overflow-hidden lives here (not on the card) so the card keeps its
+            preserve-3d context and the content can still lift toward the viewer. */}
         <div
           aria-hidden
-          className={`pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br ${feature.accent} opacity-40 transition-opacity duration-500 group-hover:opacity-70`}
-        />
-        {/* Spotlight that tracks the cursor */}
-        <motion.div
+          className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl"
+        >
+          {/* Resting accent wash — static now, so there's no colored bloom on hover */}
+          <div
+            className={`absolute inset-0 bg-gradient-to-br ${feature.accent} opacity-40`}
+          />
+          {/* Frosted sheen falling from the top edge, like a sky reflection on glass */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] via-transparent to-transparent" />
+          {/* Specular glint pooling under the cursor */}
+          <motion.div
+            style={{ background: glint }}
+            className="absolute inset-0 opacity-0 mix-blend-screen transition-opacity duration-300 group-hover:opacity-100"
+          />
+          {/* Diagonal light band that slides across as the card tilts */}
+          <motion.div
+            style={{ x: sheenX }}
+            className="absolute inset-y-[-25%] left-0 w-full opacity-0 mix-blend-screen transition-opacity duration-500 group-hover:opacity-100"
+          >
+            <div className="absolute inset-y-0 left-1/4 w-1/2 -skew-x-[14deg] bg-gradient-to-r from-transparent via-white/[0.20] to-transparent blur-lg" />
+          </motion.div>
+        </div>
+        {/* Crisp highlight along the very top edge */}
+        <div
           aria-hidden
-          style={{ background: spotlight }}
-          className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+          className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
         />
 
         {/* Index */}
@@ -157,7 +181,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
         {/* Icon — lifts furthest toward the viewer */}
         <div className="w-fit transition-transform duration-500 ease-out group-hover:[transform:translateZ(75px)]">
           <Icon
-            className="h-7 w-7 text-indigo-accent transition-[filter,transform] duration-500 group-hover:scale-110 group-hover:drop-shadow-[0_0_14px_rgba(99,102,241,0.65)]"
+            className="h-7 w-7 text-indigo-accent transition-transform duration-500 group-hover:scale-110"
             strokeWidth={1.5}
           />
         </div>
