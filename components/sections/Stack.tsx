@@ -14,6 +14,7 @@ import {
 import { Layers, PenTool, MousePointer2 } from "lucide-react";
 import SectionLabel from "@/components/ui/SectionLabel";
 import SplitText from "@/components/ui/SplitText";
+import { useMarqueeSlowOnHover } from "@/components/ui/useMarqueeSlowOnHover";
 
 const TICKER = [
   "Figma",
@@ -101,6 +102,8 @@ export default function Stack() {
   });
   const marqueeX = useTransform(scrollYProgress, [0, 1], ["0%", "-12%"]);
 
+  const marqueeHoverRef = useMarqueeSlowOnHover<HTMLDivElement>();
+
   return (
     <section
       id="stack"
@@ -158,8 +161,9 @@ export default function Stack() {
 
       {/* Velocity-skewed marquee */}
       <motion.div
+        ref={marqueeHoverRef}
         style={{ x: marqueeX }}
-        className="group relative mt-16 flex overflow-hidden border-y border-hairline py-8"
+        className="relative mt-16 flex overflow-hidden border-y border-hairline py-8"
       >
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-40 bg-gradient-to-r from-base via-base/80 to-transparent" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-40 bg-gradient-to-l from-base via-base/80 to-transparent" />
@@ -167,7 +171,7 @@ export default function Stack() {
           style={{ skewX: skew }}
           className="flex w-full origin-center"
         >
-          <div className="animate-marquee flex shrink-0 items-center gap-14 pr-14 group-hover:[animation-play-state:paused]">
+          <div className="animate-marquee flex shrink-0 items-center gap-14 pr-14">
             {TICKER.map((item) => (
               <span
                 key={item}
@@ -180,7 +184,7 @@ export default function Stack() {
           </div>
           <div
             aria-hidden
-            className="animate-marquee flex shrink-0 items-center gap-14 pr-14 group-hover:[animation-play-state:paused]"
+            className="animate-marquee flex shrink-0 items-center gap-14 pr-14"
           >
             {TICKER.map((item) => (
               <span

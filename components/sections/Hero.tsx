@@ -14,6 +14,7 @@ import MouseParallax from "@/components/ui/MouseParallax";
 import Particles from "@/components/ui/Particles";
 import SplitText from "@/components/ui/SplitText";
 import Spotlight from "@/components/ui/Spotlight";
+import { useMarqueeSlowOnHover } from "@/components/ui/useMarqueeSlowOnHover";
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -48,6 +49,8 @@ export default function Hero() {
 
   // Big-tag marker on the right edge — drifts up faster than content (deep parallax).
   const tagY = useTransform(scrollYProgress, [0, 1], [0, -260]);
+
+  const marqueeHoverRef = useMarqueeSlowOnHover<HTMLDivElement>();
 
   return (
     <section
@@ -231,8 +234,8 @@ export default function Hero() {
         transition={{ duration: 1.2, delay: 1.8 }}
         className="absolute inset-x-0 bottom-0 border-t border-hairline bg-[#080808]/40 backdrop-blur"
       >
-        <div className="group relative flex overflow-hidden py-3">
-          <div className="animate-marquee flex shrink-0 items-center gap-10 pr-10 group-hover:[animation-play-state:paused]">
+        <div ref={marqueeHoverRef} className="relative flex overflow-hidden py-3">
+          <div className="animate-marquee flex shrink-0 items-center gap-10 pr-10">
             {MARQUEE_TAGS.concat(MARQUEE_TAGS).map((tag, i) => (
               <span
                 key={`${tag}-${i}`}
@@ -245,7 +248,7 @@ export default function Hero() {
           </div>
           <div
             aria-hidden
-            className="animate-marquee flex shrink-0 items-center gap-10 pr-10 group-hover:[animation-play-state:paused]"
+            className="animate-marquee flex shrink-0 items-center gap-10 pr-10"
           >
             {MARQUEE_TAGS.concat(MARQUEE_TAGS).map((tag, i) => (
               <span
