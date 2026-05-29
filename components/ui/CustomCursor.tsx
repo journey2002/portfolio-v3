@@ -7,15 +7,20 @@ import {
   useTransform,
   animate,
 } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { usePointer } from "@/components/ui/PointerProvider";
 
 const SPRING = { stiffness: 150, damping: 20, mass: 0.5 };
 
 export default function CustomCursor() {
-  const [enabled, setEnabled] = useState(false);
+  const pointer = usePointer();
+  const enabled = pointer?.enabled ?? false;
 
-  const mouseX = useMotionValue(-200);
-  const mouseY = useMotionValue(-200);
+  // Raw cursor position comes from the shared PointerProvider (one listener for
+  // the whole page). Fallback keeps hook order stable if used without a provider.
+  const fallback = useMotionValue(-200);
+  const mouseX = pointer?.x ?? fallback;
+  const mouseY = pointer?.y ?? fallback;
 
   const springX = useSpring(mouseX, SPRING);
   const springY = useSpring(mouseY, SPRING);
@@ -43,28 +48,7 @@ export default function CustomCursor() {
   );
 
   useEffect(() => {
-    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
-    if (!mq.matches) return;
-    setEnabled(true);
-
-    // Coalesce mousemove updates to one per frame — fires far less often than
-    // the raw event stream and lets the spring catch up smoothly.
-    let pendingX = 0;
-    let pendingY = 0;
-    let rafScheduled = false;
-    const flush = () => {
-      mouseX.set(pendingX);
-      mouseY.set(pendingY);
-      rafScheduled = false;
-    };
-    const onMove = (e: MouseEvent) => {
-      pendingX = e.clientX;
-      pendingY = e.clientY;
-      if (!rafScheduled) {
-        rafScheduled = true;
-        requestAnimationFrame(flush);
-      }
-    };
+    if (!enabled) return;
 
     const isInteractive = (el: EventTarget | null) =>
       el instanceof Element && !!el.closest("a, button, [data-cursor-hover]");
@@ -82,16 +66,14 @@ export default function CustomCursor() {
       }
     };
 
-    window.addEventListener("mousemove", onMove, { passive: true });
     window.addEventListener("mouseover", onOver);
     window.addEventListener("mouseout", onOut);
 
     return () => {
-      window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseover", onOver);
       window.removeEventListener("mouseout", onOut);
     };
-  }, [mouseX, mouseY, ringSize, dotSize]);
+  }, [enabled, ringSize, dotSize]);
 
   if (!enabled) return null;
 

@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import LenisProvider from "@/components/ui/LenisProvider";
+import { PointerProvider } from "@/components/ui/PointerProvider";
 import "./globals.css";
 
 // Decorative client-only chrome — loaded after first paint so they don't
@@ -97,9 +98,11 @@ export default function RootLayout({
     <html lang="en" className={`${spaceGrotesk.variable} ${dmSans.variable}`}>
       <body className="font-sans bg-base text-neutral-100 antialiased">
         <LenisProvider>
-          <CustomCursor />
-          <PageIntro />
-          {children}
+          <PointerProvider>
+            <CustomCursor />
+            <PageIntro />
+            {children}
+          </PointerProvider>
         </LenisProvider>
         <SpeedInsights />
         <Analytics />

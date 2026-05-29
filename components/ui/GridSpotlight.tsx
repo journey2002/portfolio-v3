@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type CSSProperties } from "react";
+import { usePointer } from "@/components/ui/PointerProvider";
 
 type GridSpotlightProps = {
   className?: string;
@@ -29,37 +30,39 @@ export default function GridSpotlight({
   halo = "rgba(168, 85, 247, 0.18)",
 }: GridSpotlightProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const pointer = usePointer();
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
-    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    if (!el || !pointer || !pointer.enabled) return;
     const reduce = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
-    if (!mq.matches || reduce) return;
+    if (reduce) return;
 
-    let pendingX = 0;
-    let pendingY = 0;
+    const { x, y } = pointer;
     let scheduled = false;
     const flush = () => {
       const rect = el.getBoundingClientRect();
-      el.style.setProperty("--gs-x", `${pendingX - rect.left}px`);
-      el.style.setProperty("--gs-y", `${pendingY - rect.top}px`);
+      el.style.setProperty("--gs-x", `${x.get() - rect.left}px`);
+      el.style.setProperty("--gs-y", `${y.get() - rect.top}px`);
       el.style.setProperty("--gs-o", "1");
       scheduled = false;
     };
-    const onMove = (e: MouseEvent) => {
-      pendingX = e.clientX;
-      pendingY = e.clientY;
+    // Driven by the shared pointer source; coalesce to one rAF per frame.
+    const schedule = () => {
       if (!scheduled) {
         scheduled = true;
         requestAnimationFrame(flush);
       }
     };
-    window.addEventListener("mousemove", onMove, { passive: true });
-    return () => window.removeEventListener("mousemove", onMove);
-  }, []);
+    const unsubX = x.on("change", schedule);
+    const unsubY = y.on("change", schedule);
+    return () => {
+      unsubX();
+      unsubY();
+    };
+  }, [pointer]);
 
   const mask = `radial-gradient(${size}px circle at var(--gs-x, 50%) var(--gs-y, 50%), black, transparent 72%)`;
 

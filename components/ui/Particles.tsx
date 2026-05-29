@@ -50,20 +50,26 @@ export default function Particles({
     };
     const particles: Particle[] = [];
 
+    // Cached CSS dimensions — refreshed only on resize, so the draw loop never
+    // touches getBoundingClientRect() (which would force layout every frame).
+    let cssW = 0;
+    let cssH = 0;
+
     const resize = () => {
-      const { width, height } = canvas.getBoundingClientRect();
-      canvas.width = Math.floor(width * dpr);
-      canvas.height = Math.floor(height * dpr);
+      const rect = canvas.getBoundingClientRect();
+      cssW = rect.width;
+      cssH = rect.height;
+      canvas.width = Math.floor(cssW * dpr);
+      canvas.height = Math.floor(cssH * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
     const init = () => {
       particles.length = 0;
-      const { width, height } = canvas.getBoundingClientRect();
       for (let i = 0; i < count; i++) {
         particles.push({
-          x: Math.random() * width,
-          y: Math.random() * height,
+          x: Math.random() * cssW,
+          y: Math.random() * cssH,
           r: Math.random() * 1.4 + 0.4,
           vx: (Math.random() - 0.5) * 0.08,
           vy: -(Math.random() * 0.18 + 0.04),
@@ -83,9 +89,8 @@ export default function Particles({
     const draw = (t: number) => {
       const dt = Math.min(t - lastT, 33);
       lastT = t;
-      const { width, height } = canvas.getBoundingClientRect();
 
-      ctx.clearRect(0, 0, width, height);
+      ctx.clearRect(0, 0, cssW, cssH);
 
       for (const p of particles) {
         p.x += p.vx * dt;
@@ -94,11 +99,11 @@ export default function Particles({
 
         // Wrap around the field
         if (p.y < -4) {
-          p.y = height + 4;
-          p.x = Math.random() * width;
+          p.y = cssH + 4;
+          p.x = Math.random() * cssW;
         }
-        if (p.x < -4) p.x = width + 4;
-        if (p.x > width + 4) p.x = -4;
+        if (p.x < -4) p.x = cssW + 4;
+        if (p.x > cssW + 4) p.x = -4;
 
         const twinkle = 0.6 + Math.sin(p.aPhase) * 0.4;
         ctx.beginPath();

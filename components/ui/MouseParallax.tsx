@@ -1,13 +1,8 @@
 "use client";
 
-import {
-  motion,
-  useMotionValue,
-  useSpring,
-  useTransform,
-  type MotionStyle,
-} from "framer-motion";
-import { useEffect, type ReactNode } from "react";
+import { motion, useMotionValue, useTransform, type MotionStyle } from "framer-motion";
+import { type ReactNode } from "react";
+import { usePointer } from "@/components/ui/PointerProvider";
 
 type MouseParallaxProps = {
   children: ReactNode;
@@ -20,9 +15,13 @@ type MouseParallaxProps = {
 };
 
 /**
- * Tracks the cursor's distance from viewport centre and translates the wrapped
- * element by a fraction of that — gives backgrounds and decorative layers a
- * dragging-glass feel without needing per-element listeners.
+ * Translates the wrapped element by a fraction of the cursor's distance from
+ * viewport centre — a dragging-glass feel for backgrounds and decorative layers.
+ *
+ * The normalised, spring-smoothed pointer position comes from the shared
+ * PointerProvider (one listener / one spring for the whole page) rather than a
+ * per-instance listener + spring. Each layer just scales that shared value by
+ * its own `strength` and direction, so the motion is identical to before.
  */
 export default function MouseParallax({
   children,
@@ -31,39 +30,16 @@ export default function MouseParallax({
   className = "",
   style,
 }: MouseParallaxProps) {
-  const mx = useMotionValue(0);
-  const my = useMotionValue(0);
-
-  const springX = useSpring(mx, { stiffness: 60, damping: 18, mass: 0.6 });
-  const springY = useSpring(my, { stiffness: 60, damping: 18, mass: 0.6 });
+  const pointer = usePointer();
+  // Hooks must run unconditionally; fall back to a static 0 if (somehow) used
+  // outside the provider, which yields no movement — the touch-device default.
+  const fallback = useMotionValue(0);
+  const sx = pointer?.snx ?? fallback;
+  const sy = pointer?.sny ?? fallback;
 
   const sign = follow ? 1 : -1;
-  const x = useTransform(springX, (v) => v * strength * sign);
-  const y = useTransform(springY, (v) => v * strength * sign);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
-    if (!mq.matches) return;
-
-    let pendingX = 0;
-    let pendingY = 0;
-    let scheduled = false;
-    const flush = () => {
-      mx.set(pendingX);
-      my.set(pendingY);
-      scheduled = false;
-    };
-    const onMove = (e: MouseEvent) => {
-      pendingX = e.clientX / window.innerWidth - 0.5;
-      pendingY = e.clientY / window.innerHeight - 0.5;
-      if (!scheduled) {
-        scheduled = true;
-        requestAnimationFrame(flush);
-      }
-    };
-    window.addEventListener("mousemove", onMove, { passive: true });
-    return () => window.removeEventListener("mousemove", onMove);
-  }, [mx, my]);
+  const x = useTransform(sx, (v) => v * strength * sign);
+  const y = useTransform(sy, (v) => v * strength * sign);
 
   return (
     <motion.div style={{ x, y, ...style }} className={className}>
