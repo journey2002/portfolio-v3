@@ -8,10 +8,12 @@ import {
   useTransform,
   useVelocity,
   useSpring,
+  useMotionValue,
+  useMotionTemplate,
   useMotionValueEvent,
   type Variants,
 } from "framer-motion";
-import { Layers, PenTool, MousePointer2 } from "lucide-react";
+import { Layers, PenTool, MousePointer2, type LucideIcon } from "lucide-react";
 import SectionLabel from "@/components/ui/SectionLabel";
 import SplitText from "@/components/ui/SplitText";
 import { useMarqueeSlowOnHover } from "@/components/ui/useMarqueeSlowOnHover";
@@ -35,6 +37,7 @@ const FEATURES = [
     description:
       "Research-driven design from wireframe to pixel-perfect prototype, built to feel intuitive and effortless for the people using it.",
     accent: "from-indigo-500/30 to-transparent",
+    tools: ["Figma", "HTML & CSS", "JavaScript"],
   },
   {
     icon: PenTool,
@@ -42,6 +45,7 @@ const FEATURES = [
     description:
       "Character art, fan art, and visual storytelling crafted in Procreate and Photoshop — where imagination meets technique.",
     accent: "from-violet-500/30 to-transparent",
+    tools: ["Procreate", "Photoshop", "Illustrator"],
   },
   {
     icon: MousePointer2,
@@ -49,6 +53,7 @@ const FEATURES = [
     description:
       "Thoughtful micro-interactions and prototypes that put the user's experience first — because every click should feel right.",
     accent: "from-fuchsia-500/30 to-transparent",
+    tools: ["Framer", "After Effects", "JavaScript"],
   },
 ];
 
@@ -68,6 +73,127 @@ const featureItem = (i: number): Variants => ({
     transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] },
   },
 });
+
+type Feature = {
+  icon: LucideIcon;
+  label: string;
+  description: string;
+  accent: string;
+  tools: string[];
+};
+
+// A card that tilts toward the cursor in 3D. On hover the content layers
+// lift toward the viewer at staggered depths, a spotlight tracks the pointer,
+// and the tool chips cascade up from the base of the card.
+function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Pointer position within the card, normalised to -0.5..0.5.
+  const px = useMotionValue(0);
+  const py = useMotionValue(0);
+  // Raw pointer position in %, drives the spotlight gradient.
+  const gx = useMotionValue(50);
+  const gy = useMotionValue(50);
+
+  const rotateX = useSpring(useTransform(py, [-0.5, 0.5], [9, -9]), {
+    stiffness: 180,
+    damping: 16,
+  });
+  const rotateY = useSpring(useTransform(px, [-0.5, 0.5], [-9, 9]), {
+    stiffness: 180,
+    damping: 16,
+  });
+
+  const spotlight = useMotionTemplate`radial-gradient(220px circle at ${gx}% ${gy}%, rgba(99,102,241,0.22), transparent 65%)`;
+
+  function handleMove(e: React.PointerEvent<HTMLDivElement>) {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const nx = (e.clientX - r.left) / r.width;
+    const ny = (e.clientY - r.top) / r.height;
+    px.set(nx - 0.5);
+    py.set(ny - 0.5);
+    gx.set(nx * 100);
+    gy.set(ny * 100);
+  }
+
+  function handleLeave() {
+    px.set(0);
+    py.set(0);
+  }
+
+  const Icon = feature.icon;
+
+  return (
+    <motion.div
+      variants={featureItem(index)}
+      className="group relative [perspective:1100px]"
+    >
+      <motion.div
+        ref={ref}
+        onPointerMove={handleMove}
+        onPointerLeave={handleLeave}
+        style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+        className="relative flex h-full flex-col gap-5 rounded-2xl border border-hairline bg-surface/40 p-7 backdrop-blur transition-colors duration-500 group-hover:border-indigo-accent/40"
+      >
+        {/* Static accent wash, brightens on hover */}
+        <div
+          aria-hidden
+          className={`pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br ${feature.accent} opacity-40 transition-opacity duration-500 group-hover:opacity-70`}
+        />
+        {/* Spotlight that tracks the cursor */}
+        <motion.div
+          aria-hidden
+          style={{ background: spotlight }}
+          className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        />
+
+        {/* Index */}
+        <span className="text-[10px] uppercase tracking-[0.4em] text-neutral-600 transition-transform duration-500 ease-out group-hover:[transform:translateZ(20px)]">
+          0{index + 1}
+        </span>
+
+        {/* Icon — lifts furthest toward the viewer */}
+        <div className="w-fit transition-transform duration-500 ease-out group-hover:[transform:translateZ(75px)]">
+          <Icon
+            className="h-7 w-7 text-indigo-accent transition-[filter,transform] duration-500 group-hover:scale-110 group-hover:drop-shadow-[0_0_14px_rgba(99,102,241,0.65)]"
+            strokeWidth={1.5}
+          />
+        </div>
+
+        <h3 className="font-serif text-2xl font-semibold text-white transition-transform duration-500 ease-out group-hover:[transform:translateZ(50px)]">
+          {feature.label}
+        </h3>
+        <p className="text-sm leading-relaxed text-neutral-400 transition-transform duration-500 ease-out group-hover:[transform:translateZ(28px)]">
+          {feature.description}
+        </p>
+
+        {/* Footer zone — swaps the discipline hint for the tool chips */}
+        <div className="relative mt-2 min-h-[34px] [transform-style:preserve-3d]">
+          {/* Resting hint */}
+          <span className="absolute inset-0 flex items-center gap-4 text-[10px] uppercase tracking-[0.3em] text-neutral-600 transition-all duration-300 group-hover:-translate-y-1 group-hover:opacity-0">
+            <span className="block h-px w-6 bg-current" />
+            Discipline
+          </span>
+          {/* Tool chips that cascade up on hover */}
+          <div className="absolute inset-0 flex flex-wrap items-center gap-2 [transform-style:preserve-3d]">
+            {feature.tools.map((tool, t) => (
+              <span
+                key={tool}
+                style={{ transitionDelay: `${80 + t * 70}ms` }}
+                className="inline-flex translate-y-3 items-center gap-2 rounded-full border border-indigo-accent/30 bg-base/60 px-3 py-1 text-[11px] font-medium tracking-wide text-neutral-200 opacity-0 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-hover:[transform:translateY(0)_translateZ(55px)]"
+              >
+                <span className="h-1 w-1 rotate-45 bg-accent-gradient" />
+                {tool}
+              </span>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
 
 export default function Stack() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -171,30 +297,32 @@ export default function Stack() {
           style={{ skewX: skew }}
           className="flex w-full origin-center"
         >
-          <div className="animate-marquee flex shrink-0 items-center gap-14 pr-14">
-            {TICKER.map((item) => (
-              <span
-                key={item}
-                className="inline-flex shrink-0 items-center gap-14 font-serif text-3xl font-medium text-neutral-600 transition-colors duration-200 hover:text-white sm:text-4xl md:text-5xl"
-              >
-                {item}
-                <span className="h-1.5 w-1.5 rotate-45 bg-accent-gradient" />
-              </span>
-            ))}
-          </div>
-          <div
-            aria-hidden
-            className="animate-marquee flex shrink-0 items-center gap-14 pr-14"
-          >
-            {TICKER.map((item) => (
-              <span
-                key={`${item}-dup`}
-                className="inline-flex shrink-0 items-center gap-14 font-serif text-3xl font-medium text-neutral-600 transition-colors duration-200 hover:text-white sm:text-4xl md:text-5xl"
-              >
-                {item}
-                <span className="h-1.5 w-1.5 rotate-45 bg-accent-gradient" />
-              </span>
-            ))}
+          <div className="animate-marquee flex shrink-0 items-center">
+            <div className="flex shrink-0 items-center gap-14 pr-14">
+              {TICKER.map((item) => (
+                <span
+                  key={item}
+                  className="inline-flex shrink-0 items-center gap-14 font-serif text-3xl font-medium text-neutral-600 transition-colors duration-200 hover:text-white sm:text-4xl md:text-5xl"
+                >
+                  {item}
+                  <span className="h-1.5 w-1.5 rotate-45 bg-accent-gradient" />
+                </span>
+              ))}
+            </div>
+            <div
+              aria-hidden
+              className="flex shrink-0 items-center gap-14 pr-14"
+            >
+              {TICKER.map((item) => (
+                <span
+                  key={`${item}-dup`}
+                  className="inline-flex shrink-0 items-center gap-14 font-serif text-3xl font-medium text-neutral-600 transition-colors duration-200 hover:text-white sm:text-4xl md:text-5xl"
+                >
+                  {item}
+                  <span className="h-1.5 w-1.5 rotate-45 bg-accent-gradient" />
+                </span>
+              ))}
+            </div>
           </div>
         </motion.div>
       </motion.div>
@@ -208,41 +336,7 @@ export default function Stack() {
         className="relative mx-auto mt-20 grid max-w-7xl grid-cols-1 gap-6 px-6 sm:px-10 md:grid-cols-3"
       >
         {FEATURES.map((feature, i) => (
-          <motion.div
-            key={feature.label}
-            variants={featureItem(i)}
-            whileHover={{ y: -8 }}
-            transition={{ type: "spring", stiffness: 220, damping: 22 }}
-            className="group relative flex flex-col gap-5 rounded-2xl border border-hairline bg-surface/40 p-7 backdrop-blur transition-colors hover:border-indigo-accent/30"
-          >
-            {/* Accent wash that flares on hover */}
-            <div
-              aria-hidden
-              className={`pointer-events-none absolute inset-0 -z-10 rounded-2xl bg-gradient-to-br ${feature.accent} opacity-0 transition-opacity duration-500 group-hover:opacity-100`}
-            />
-
-            {/* Index */}
-            <span className="text-[10px] uppercase tracking-[0.4em] text-neutral-600">
-              0{i + 1}
-            </span>
-
-            <feature.icon
-              className="h-7 w-7 text-indigo-accent transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
-              strokeWidth={1.5}
-            />
-            <h3 className="font-serif text-2xl font-semibold text-white">
-              {feature.label}
-            </h3>
-            <p className="text-sm leading-relaxed text-neutral-400">
-              {feature.description}
-            </p>
-
-            {/* Bottom hairline arrow that wipes in on hover */}
-            <span className="mt-2 flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-neutral-600 transition-colors duration-300 group-hover:text-white">
-              <span className="block h-px w-6 origin-left bg-current transition-transform duration-500 group-hover:scale-x-150" />
-              Discipline
-            </span>
-          </motion.div>
+          <FeatureCard key={feature.label} feature={feature} index={i} />
         ))}
       </motion.div>
     </section>
