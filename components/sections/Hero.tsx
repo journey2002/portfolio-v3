@@ -13,7 +13,7 @@ import MagneticButton from "@/components/ui/MagneticButton";
 import MouseParallax from "@/components/ui/MouseParallax";
 import Particles from "@/components/ui/Particles";
 import SplitText from "@/components/ui/SplitText";
-import Spotlight from "@/components/ui/Spotlight";
+import GridSpotlight from "@/components/ui/GridSpotlight";
 import { useMarqueeSlowOnHover } from "@/components/ui/useMarqueeSlowOnHover";
 
 const fadeUp: Variants = {
@@ -58,10 +58,12 @@ export default function Hero() {
       ref={sectionRef}
       className="relative flex min-h-screen items-center overflow-hidden px-6 sm:px-10"
     >
-      {/* Faint grid — mouse-parallaxed */}
+      {/* Faint grid + cursor-glow grid — both mouse-parallaxed so the bright
+          lines stay locked to the faint base lines as the layer drifts. */}
       <motion.div style={{ y: gridY }} className="absolute inset-0">
         <MouseParallax strength={16} className="absolute inset-0">
           <div className="grid-lines pointer-events-none absolute -inset-16" />
+          <GridSpotlight className="-inset-16" size={620} gridSize={80} />
         </MouseParallax>
       </motion.div>
 
@@ -95,9 +97,6 @@ export default function Hero() {
 
       {/* Drifting particle field — subtle dust above the aurora */}
       <Particles count={48} />
-
-      {/* Cursor-tracking spotlight — barely-there halo under the mouse */}
-      <Spotlight size={620} />
 
       {/* Smoothed vignette */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(130%_130%_at_50%_0%,transparent_38%,rgba(0,0,0,0.12)_58%,rgba(0,0,0,0.32)_76%,rgba(0,0,0,0.5)_90%,rgba(0,0,0,0.62)_100%)]" />
