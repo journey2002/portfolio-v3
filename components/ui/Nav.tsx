@@ -212,6 +212,8 @@ export default function Nav() {
   const [hovered, setHovered] = useState<string | null>(null);
   const [lastHovered, setLastHovered] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Tracks the section currently in view so the mobile menu can mark it.
+  const [activeSection, setActiveSection] = useState("");
 
   const navRef = useRef<HTMLElement | null>(null);
   const lastY = useRef(0);
@@ -225,11 +227,11 @@ export default function Nav() {
   const pathname = usePathname();
   const isHome = pathname === "/" || !pathname;
   const LINKS = [
-    { label: "About", href: isHome ? "#about" : "/#about" },
-    { label: "Work", href: isHome ? "#work" : "/#work" },
-    { label: "Stack", href: isHome ? "#stack" : "/#stack" },
-    { label: "Contact", href: isHome ? "#contact" : "/#contact" },
-    { label: "Resume", href: "/resume" },
+    { label: "About", id: "about", href: isHome ? "#about" : "/#about" },
+    { label: "Work", id: "work", href: isHome ? "#work" : "/#work" },
+    { label: "Stack", id: "stack", href: isHome ? "#stack" : "/#stack" },
+    { label: "Contact", id: "contact", href: isHome ? "#contact" : "/#contact" },
+    { label: "Resume", id: "resume", href: "/resume" },
   ];
   const ctaHref = isHome ? "#contact" : "/#contact";
   const logoHref = isHome ? "#top" : "/";
@@ -241,6 +243,38 @@ export default function Nav() {
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
+
+  // Scroll-spy: track which section sits in the middle band of the viewport so
+  // the mobile menu can show a "you are here" highlight. Sections are
+  // server-rendered (dynamic() keeps SSR on), so they exist on mount. Off the
+  // home route there are no sections — flag the current page instead.
+  useEffect(() => {
+    if (!isHome) {
+      setActiveSection("resume");
+      return;
+    }
+    const order = ["about", "work", "stack", "contact"];
+    const els = order
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+    if (!els.length) return;
+    // Track which sections currently cross the viewport's centre band. The thin
+    // ±48% margin means usually exactly one qualifies; the first in document
+    // order wins, and nothing is flagged above the first / below the last.
+    const visible = new Set<string>();
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) visible.add(e.target.id);
+          else visible.delete(e.target.id);
+        }
+        setActiveSection(order.find((id) => visible.has(id)) ?? "");
+      },
+      { rootMargin: "-48% 0px -48% 0px", threshold: 0 },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [isHome]);
 
   // Close mobile menu on Escape
   useEffect(() => {
@@ -333,14 +367,24 @@ export default function Nav() {
           {/* Scroll-progress ring, sitting outside the header */}
           <ProgressRing w={dims.w} h={dims.h} progress={progress} />
 
-          {/* Planet logo — always visible; the only thing left when collapsed */}
+          {/* Planet logo + mobile wordmark. The wordmark gives the collapsed
+              mobile pill a real identity instead of two lone icons; it's hidden
+              on desktop where the full link row takes over. */}
           <a
             href={logoHref}
             aria-label="Back to top"
             data-cursor-hover
-            className="relative z-10 flex shrink-0 items-center"
+            className="relative z-10 flex shrink-0 items-center gap-2.5"
           >
             <PlanetLogo />
+            <span className="flex flex-col leading-none md:hidden">
+              <span className="font-serif text-sm font-semibold leading-none tracking-tight text-white">
+                Worapat
+              </span>
+              <span className="mt-1 text-[8.5px] font-medium uppercase tracking-[0.22em] text-neutral-500">
+                UX/UI · Digital Art
+              </span>
+            </span>
           </a>
 
           {/* Collapsible content — desktop only. Links + CTA shrink away on
@@ -414,14 +458,18 @@ export default function Nav() {
             </motion.a>
           </motion.div>
 
+          {/* Hairline divider between the brand and the toggle (mobile only) */}
+          <span aria-hidden className="ml-3 h-5 w-px bg-white/10 md:hidden" />
+
           {/* Mobile menu toggle */}
           <MenuToggle open={menuOpen} onClick={() => setMenuOpen((o) => !o)} />
         </motion.nav>
       </header>
 
-      {/* Mobile dropdown — docks below the nav pill with an aurora-glow glass
-          panel, staggered links with pulsing orbit dots, and the "Let's talk"
-          CTA tucked at the bottom. */}
+      {/* Mobile dropdown — an editorial command sheet that unfolds from the
+          toggle: numbered links in the brand serif, a live scroll-spy "you are
+          here" highlight, drifting aurora, and a CTA + signature footer so the
+          panel reads as finished rather than a bare list. */}
       <AnimatePresence>
         {menuOpen && (
           <>
@@ -433,28 +481,33 @@ export default function Nav() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
               onClick={() => setMenuOpen(false)}
-              className="fixed inset-0 z-40 bg-black/55 backdrop-blur-md md:hidden"
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-md md:hidden"
             />
 
             {/* Glass panel */}
             <motion.div
               id="mobile-nav-panel"
               key="mobile-panel"
-              initial={{ opacity: 0, y: -18, scale: 0.94 }}
+              initial={{ opacity: 0, y: -16, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -12, scale: 0.94 }}
-              transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.85 }}
+              exit={{
+                opacity: 0,
+                y: -12,
+                scale: 0.96,
+                transition: { duration: 0.2, ease: "easeIn" },
+              }}
+              transition={{ type: "spring", stiffness: 340, damping: 32, mass: 0.8 }}
               style={{ transformOrigin: "top right" }}
-              className="fixed inset-x-4 top-[5.25rem] z-50 overflow-hidden rounded-3xl bg-[#0a0a0c]/95 shadow-[0_24px_60px_-12px_rgba(0,0,0,0.7)] backdrop-blur-2xl md:hidden"
+              className="fixed inset-x-4 top-[5.25rem] z-50 overflow-hidden rounded-[26px] bg-[#0a0a0c]/95 shadow-[0_28px_70px_-14px_rgba(0,0,0,0.75)] backdrop-blur-2xl md:hidden"
             >
               {/* Gradient hairline border */}
               <span
                 aria-hidden
-                className="pointer-events-none absolute inset-0 rounded-3xl"
+                className="pointer-events-none absolute inset-0 rounded-[26px]"
                 style={{
                   padding: 1,
                   background:
-                    "linear-gradient(180deg, rgba(129,140,248,0.45) 0%, rgba(255,255,255,0.06) 35%, rgba(192,132,252,0.25) 100%)",
+                    "linear-gradient(160deg, rgba(129,140,248,0.5) 0%, rgba(255,255,255,0.06) 38%, rgba(192,132,252,0.3) 100%)",
                   WebkitMask:
                     "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
                   WebkitMaskComposite: "xor",
@@ -466,85 +519,148 @@ export default function Nav() {
                 aria-hidden
                 className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent"
               />
-              {/* Aurora glows */}
+              {/* Drifting aurora glows — CSS keyframes, so they auto-still under
+                  prefers-reduced-motion via the global media query. */}
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-0 overflow-hidden"
               >
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="absolute -top-32 left-12 h-56 w-56 rounded-full bg-indigo-500/30 blur-3xl"
-                />
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.8, delay: 0.1, ease: "easeOut" }}
-                  className="absolute -bottom-24 -right-12 h-48 w-48 rounded-full bg-violet-500/25 blur-3xl"
-                />
+                <span className="animate-drift-x absolute -top-28 left-8 h-52 w-52 rounded-full bg-indigo-500/25 blur-3xl" />
+                <span className="animate-float-card absolute -bottom-24 -right-10 h-48 w-48 rounded-full bg-violet-500/20 blur-3xl" />
               </div>
 
               {/* Content */}
               <div className="relative p-3">
+                {/* Panel header — frames the menu as the site's index and
+                    surfaces the live availability signal. */}
+                <div className="mb-1 flex items-center justify-between px-2.5 pt-1">
+                  <span className="text-[10px] font-medium uppercase tracking-[0.3em] text-neutral-500">
+                    Index
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.28em] text-neutral-500">
+                    <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-accent-gradient" />
+                    Open to work
+                  </span>
+                </div>
+                <span
+                  aria-hidden
+                  className="mx-2.5 mb-1 block h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                />
+
+                {/* Links */}
                 <ul className="flex flex-col">
-                  {LINKS.map((link, i) => (
-                    <motion.li
-                      key={link.href}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -16, transition: { duration: 0.15 } }}
-                      transition={{
-                        delay: 0.06 + i * 0.05,
-                        duration: 0.45,
-                        ease: [0.16, 1, 0.3, 1],
-                      }}
-                    >
-                      <a
-                        href={link.href}
-                        onClick={() => setMenuOpen(false)}
-                        className="group/item relative flex items-center justify-between rounded-2xl px-4 py-3.5 text-[15px] font-medium text-neutral-300 transition-colors hover:bg-white/[0.045] hover:text-white"
+                  {LINKS.map((link, i) => {
+                    const active = activeSection === link.id;
+                    return (
+                      <motion.li
+                        key={link.href}
+                        initial={{ opacity: 0, y: 14, filter: "blur(6px)" }}
+                        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                        exit={{
+                          opacity: 0,
+                          y: 8,
+                          filter: "blur(3px)",
+                          transition: { duration: 0.12 },
+                        }}
+                        transition={{
+                          delay: 0.07 + i * 0.06,
+                          duration: 0.5,
+                          ease: [0.16, 1, 0.3, 1],
+                        }}
                       >
-                        <span className="flex items-center gap-3.5">
-                          {/* Orbit dot with soft glow */}
-                          <span className="relative grid h-1.5 w-1.5 place-items-center">
-                            <span className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-300 to-violet-400" />
-                            <span className="absolute -inset-1.5 rounded-full bg-indigo-400/40 opacity-70 blur-[6px] transition-opacity duration-300 group-hover/item:opacity-100" />
-                          </span>
-                          {link.label}
-                        </span>
-                        <span
-                          aria-hidden
-                          className="text-neutral-600 transition-all duration-300 group-hover/item:translate-x-1 group-hover/item:text-white"
+                        <a
+                          href={link.href}
+                          onClick={() => setMenuOpen(false)}
+                          aria-current={active ? "true" : undefined}
+                          className={`group/item relative flex items-center gap-4 overflow-hidden rounded-2xl px-3 py-3 transition-colors duration-300 ${
+                            active
+                              ? "text-white"
+                              : "text-neutral-300 hover:text-white"
+                          }`}
                         >
-                          →
-                        </span>
-                      </a>
-                    </motion.li>
-                  ))}
+                          {/* Hover / active fill sweep */}
+                          <span
+                            aria-hidden
+                            className={`pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-white/[0.09] via-white/[0.03] to-transparent transition-opacity duration-300 ${
+                              active
+                                ? "opacity-100"
+                                : "opacity-0 group-hover/item:opacity-100"
+                            }`}
+                          />
+                          {/* Active marker bar */}
+                          <span
+                            aria-hidden
+                            className={`pointer-events-none absolute left-0 top-1/2 h-7 -translate-y-1/2 rounded-full bg-gradient-to-b from-indigo-400 to-violet-400 transition-all duration-300 ${
+                              active ? "w-[3px] opacity-100" : "w-0 opacity-0"
+                            }`}
+                          />
+                          {/* Index number — echoes the hero's "01" numbering */}
+                          <span
+                            className={`relative w-5 shrink-0 text-[10px] font-medium tabular-nums tracking-[0.15em] transition-colors duration-300 ${
+                              active
+                                ? "text-indigo-300"
+                                : "text-neutral-600 group-hover/item:text-indigo-300"
+                            }`}
+                          >
+                            0{i + 1}
+                          </span>
+                          {/* Label */}
+                          <span className="relative font-serif text-lg tracking-tight">
+                            {link.label}
+                          </span>
+                          {/* Arrow */}
+                          <span
+                            aria-hidden
+                            className={`relative ml-auto text-base transition-all duration-300 ${
+                              active
+                                ? "translate-x-0.5 text-white"
+                                : "text-neutral-700 group-hover/item:translate-x-0.5 group-hover/item:text-white"
+                            }`}
+                          >
+                            →
+                          </span>
+                        </a>
+                      </motion.li>
+                    );
+                  })}
                 </ul>
 
                 {/* CTA */}
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 6, transition: { duration: 0.15 } }}
+                  exit={{ opacity: 0, y: 6, transition: { duration: 0.12 } }}
                   transition={{
-                    delay: 0.06 + LINKS.length * 0.05,
-                    duration: 0.4,
+                    delay: 0.07 + LINKS.length * 0.06,
+                    duration: 0.45,
                     ease: [0.16, 1, 0.3, 1],
                   }}
-                  className="mt-2 px-1 pb-1"
+                  className="mt-2.5 px-1"
                 >
                   <a
                     href={ctaHref}
                     onClick={() => setMenuOpen(false)}
                     data-cursor-hover
-                    className="group relative block overflow-hidden rounded-2xl bg-indigo-500 px-4 py-3.5 text-center text-sm font-semibold text-white shadow-[0_10px_30px_-8px_rgba(99,102,241,0.7)] transition-colors hover:bg-violet-500"
+                    className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-2xl bg-indigo-500 px-4 py-3.5 text-sm font-semibold text-white shadow-[0_12px_34px_-10px_rgba(99,102,241,0.8)] transition-colors hover:bg-violet-500"
                   >
                     <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
                     <span className="relative">Let&apos;s talk</span>
+                    <span className="relative transition-transform duration-300 group-hover:translate-x-0.5">
+                      →
+                    </span>
                   </a>
+                </motion.div>
+
+                {/* Signature footer */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, transition: { duration: 0.1 } }}
+                  transition={{ delay: 0.14 + LINKS.length * 0.06, duration: 0.5 }}
+                  className="mt-3 flex items-center justify-between border-t border-white/5 px-2.5 pb-1 pt-3 text-[9.5px] font-medium uppercase tracking-[0.25em] text-neutral-600"
+                >
+                  <span>Worapat Settapak</span>
+                  <span>Bangkok · 2026</span>
                 </motion.div>
               </div>
             </motion.div>
