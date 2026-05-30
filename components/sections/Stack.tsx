@@ -82,33 +82,36 @@ type Feature = {
   tools: string[];
 };
 
-// A card that tilts toward the cursor in 3D and reads like a pane of glass:
-// on hover the content layers lift toward the viewer at staggered depths,
-// a white specular glint pools under the pointer, a diagonal sheen slides
-// across as the card tilts, and the tool chips cascade up from the base.
+// A card finished like a sheet of matte metal: a faint brushed grain over a
+// soft gunmetal wash, with a wide diffuse sheen that drifts across as the card
+// tilts. The motion is intentionally slow and a little heavy so hovering feels
+// calm rather than twitchy, and the content layers lift gently toward the eye.
 function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   const ref = useRef<HTMLDivElement>(null);
 
   // Pointer position within the card, normalised to -0.5..0.5.
   const px = useMotionValue(0);
   const py = useMotionValue(0);
-  // Raw pointer position in %, drives the specular glint gradient.
-  const gx = useMotionValue(50);
-  const gy = useMotionValue(50);
+  // Gentle tilt — a soft, slightly heavy spring smooths small cursor movements
+  // instead of snapping the card around.
+  const spring = { stiffness: 110, damping: 26, mass: 1.1 };
+  const rotateX = useSpring(useTransform(py, [-0.5, 0.5], [6, -6]), spring);
+  const rotateY = useSpring(useTransform(px, [-0.5, 0.5], [-6, 6]), spring);
 
-  const rotateX = useSpring(useTransform(py, [-0.5, 0.5], [9, -9]), {
-    stiffness: 180,
-    damping: 16,
-  });
-  const rotateY = useSpring(useTransform(px, [-0.5, 0.5], [-9, 9]), {
-    stiffness: 180,
-    damping: 16,
-  });
+  // The highlight glides with the cursor through that same soft spring, so it's
+  // interactive but gentle — no autoplay. The near layer travels a little
+  // further than the far one, so the two reflections part slightly: a soft 3D
+  // parallax on top of the depth offset. (Percentages are band-relative.)
+  const sheenFar = useTransform(rotateY, [-6, 6], ["-50%", "50%"]);
+  const sheenNear = useTransform(rotateY, [-6, 6], ["-110%", "110%"]);
 
-  // Specular glint that pools under the cursor, like light catching glass.
-  const glint = useMotionTemplate`radial-gradient(240px circle at ${gx}% ${gy}%, rgba(255,255,255,0.18), transparent 62%)`;
-  // A diagonal reflection band that slides across as the card tilts.
-  const sheenX = useTransform(rotateY, [-9, 9], ["-45%", "45%"]);
+  // Edge flare — where the skewed reflection band meets the rim, the metal lip
+  // catches the light and lights up, like sun glinting off an edge. The band's
+  // bottom end sits left of its top end (the skew), so the two hot-spots track
+  // the cursor offset in opposite-ish directions along the bottom/top edges.
+  const bottomGlowX = useTransform(rotateY, [-6, 6], [2, 66]);
+  const topGlowX = useTransform(rotateY, [-6, 6], [34, 98]);
+  const edgeGlow = useMotionTemplate`radial-gradient(150px 70px at ${bottomGlowX}% 100%, rgba(255,255,255,0.95), rgba(190,200,255,0.4) 34%, transparent 68%), radial-gradient(110px 52px at ${topGlowX}% 0%, rgba(255,255,255,0.7), rgba(190,200,255,0.22) 40%, transparent 72%)`;
 
   function handleMove(e: React.PointerEvent<HTMLDivElement>) {
     const el = ref.current;
@@ -118,8 +121,6 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
     const ny = (e.clientY - r.top) / r.height;
     px.set(nx - 0.5);
     py.set(ny - 0.5);
-    gx.set(nx * 100);
-    gy.set(ny * 100);
   }
 
   function handleLeave() {
@@ -148,48 +149,97 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
           aria-hidden
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl"
         >
-          {/* Resting accent wash — static now, so there's no colored bloom on hover */}
+          {/* Resting accent wash — keeps each card's colour identity */}
           <div
-            className={`absolute inset-0 bg-gradient-to-br ${feature.accent} opacity-40`}
+            className={`absolute inset-0 bg-gradient-to-br ${feature.accent} opacity-30`}
           />
-          {/* Frosted sheen falling from the top edge, like a sky reflection on glass */}
-          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] via-transparent to-transparent" />
-          {/* Specular glint pooling under the cursor */}
-          <motion.div
-            style={{ background: glint }}
-            className="absolute inset-0 opacity-0 mix-blend-screen transition-opacity duration-300 group-hover:opacity-100"
+          {/* Metallic volume — soft light off the top, shading toward the base,
+              so the surface reads like a slightly lit sheet of metal */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.07] via-transparent to-black/20" />
+          {/* Brushed striations — faint vertical grain running down the metal */}
+          <div
+            className="absolute inset-0 opacity-[0.035] mix-blend-overlay"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(90deg, rgba(255,255,255,0.8) 0px, rgba(255,255,255,0.8) 1px, transparent 1px, transparent 4px)",
+            }}
           />
-          {/* Diagonal light band that slides across as the card tilts */}
-          <motion.div
-            style={{ x: sheenX }}
-            className="absolute inset-y-[-25%] left-0 w-full opacity-0 mix-blend-screen transition-opacity duration-500 group-hover:opacity-100"
-          >
-            <div className="absolute inset-y-0 left-1/4 w-1/2 -skew-x-[14deg] bg-gradient-to-r from-transparent via-white/[0.20] to-transparent blur-lg" />
-          </motion.div>
+          {/* Matte micro-grain — fine noise that takes the gloss off the surface */}
+          <div
+            className="absolute inset-0 opacity-[0.12] mix-blend-soft-light"
+            style={{
+              backgroundImage:
+                "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='180'%20height='180'%3E%3Cfilter%20id='m'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.9'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23m)'/%3E%3C/svg%3E\")",
+            }}
+          />
+          {/* (The reflection is intentionally NOT here — it lives outside this
+              overflow-hidden clip so it can float in real 3D. See below.) */}
         </div>
-        {/* Crisp highlight along the very top edge */}
+        {/* 3D reflection — soft highlight bands on two depth planes (translateZ).
+            They glide with the cursor through the soft tilt spring (interactive,
+            not autoplay), and the depth offset makes them parallax for real 3D.
+            clip-path (not overflow-hidden) rounds them without flattening 3D. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+          className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-700 ease-out [transform:translateZ(22px)] group-hover:opacity-70"
+          style={{ clipPath: "inset(0 round 1rem)" }}
+        >
+          <motion.div
+            style={{ x: sheenFar, skewX: -14 }}
+            className="absolute -inset-y-16 left-[25%] w-[50%] bg-gradient-to-r from-transparent via-white/[0.06] to-transparent blur-2xl"
+          />
+        </div>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-700 ease-out [transform:translateZ(90px)] group-hover:opacity-100"
+          style={{ clipPath: "inset(0 round 1rem)" }}
+        >
+          <motion.div
+            style={{ x: sheenNear, skewX: -14 }}
+            className="absolute -inset-y-16 left-[35%] w-[30%] bg-gradient-to-r from-transparent via-white/[0.13] to-transparent blur-xl"
+          />
+        </div>
+        {/* Edge flare — the card's STROKE lights up where the reflection meets
+            the rim (not an inner bloom). The mask keeps the moving hot-spots on
+            the ~1.5px border ring only; the drop-shadow gives the lit segment a
+            soft bloom, like a metal edge catching the sun. */}
+        <motion.div
+          aria-hidden
+          style={{
+            background: edgeGlow,
+            padding: "1.5px",
+            WebkitMask:
+              "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+            WebkitMaskComposite: "xor",
+            mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+            maskComposite: "exclude",
+            filter: "drop-shadow(0 0 5px rgba(255,255,255,0.4))",
+          }}
+          className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100"
+        />
+        {/* Soft highlight skimming the top edge — diffuse, not a glossy line */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 blur-[1px] transition-opacity duration-700 group-hover:opacity-100"
         />
 
         {/* Index */}
-        <span className="text-[10px] uppercase tracking-[0.4em] text-neutral-600 transition-transform duration-500 ease-out group-hover:[transform:translateZ(20px)]">
+        <span className="text-[10px] uppercase tracking-[0.4em] text-neutral-600 transition-transform duration-700 ease-out group-hover:[transform:translateZ(12px)]">
           0{index + 1}
         </span>
 
         {/* Icon — lifts furthest toward the viewer */}
-        <div className="w-fit transition-transform duration-500 ease-out group-hover:[transform:translateZ(75px)]">
+        <div className="w-fit transition-transform duration-700 ease-out group-hover:[transform:translateZ(42px)]">
           <Icon
             className="h-7 w-7 text-indigo-accent transition-transform duration-500 group-hover:scale-110"
             strokeWidth={1.5}
           />
         </div>
 
-        <h3 className="font-serif text-2xl font-semibold text-white transition-transform duration-500 ease-out group-hover:[transform:translateZ(50px)]">
+        <h3 className="font-serif text-2xl font-semibold text-white transition-transform duration-700 ease-out group-hover:[transform:translateZ(30px)]">
           {feature.label}
         </h3>
-        <p className="text-sm leading-relaxed text-neutral-400 transition-transform duration-500 ease-out group-hover:[transform:translateZ(28px)]">
+        <p className="text-sm leading-relaxed text-neutral-400 transition-transform duration-700 ease-out group-hover:[transform:translateZ(16px)]">
           {feature.description}
         </p>
 
@@ -206,7 +256,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
               <span
                 key={tool}
                 style={{ transitionDelay: `${80 + t * 70}ms` }}
-                className="inline-flex translate-y-3 items-center gap-2 rounded-full border border-indigo-accent/30 bg-base/60 px-3 py-1 text-[11px] font-medium tracking-wide text-neutral-200 opacity-0 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-hover:[transform:translateY(0)_translateZ(55px)]"
+                className="inline-flex translate-y-3 items-center gap-2 rounded-full border border-indigo-accent/30 bg-base/60 px-3 py-1 text-[11px] font-medium tracking-wide text-neutral-200 opacity-0 transition-all duration-700 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-hover:[transform:translateY(0)_translateZ(30px)]"
               >
                 <span className="h-1 w-1 rotate-45 bg-accent-gradient" />
                 {tool}
