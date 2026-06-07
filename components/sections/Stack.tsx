@@ -105,13 +105,50 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   const sheenFar = useTransform(rotateY, [-6, 6], ["-50%", "50%"]);
   const sheenNear = useTransform(rotateY, [-6, 6], ["-110%", "110%"]);
 
-  // Edge flare — where the skewed reflection band meets the rim, the metal lip
-  // catches the light and lights up, like sun glinting off an edge. The band's
-  // bottom end sits left of its top end (the skew), so the two hot-spots track
-  // the cursor offset in opposite-ish directions along the bottom/top edges.
-  const bottomGlowX = useTransform(rotateY, [-6, 6], [2, 66]);
-  const topGlowX = useTransform(rotateY, [-6, 6], [34, 98]);
+  // Dynamic glare angle — a smooth, CONTINUOUS tilt mapped linearly from the
+  // cursor offset: vertical position rolls the streak (top leans one way, bottom
+  // the other) and horizontal adds a smaller turn. Linear, not atan2, so there
+  // is no angular wrap — sweeping top↔bottom rolls the band through the steep
+  // angles continuously ("past the side") instead of snapping/flipping at the
+  // centre. Clamped so it can't whip fully past horizontal; 0 at centre, so the
+  // resting look is unchanged (still skewX(-14) with zero added rotation).
+  const glareAngleTarget = useTransform([px, py], ([x, y]: number[]) =>
+    Math.max(-80, Math.min(80, y * 130 + x * 30)),
+  );
+  // Soft + heavy + overdamped so the angle glides through steep top/bottom
+  // sweeps instead of snapping (no overshoot). Slower natural frequency than the
+  // tilt spring, so rotation eases gently while the sheen position stays prompt.
+  const glareAngle = useSpring(glareAngleTarget, {
+    stiffness: 55,
+    damping: 24,
+    mass: 1.2,
+  });
+
+  // Edge flare — the rim lights up exactly where the glare band meets it, so it
+  // has to follow the band as it BOTH slides and rotates. The band's centre
+  // tracks the horizontal cursor (like the near sheen: 50% ±33%), and its total
+  // tilt from vertical is 14° (skew) + the dynamic glareAngle. Projecting the
+  // card's half-height across its width by tan(tilt) gives where the band's
+  // top/bottom ends cross each edge. (R≈41 = halfHeight/width × 100; the top end
+  // sits to the +offset side, the bottom end to the −offset side.)
+  const bandCenterX = useTransform(rotateY, [-6, 6], [17, 83]);
+  const edgeOffset = useTransform(glareAngle, (a: number) => {
+    // Clamp the tilt just shy of 90° so tan() stays finite and never flips sign
+    // (past 90° it would jump the hot-spot to the wrong side of a horizontal band).
+    const tilt = Math.max(-84, Math.min(84, 14 + a));
+    return 41 * Math.tan((tilt * Math.PI) / 180);
+  });
+  const topGlowX = useTransform([bandCenterX, edgeOffset], ([c, o]: number[]) =>
+    Math.max(-20, Math.min(120, c + o)),
+  );
+  const bottomGlowX = useTransform([bandCenterX, edgeOffset], ([c, o]: number[]) =>
+    Math.max(-20, Math.min(120, c - o)),
+  );
   const edgeGlow = useMotionTemplate`radial-gradient(150px 70px at ${bottomGlowX}% 100%, rgba(255,255,255,0.95), rgba(190,200,255,0.4) 34%, transparent 68%), radial-gradient(110px 52px at ${topGlowX}% 0%, rgba(255,255,255,0.7), rgba(190,200,255,0.22) 40%, transparent 72%)`;
+  // A larger, cooler halo for the glow that bleeds OUTSIDE the card. It lives on
+  // a blurred layer behind the card, so the bright edge spills past the rim into
+  // the dark — like a metal lip throwing light. Same moving hit-points.
+  const outerGlow = useMotionTemplate`radial-gradient(190px 130px at ${bottomGlowX}% 100%, rgba(176,191,255,0.6), rgba(150,170,255,0.24) 46%, transparent 72%), radial-gradient(140px 96px at ${topGlowX}% 0%, rgba(176,191,255,0.42), transparent 72%)`;
 
   function handleMove(e: React.PointerEvent<HTMLDivElement>) {
     const el = ref.current;
@@ -135,6 +172,15 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
       variants={featureItem(index)}
       className="group relative [perspective:1100px]"
     >
+      {/* Outer glow — a soft cool halo behind the card that spills past the rim
+          where the reflection meets the edge, like a metal lip throwing light
+          into the dark. The heavy blur lets it bleed beyond the card bounds; it
+          tracks the same hit-points and only shows on hover. */}
+      <motion.div
+        aria-hidden
+        style={{ background: outerGlow }}
+        className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 blur-xl transition-opacity duration-500 ease-out group-hover:opacity-100"
+      />
       <motion.div
         ref={ref}
         onPointerMove={handleMove}
@@ -185,8 +231,8 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
           style={{ clipPath: "inset(0 round 1rem)" }}
         >
           <motion.div
-            style={{ x: sheenFar, skewX: -14 }}
-            className="absolute -inset-y-16 left-[25%] w-[50%] bg-gradient-to-r from-transparent via-white/[0.06] to-transparent blur-2xl"
+            style={{ x: sheenFar, skewX: -14, rotate: glareAngle }}
+            className="absolute -inset-y-full left-[25%] w-[50%] bg-gradient-to-r from-transparent via-white/[0.06] to-transparent blur-2xl"
           />
         </div>
         <div
@@ -195,8 +241,8 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
           style={{ clipPath: "inset(0 round 1rem)" }}
         >
           <motion.div
-            style={{ x: sheenNear, skewX: -14 }}
-            className="absolute -inset-y-16 left-[35%] w-[30%] bg-gradient-to-r from-transparent via-white/[0.13] to-transparent blur-xl"
+            style={{ x: sheenNear, skewX: -14, rotate: glareAngle }}
+            className="absolute -inset-y-full left-[35%] w-[30%] bg-gradient-to-r from-transparent via-white/[0.13] to-transparent blur-xl"
           />
         </div>
         {/* Edge flare — the card's STROKE lights up where the reflection meets
@@ -213,7 +259,10 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
             WebkitMaskComposite: "xor",
             mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
             maskComposite: "exclude",
-            filter: "drop-shadow(0 0 5px rgba(255,255,255,0.4))",
+            // Tight white rim bloom so the lit stroke reads crisp; the wider
+            // outward halo is handled by the dedicated outer-glow layer behind
+            // the card (so it can actually bleed past the rim into the dark).
+            filter: "drop-shadow(0 0 3px rgba(255,255,255,0.5))",
           }}
           className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100"
         />
