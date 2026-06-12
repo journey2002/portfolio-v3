@@ -219,19 +219,16 @@ export default function About() {
                           WS
                         </span>
                       </div>
-                      {/* Tiny orbiting dot */}
-                      <motion.span
+                      {/* Tiny orbiting dot — CSS keyframes (orbit-slow, sped up
+                          to 9s) so the infinite spin never touches the main
+                          thread the way a framer loop would. */}
+                      <span
                         aria-hidden
-                        animate={{ rotate: 360 }}
-                        transition={{
-                          duration: 9,
-                          repeat: Infinity,
-                          ease: "linear",
-                        }}
-                        className="absolute inset-0"
+                        className="animate-orbit-slow absolute inset-0"
+                        style={{ animationDuration: "9s" }}
                       >
                         <span className="absolute left-1/2 top-0 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-300 shadow-[0_0_8px_rgba(168,85,247,0.7)]" />
-                      </motion.span>
+                      </span>
                     </div>
                     <div className="min-w-0">
                       <p className="font-serif text-xl font-semibold leading-tight text-white">
@@ -302,41 +299,39 @@ export default function About() {
                 </div>
               </div>
 
-              {/* Floating personality chips around the card */}
-              <motion.div
-                animate={{ y: [0, -8, 0] }}
-                transition={{
-                  duration: 4.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                className="absolute -right-4 -top-4 hidden rotate-6 rounded-full border border-hairline bg-[#0c0c0c] px-3 py-1 text-[9px] uppercase tracking-[0.3em] text-neutral-400 backdrop-blur md:block"
+              {/* Floating personality chips around the card. The bob runs as a
+                  CSS animation (float-y) instead of an infinite framer loop, so
+                  it costs nothing on the main thread — same distances, same
+                  durations, same easing. */}
+              <div
+                className="animate-float-y absolute -right-4 -top-4 hidden rotate-6 rounded-full border border-hairline bg-[#0c0c0c] px-3 py-1 text-[9px] uppercase tracking-[0.3em] text-neutral-400 backdrop-blur md:block"
+                style={{ animationDuration: "4.5s" }}
               >
                 ✦ Anime apologist
-              </motion.div>
-              <motion.div
-                animate={{ y: [0, 6, 0] }}
-                transition={{
-                  duration: 5.2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                className="absolute -bottom-5 -left-5 hidden -rotate-6 rounded-full border border-hairline bg-[#0c0c0c] px-3 py-1 text-[9px] uppercase tracking-[0.3em] text-neutral-400 backdrop-blur md:block"
+              </div>
+              <div
+                className="animate-float-y absolute -bottom-5 -left-5 hidden -rotate-6 rounded-full border border-hairline bg-[#0c0c0c] px-3 py-1 text-[9px] uppercase tracking-[0.3em] text-neutral-400 backdrop-blur md:block"
+                style={
+                  {
+                    "--float-y": "6px",
+                    animationDuration: "5.2s",
+                  } as React.CSSProperties
+                }
               >
                 🍫 Coco daily
-              </motion.div>
-              <motion.div
-                animate={{ y: [0, -5, 0] }}
-                transition={{
-                  duration: 6,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 0.6,
-                }}
-                className="absolute -right-6 bottom-12 hidden rotate-3 rounded-full border border-indigo-accent/40 bg-[#0c0c0c] px-3 py-1 text-[9px] uppercase tracking-[0.3em] text-indigo-200 backdrop-blur lg:block"
+              </div>
+              <div
+                className="animate-float-y absolute -right-6 bottom-12 hidden rotate-3 rounded-full border border-indigo-accent/40 bg-[#0c0c0c] px-3 py-1 text-[9px] uppercase tracking-[0.3em] text-indigo-200 backdrop-blur lg:block"
+                style={
+                  {
+                    "--float-y": "-5px",
+                    animationDuration: "6s",
+                    animationDelay: "0.6s",
+                  } as React.CSSProperties
+                }
               >
                 ★ INFP
-              </motion.div>
+              </div>
             </motion.div>
           </div>
 

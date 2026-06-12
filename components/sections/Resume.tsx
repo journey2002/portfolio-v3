@@ -418,24 +418,26 @@ function ResumeHero() {
       {/* Floating personality chips — drift around the hero, hidden on small
           screens so they never crowd the headline. */}
       {HERO_CHIPS.map((chip) => (
-        <motion.div
+        <div
           key={chip.text}
           aria-hidden
-          animate={{ y: chip.yRange }}
-          transition={{
-            duration: chip.duration,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: chip.delay,
-          }}
-          className={`absolute hidden whitespace-nowrap rounded-full ${
+          // CSS float-y animation instead of an infinite framer loop — the bob
+          // runs on the compositor with the same distance/duration/delay.
+          style={
+            {
+              "--float-y": `${chip.yRange[1]}px`,
+              animationDuration: `${chip.duration}s`,
+              animationDelay: `${chip.delay}s`,
+            } as React.CSSProperties
+          }
+          className={`animate-float-y absolute hidden whitespace-nowrap rounded-full ${
             chip.accent
               ? "border border-indigo-accent/40 text-indigo-200"
               : "border border-hairline text-neutral-400"
           } bg-[#0c0c0c]/80 px-3.5 py-1.5 text-[10px] uppercase tracking-[0.3em] backdrop-blur md:block ${chip.className}`}
         >
           {chip.text}
-        </motion.div>
+        </div>
       ))}
     </section>
   );

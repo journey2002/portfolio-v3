@@ -55,13 +55,32 @@ export function useMarqueeSlowOnHover<T extends HTMLElement = HTMLDivElement>(
     const onEnter = () => rampTo(slowRate, enterMs);
     const onLeave = () => rampTo(1, leaveMs);
 
+    // Pause the marquee entirely while the strip is offscreen — the loop has
+    // no meaningful "position", so resuming later is indistinguishable, and
+    // the compositor stops animating a layer nobody can see.
+    const io = new IntersectionObserver(
+      (entries) => {
+        const visible = entries[0]?.isIntersecting ?? true;
+        for (const a of getAnims()) {
+          if (visible) a.play();
+          else a.pause();
+        }
+      },
+      { rootMargin: "100px" },
+    );
+    io.observe(group);
+
     group.addEventListener("pointerenter", onEnter);
     group.addEventListener("pointerleave", onLeave);
     return () => {
       cancelAnimationFrame(raf);
+      io.disconnect();
       group.removeEventListener("pointerenter", onEnter);
       group.removeEventListener("pointerleave", onLeave);
-      for (const a of getAnims()) a.playbackRate = 1;
+      for (const a of getAnims()) {
+        a.playbackRate = 1;
+        a.play();
+      }
     };
   }, [slowRate, enterMs, leaveMs]);
 

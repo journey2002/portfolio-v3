@@ -40,15 +40,29 @@ function PlanetLogo() {
 /** Scroll-progress ring that sits just OUTSIDE the header outline.
     pathLength is normalised to 100 so it traces the real shape (pill or
     circle), and the whole ring fades in with progress (hidden at the top). */
-function ProgressRing({
-  w,
-  h,
-  progress,
-}: {
-  w: number;
-  h: number;
-  progress: number;
-}) {
+function ProgressRing({ w, h }: { w: number; h: number }) {
+  // Progress changes on every scroll frame, so it lives HERE rather than in
+  // Nav: only this small SVG re-renders at scroll speed instead of the whole
+  // header tree (logo, link row, CTA, toggle — all motion components).
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    let scheduled = false;
+    const update = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      setProgress(max > 0 ? Math.min(1, window.scrollY / max) : 0);
+      scheduled = false;
+    };
+    const onScroll = () => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   if (w <= 0 || h <= 0) return null;
   const gap = 5; // distance outside the header edge
   const sw = 2.5;
@@ -208,7 +222,6 @@ export default function Nav() {
   // Once expanded by hover it stays open until the next scroll-down,
   // so leaving the header doesn't snap it shut.
   const [userExpanded, setUserExpanded] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [hovered, setHovered] = useState<string | null>(null);
   const [lastHovered, setLastHovered] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -290,8 +303,8 @@ export default function Nav() {
     let scheduled = false;
     const update = () => {
       const y = window.scrollY;
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      setProgress(max > 0 ? Math.min(1, y / max) : 0);
+      // These setters fire every frame but the values are booleans that
+      // rarely flip, so React bails out without re-rendering.
       setScrolled(y > 24);
       if (y < 120) {
         setCollapsed(false);
@@ -365,7 +378,7 @@ export default function Nav() {
           />
 
           {/* Scroll-progress ring, sitting outside the header */}
-          <ProgressRing w={dims.w} h={dims.h} progress={progress} />
+          <ProgressRing w={dims.w} h={dims.h} />
 
           {/* Planet logo + mobile wordmark. The wordmark gives the collapsed
               mobile pill a real identity instead of two lone icons; it's hidden

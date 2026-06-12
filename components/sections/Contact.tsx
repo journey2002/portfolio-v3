@@ -42,7 +42,6 @@ export default function Contact() {
     offset: ["start end", "end start"],
   });
   const wordmarkX = useTransform(scrollYProgress, [0, 1], ["20%", "-40%"]);
-  const auroraScale = useTransform(scrollYProgress, [0, 1], [0.9, 1.15]);
 
   return (
     <footer
@@ -52,10 +51,12 @@ export default function Contact() {
     >
       <SectionLabel index="04" caption="Contact" align="left" />
 
-      {/* Aurora */}
-      <motion.div
+      {/* Aurora. No scroll-driven scale here: the aurora-shift CSS animation
+          owns `transform` (keyframes beat inline styles in the cascade), so a
+          framer scale on this element never rendered — only cost a style
+          write per scroll frame. */}
+      <div
         aria-hidden
-        style={{ scale: auroraScale }}
         className="bg-aurora animate-aurora-shift pointer-events-none absolute -top-1/2 left-1/2 h-[90vh] w-[90vh] -translate-x-1/2 opacity-25 blur-3xl"
       />
       <div

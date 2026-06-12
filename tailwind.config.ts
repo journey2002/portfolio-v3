@@ -31,9 +31,14 @@ const config: Config = {
           "radial-gradient(70% 70% at 80% 80%, rgba(99,102,241,0.42) 0%, rgba(124,98,232,0.36) 14%, rgba(149,93,239,0.30) 28%, rgba(168,85,247,0.24) 42%, rgba(140,103,235,0.17) 55%, rgba(99,118,228,0.11) 68%, rgba(73,128,236,0.06) 80%, rgba(59,130,246,0.02) 90%, transparent 100%)",
       },
       keyframes: {
+        // Transform-only so the giant blurred aurora layers stay on the GPU
+        // compositor. backgroundPosition was dropped: gradient backgrounds
+        // default to background-size 100%, so animating position never moved
+        // anything — it only forced a repaint (and re-blur) of the whole
+        // layer every frame.
         "aurora-shift": {
-          "0%, 100%": { backgroundPosition: "80% 80%", transform: "scale(1)" },
-          "50%": { backgroundPosition: "60% 95%", transform: "scale(1.15)" },
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.15)" },
         },
         "float-card": {
           "0%, 100%": { transform: "translateY(0)" },

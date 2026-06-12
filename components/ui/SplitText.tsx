@@ -102,10 +102,12 @@ export default function SplitText({
                 className="relative inline-block overflow-hidden align-baseline"
                 style={{ paddingBottom: "0.08em" }}
               >
+                {/* No hardcoded will-change here: framer manages it during the
+                    entrance, and a permanent hint would pin every glyph in its
+                    own GPU layer for the lifetime of the page. */}
                 <motion.span
                   variants={charItem(fromY, fromRotate)}
                   className={`inline-block ${charClassName}`}
-                  style={{ willChange: "transform, opacity" }}
                 >
                   {char}
                 </motion.span>

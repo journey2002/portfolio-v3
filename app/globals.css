@@ -71,6 +71,25 @@ body {
   opacity: 0.06;
 }
 
+/* Gentle infinite bob used by the floating personality chips. Runs on the
+   compositor instead of a per-frame JS loop; the travel distance comes from
+   --float-y so one keyframe serves every chip. ease-in-out matches framer's
+   easeInOut curve exactly (cubic-bezier(0.42, 0, 0.58, 1)). */
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(var(--float-y, -8px));
+  }
+}
+.animate-float-y {
+  animation: float-y 5s ease-in-out infinite;
+  /* Hold the 0% pose during any animation-delay, like framer did. */
+  animation-fill-mode: backwards;
+}
+
 /* Underline wipe used on the contact email link */
 .underline-wipe {
   background-image: linear-gradient(currentColor, currentColor);
