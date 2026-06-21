@@ -552,12 +552,13 @@ function StatsStrip() {
                 {stat.label}
               </span>
               <p className="mt-3 font-serif text-[3.25rem] font-bold leading-none tracking-tight text-white sm:text-[3.75rem]">
+                {/* NumberFlow renders its digits in a shadow DOM, which
+                    `background-clip: text` can't pierce — a gradient-clipped
+                    wrapper leaves the digits transparent/invisible. `color`
+                    DOES inherit across the shadow boundary, so the highlight
+                    stat uses a solid accent color instead of the gradient. */}
                 <span
-                  className={
-                    stat.highlight
-                      ? "bg-accent-gradient bg-clip-text text-transparent"
-                      : ""
-                  }
+                  className={stat.highlight ? "text-violet-accent" : ""}
                 >
                   {typeof stat.number === "number" ? (
                     <AnimatedStatNumber
@@ -1149,8 +1150,8 @@ function ResumeFooter() {
 
       {/* Personality marquee — light-touch ticker before the copyright bar */}
       <div className="group relative overflow-hidden border-t border-hairline bg-[#080808]/40 backdrop-blur">
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-32 bg-gradient-to-r from-base via-base/80 to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-32 bg-gradient-to-l from-base via-base/80 to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-32 bg-gradient-to-r from-night via-night/80 to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-32 bg-gradient-to-l from-night via-night/80 to-transparent" />
         <div className="relative flex py-3">
           <div className="animate-marquee flex shrink-0 items-center gap-10 pr-10 group-hover:[animation-play-state:paused]">
             {FOOTER_MARQUEE.concat(FOOTER_MARQUEE).map((tag, i) => (

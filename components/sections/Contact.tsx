@@ -47,7 +47,7 @@ export default function Contact() {
     <footer
       id="contact"
       ref={sectionRef}
-      className="relative overflow-hidden border-t border-hairline bg-base"
+      className="relative overflow-hidden border-t border-hairline bg-night"
     >
       <SectionLabel index="04" caption="Contact" align="left" />
 

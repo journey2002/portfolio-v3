@@ -102,6 +102,26 @@ body {
   background-size: 100% 1px;
 }
 
+/* Text-insertion caret blink — used after the hero headline so it reads like
+   an editable text layer in a design tool. Holds full/zero opacity at each end
+   and eases between them so the caret glides on and off instead of snapping. */
+@keyframes caret-blink {
+  0%,
+  25% {
+    opacity: 1;
+  }
+  50%,
+  75% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.animate-caret-blink {
+  animation: caret-blink 1.2s ease-in-out infinite;
+}
+
 /* Respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *,

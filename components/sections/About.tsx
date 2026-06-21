@@ -214,7 +214,7 @@ export default function About() {
                     {/* Geometric monogram — gradient ring + initials */}
                     <div className="relative h-16 w-16 shrink-0">
                       <div className="absolute inset-0 rounded-full bg-accent-gradient" />
-                      <div className="absolute inset-[2px] flex items-center justify-center rounded-full bg-base">
+                      <div className="absolute inset-[2px] flex items-center justify-center rounded-full bg-night">
                         <span className="font-serif text-xl font-bold text-white">
                           WS
                         </span>

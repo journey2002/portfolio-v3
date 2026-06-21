@@ -8,7 +8,11 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        base: "#080808",
+        // Deepest background tone. Named `night` (not `base`) on purpose:
+        // a color token called `base` makes Tailwind emit `text-base` as a
+        // color utility, which collides with the built-in `text-base`
+        // font-size utility and silently paints text #080808 (invisible).
+        night: "#080808",
         surface: "#111111",
         "surface-raised": "#161616",
         indigo: {

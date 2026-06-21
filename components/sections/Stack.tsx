@@ -57,6 +57,16 @@ const FEATURES = [
   },
 ];
 
+// Per-chip cascade delays for the hover-IN stagger only. Static class strings
+// (not an inline style) so Tailwind's compiler emits them AND so the delay is
+// scoped to group-hover: on the way out the base state has no delay, letting
+// every chip leave at once before the "Discipline" hint returns.
+const CHIP_ENTER_DELAY = [
+  "group-hover:delay-[60ms]",
+  "group-hover:delay-[150ms]",
+  "group-hover:delay-[240ms]",
+];
+
 const featureVariants: Variants = {
   hidden: {},
   show: { transition: { staggerChildren: 0.14 } },
@@ -82,12 +92,13 @@ type Feature = {
   tools: string[];
 };
 
-// A card finished like a sheet of satin metal under a fixed studio light: a
-// soft gunmetal wash with a fine matte grain. Rock the card and the rising
-// side catches the light — face, rim and outer spill all answer to the tilt
-// alone; nothing chases the cursor. The motion is intentionally slow and a
-// little heavy so hovering feels calm rather than twitchy, and the content
-// layers lift gently toward the eye.
+// A card of matte metal with a polished glass edge, under a fixed studio
+// light. The face stays dark and matte; the light lives in two places that
+// both answer to the tilt alone — nothing chases the cursor: a crisp white
+// glare that slides along the rim to whichever edge rises toward the light,
+// and a soft diagonal sheen that skims across the face as the card rocks.
+// The motion is intentionally slow and a little heavy so hovering feels calm
+// rather than twitchy, and the content layers lift gently toward the eye.
 function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -101,37 +112,124 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   const rotateY = useSpring(useTransform(px, [-0.5, 0.5], [-6, 6]), spring);
 
   // ---- Reflection, modelled on a FIXED studio light above the viewer — the
-  // card tilts beneath it. Nothing tracks the cursor: the response derives
-  // purely from the tilt springs, so the highlight glides toward whichever
-  // side RISES (opposite the cursor), the way a real card flashes when you
-  // rock it.
-  // ONE continuous pool of light, not four edge zones: its centre sits just
-  // past the rim on the rising side, and its strength follows the overall
-  // tilt magnitude. Position and strength are both continuous, so the light
-  // sweeps smoothly through corners and diagonals — no quadrant switching,
-  // no hard hand-offs through the centre.
-  const lightPosX = useTransform(rotateY, [-6, 6], [110, -10]);
-  const lightPosY = useTransform(rotateX, [-6, 6], [-10, 110]);
+  // card tilts beneath it. Nothing tracks the cursor: every value below
+  // derives purely from the tilt springs, so the light glides toward
+  // whichever side RISES (opposite the cursor), the way a real card flashes
+  // when you rock it. Two light layers ride on this — a crisp glare on the
+  // glass rim and a soft sheen across the matte face.
+  // `lightPos*` marks where the light sits (ON the rising rim) and `lightA`
+  // is the overall tilt strength (0 at rest → 1), so every layer fades to
+  // nothing when the card is flat and the response stays continuous through
+  // corners — no quadrant switching.
+  // The position uses a NARROW, clamped input range (±3.5° rather than the
+  // full ±6°) so the hot spot localises to the rising edge after only a small
+  // cursor move. The range lands the centre exactly ON the rim (0 / 100), NOT
+  // past it — so the gradient's white core sits at the MIDDLE of the glare
+  // (its single brightest point) and falls off along the rim from there.
+  // Overshooting past the rim is what made the edge read evenly bright before:
+  // a whole stretch of rim then sat at the same distance from an off-edge
+  // centre, so it all lit to the same value. TWEAK: nudge 0 / 100 outward
+  // (e.g. -4 / 104) for a softer, more spread peak; widen ±3.5 toward ±6 to
+  // localise more slowly.
+  const lightPosX = useTransform(rotateY, [-3.5, 3.5], [100, 0], { clamp: true });
+  const lightPosY = useTransform(rotateX, [-3.5, 3.5], [0, 100], { clamp: true });
+  // Strength ramps in fast and early via a sqrt curve, so even a small rock
+  // near centre lights the edge (no need to swing the cursor to the far side)
+  // while it still keeps climbing across the rest of the range. TWEAK: smaller
+  // divisor = even more reactive near centre; drop the sqrt for a linear ramp.
   const lightA = useTransform([rotateX, rotateY], ([rx, ry]: number[]) =>
-    Math.min(1, Math.hypot(rx, ry) / 6),
+    Math.min(1, Math.sqrt(Math.hypot(rx, ry) / 5)),
   );
-  // Face, rim and halo all scale from the same strength, so the three layers
-  // always agree.
-  const faceA = useTransform(lightA, (a) => a * 0.1);
-  const faceA2 = useTransform(lightA, (a) => a * 0.045);
-  const rimA = useTransform(lightA, (a) => a * 0.5);
-  const rimA2 = useTransform(lightA, (a) => a * 0.16);
-  const haloA = useTransform(lightA, (a) => a * 0.34);
 
-  // Face sheen — the pool's soft lap onto the surface. Multi-stop falloff so
-  // it reads as light, not a slab with an edge.
-  const sheen = useMotionTemplate`radial-gradient(130% 130% at ${lightPosX}% ${lightPosY}%, rgba(238,242,255,${faceA}), rgba(203,213,255,${faceA2}) 35%, transparent 68%)`;
-  // Rim light — the border ring catching the same pool, hottest where the
-  // ring passes closest to its centre.
-  const rim = useMotionTemplate`radial-gradient(95% 95% at ${lightPosX}% ${lightPosY}%, rgba(255,255,255,${rimA}), rgba(190,200,255,${rimA2}) 40%, transparent 72%)`;
-  // Outer halo — the same pool on a blurred layer behind the card, so the
-  // lit edge throws a little light past the rim into the dark.
-  const halo = useMotionTemplate`radial-gradient(105% 105% at ${lightPosX}% ${lightPosY}%, rgba(176,191,255,${haloA}), transparent 66%)`;
+  // How FAR the cursor is from the middle (0 at centre → 1 at the corners).
+  // Climbs linearly across the WHOLE range (÷7), unlike lightA which saturates
+  // early, so it can keep pushing the edge glare's glow brighter and wider as
+  // the cursor nears the edge — past the point where the base opacity has
+  // already maxed out. TWEAK: smaller divisor = ramps to full glow sooner.
+  const edgeBoost = useTransform([rotateX, rotateY], ([rx, ry]: number[]) =>
+    Math.min(1, Math.hypot(rx, ry) / 7),
+  );
+
+  // Glass glare — the crisp specular hot spot that slides along the rim to
+  // the edge facing the light. A radial whose centre rides just past the
+  // rising rim, MASKED to the 1px border ring (in the markup) so it can only
+  // ever paint the edge, never the face. The core is white; the
+  // blue→cyan→violet accent lives in the falloff, so the lit point reads as a
+  // real reflection on glass rather than a saturated colour ring, and it
+  // fades to nothing around the rest of the rim.
+  // TWEAK: a SMOOTH many-stop falloff so the glare eases from a white core at
+  // the middle of the lit segment down to nothing at both ends — a soft bell
+  // along the rim, not a stiff core-plus-drop. Each stop steps down gently
+  // (~0.1 at a time, evenly spaced 0→96%) so there are no hard transitions.
+  // The "64% 64%" size = how far the bell spreads along the rim (bigger =
+  // softer/wider); lightA * 1.6 = brightness ramp.
+  const glareOpacity = useTransform(lightA, (a) => Math.min(1, a * 1.6));
+  const glare = useMotionTemplate`radial-gradient(64% 64% at ${lightPosX}% ${lightPosY}%, rgba(255,255,255,1) 0%, rgba(255,255,255,1) 6%, rgba(245,249,255,0.9) 15%, rgba(222,233,255,0.74) 26%, rgba(198,216,255,0.57) 37%, rgba(178,198,253,0.41) 48%, rgba(163,180,249,0.27) 60%, rgba(154,167,246,0.15) 72%, rgba(150,160,245,0.06) 84%, transparent 96%)`;
+  // The same glare on a blurred layer behind the card, so the lit edge spills
+  // more light past the rim into the dark — directional, never a centred blob
+  // (the mask pins it to the rising edge; tilt gates it away at rest).
+  const glareSpill = useTransform([lightA, edgeBoost], ([a, e]: number[]) =>
+    Math.min(1, a * 1.3) * (0.62 + e * 0.33),
+  );
+
+  // The glare's bloom (applied as the layer's filter in the markup) — the wide
+  // outer halo grows brighter AND wider with edgeBoost, so the edge glare
+  // glows hardest when the cursor is far from the middle, where the base
+  // opacity has already saturated. TWEAK: the 0.38 / 38 bases = glow near
+  // centre; the `* e` terms = how much extra glow builds toward the edge.
+  const glareGlowA = useTransform(edgeBoost, (e) => 0.55 + e * 0.4);
+  const glareGlowPx = useTransform(edgeBoost, (e) => 42 + e * 34);
+  const glareGlow = useMotionTemplate`drop-shadow(0 0 6px rgba(255,255,255,1)) drop-shadow(0 0 22px rgba(210,230,255,0.9)) drop-shadow(0 0 ${glareGlowPx}px rgba(190,212,255,${glareGlowA}))`;
+
+  // Prism dispersion — past a certain tilt the lit edge splits the light into
+  // a faint spectrum, the way a glass/crystal edge throws a rainbow when it
+  // catches the light at the right angle. A spectral radial sharing the
+  // glare's position (so the rainbow fans along the rim out of the hot spot),
+  // masked to the rim and SCREEN-blended so it reads as glowing light, not
+  // paint. It ramps in from a LOW threshold so it already shows when the
+  // cursor is near the MIDDLE of the card (only a little tilt), not just out at
+  // the edge — yet it's still 0 at dead centre, so it isn't permanently on
+  // (the old always-on conic ring is exactly what this avoids). TWEAK: the
+  // first number in (m - 1.2) / 3.3 = how near the middle it starts (lower =
+  // nearer the centre, 0 = always on); the per-stop alphas in `prism` = how
+  // vivid the spectrum is. A full ROYGBIV runs through the falloff.
+  const prismA = useTransform([rotateX, rotateY], ([rx, ry]: number[]) =>
+    Math.min(1, Math.max(0, (Math.hypot(rx, ry) - 1.2) / 3.3)),
+  );
+  const prism = useMotionTemplate`radial-gradient(80% 80% at ${lightPosX}% ${lightPosY}%, transparent 18%, rgba(255,90,110,0.32) 28%, rgba(255,160,80,0.28) 35%, rgba(255,232,110,0.26) 42%, rgba(130,240,150,0.26) 50%, rgba(96,206,255,0.3) 58%, rgba(128,140,255,0.3) 65%, rgba(210,120,255,0.34) 73%, transparent 88%)`;
+
+  // Glass glint — a THIN soft lip beneath the glare, a gentle gradient on the
+  // rising side. An INSET box-shadow hugs the rounded border by construction,
+  // so it can never leak onto the face. TWEAK: glintA = strength of the lip;
+  // the 1.3 offset = how far it travels around the rim with tilt; the blur
+  // radii (9px / 14px) below = how THICK the lip reads — raise them to thicken.
+  const glintOffX = useTransform(rotateY, (v) => v * 1.3);
+  const glintOffY = useTransform(rotateX, (v) => -v * 1.3);
+  const glintA = useTransform(lightA, (a) => a * 0.32);
+  const glintIce = useTransform(lightA, (a) => a * 0.18);
+  const glintShadow = useMotionTemplate`inset ${glintOffX}px ${glintOffY}px 9px -6px rgba(255,255,255,${glintA}), inset ${glintOffX}px ${glintOffY}px 14px -8px rgba(186,224,255,${glintIce})`;
+
+  // Inner edge glow — a soft glass glow hugging the INSIDE of the rim. It
+  // lives on the hover layer (gone at rest) and its strength rides the tilt
+  // (lightA), so it blooms in as you hover and brightens dynamically as you
+  // move — never static. TWEAK: the 0.07 base = glow just from hovering; the
+  // a * 0.18 term = how much it brightens with tilt; the 24px blur = how soft
+  // and deep it reaches inward.
+  const innerGlowA = useTransform(lightA, (a) => 0.07 + a * 0.18);
+  const innerGlow = useMotionTemplate`inset 0 0 24px -6px rgba(206,224,255,${innerGlowA})`;
+
+  // Face sheen — a soft diagonal streak of light skimming the surface
+  // (replacing the old radial pool). The gradient itself is FIXED; the streak
+  // is slid and tipped with pure transforms — cheap, no per-frame repaint —
+  // so it sweeps across the face as the card rocks. A radial mask (in the
+  // markup) fades its ends so it reads as a streak, brightest in the middle,
+  // not a hard bar. TWEAK: the 0.12 alpha in the gradient (markup below) =
+  // sheen brightness; the sheenX/Y ranges below = how far it travels with
+  // tilt (bigger = more reactive); sheenOpacity's a-term = tilt response.
+  const sheenX = useTransform(rotateY, [-6, 6], [26, -26]);
+  const sheenY = useTransform(rotateX, [-6, 6], [-26, 26]);
+  const sheenRotate = useTransform(rotateY, [-6, 6], [6, -6]);
+  const sheenOpacity = useTransform(lightA, (a) => 0.5 + a * 0.5);
 
   function handleMove(e: React.PointerEvent<HTMLDivElement>) {
     const el = ref.current;
@@ -155,14 +253,46 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
       variants={featureItem(index)}
       className="group relative [perspective:1100px]"
     >
-      {/* Outer halo — the same tilt response on a blurred layer behind the
-          card, so a lit edge throws a little light past the rim into the dark.
+      {/* Outer spill — the rim glare on a blurred layer behind the card, so
+          the lit edge throws a little light past the rim into the dark.
+          Directional (masked to the rising edge), never a centred blob.
           Hover-only. */}
-      <motion.div
+      <div
         aria-hidden
-        style={{ background: halo }}
-        className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 blur-xl transition-opacity duration-500 ease-out group-hover:opacity-100"
-      />
+        className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 blur-lg transition-opacity duration-500 ease-out group-hover:opacity-100"
+      >
+        <motion.div
+          style={{
+            background: glare,
+            opacity: glareSpill,
+            padding: "2px",
+            WebkitMask:
+              "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+            WebkitMaskComposite: "xor",
+            mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+            maskComposite: "exclude",
+          }}
+          className="absolute inset-0 rounded-2xl"
+        />
+        {/* Prism spill — the same dispersion thrown OUTSIDE the rim on the
+            blurred layer, so the spectrum glows out past the edge where the
+            glare is. Screen-blended, steep-angle only (shares prismA). */}
+        <motion.div
+          aria-hidden
+          style={{
+            background: prism,
+            opacity: prismA,
+            padding: "3px",
+            WebkitMask:
+              "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+            WebkitMaskComposite: "xor",
+            mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+            maskComposite: "exclude",
+            mixBlendMode: "screen",
+          }}
+          className="absolute inset-0 rounded-2xl"
+        />
+      </div>
       <motion.div
         ref={ref}
         onPointerMove={handleMove}
@@ -170,9 +300,10 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
         style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
         className="relative flex h-full flex-col gap-5 rounded-2xl border border-hairline bg-surface/30 p-7 backdrop-blur-xl transition-colors duration-500 group-hover:border-white/20"
       >
-        {/* Glass reflections — clipped to the rounded card via this wrapper.
-            overflow-hidden lives here (not on the card) so the card keeps its
-            preserve-3d context and the content can still lift toward the viewer. */}
+        {/* Surface finish — the matte-metal layers, clipped to the rounded
+            card. overflow-hidden lives here (not on the card) so the card
+            keeps its preserve-3d context and the content can still lift
+            toward the viewer. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl"
@@ -181,14 +312,13 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
           <div
             className={`absolute inset-0 bg-gradient-to-br ${feature.accent} opacity-30`}
           />
-          {/* Metallic volume — soft light off the top, shading toward the base,
-              so the surface reads like a slightly lit sheet of metal */}
-          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.07] via-transparent to-black/20" />
-          {/* Light falloff — a soft overhead pool of light plus a corner
-              vignette, so the face reads as a gently curved sheet instead of
-              a flat digital fill. No pattern layers beyond this: the surface
-              stays a clean satin, and the fine grain below just kills gloss. */}
-          <div className="absolute inset-0 bg-[radial-gradient(130%_110%_at_50%_-10%,rgba(255,255,255,0.05),transparent_55%),radial-gradient(150%_140%_at_50%_55%,transparent_52%,rgba(0,0,0,0.26)_100%)]" />
+          {/* Metallic volume — the faintest vertical shading toward the base.
+              No white light on the face: the surface stays truly matte at rest
+              so all of the glass lives on the hover layers. */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-black/20" />
+          {/* Corner vignette — edges fall gently into shadow so the face
+              reads as a solid sheet, not a flat digital fill. */}
+          <div className="absolute inset-0 bg-[radial-gradient(150%_140%_at_50%_55%,transparent_52%,rgba(0,0,0,0.26)_100%)]" />
           {/* Matte micro-grain — fine noise that takes the gloss off the
               surface; per-card seed so the sheets aren't clones. */}
           <div
@@ -197,43 +327,93 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
               backgroundImage: `url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='180'%20height='180'%3E%3Cfilter%20id='m'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='1.25'%20numOctaves='2'%20seed='${2 + index * 9}'%20stitchTiles='stitch'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23m)'/%3E%3C/svg%3E")`,
             }}
           />
-          {/* (The face sheen is intentionally NOT here — it lives outside
-              this overflow-hidden clip on a raised depth plane so it can
-              float in real 3D. See below.) */}
+          {/* Face sheen — a soft diagonal streak skimming the surface, swept
+              across the face by the tilt. Clipped & rounded by this
+              overflow-hidden wrapper; sits behind the content. */}
+          <div className="absolute inset-0 opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100">
+            <motion.div
+              aria-hidden
+              style={{
+                x: sheenX,
+                y: sheenY,
+                rotate: sheenRotate,
+                opacity: sheenOpacity,
+                backgroundImage:
+                  "linear-gradient(116deg, transparent 34%, rgba(255,255,255,0.12) 50%, transparent 66%)",
+                WebkitMaskImage:
+                  "radial-gradient(62% 78% at 50% 50%, #000 28%, transparent 80%)",
+                maskImage:
+                  "radial-gradient(62% 78% at 50% 50%, #000 28%, transparent 80%)",
+              }}
+              className="absolute -inset-1/3"
+            />
+          </div>
         </div>
-        {/* Face sheen — light pooling along whichever side rises toward the
-            fixed light. It rides a slightly raised depth plane (translateZ),
-            so the perspective tilt keeps it reading as light on glass rather
-            than a decal. clip-path (not overflow-hidden) rounds it without
-            flattening the card's 3D context. */}
+        {/* Glass edge — the rim light, all of it tilt-driven (the hover fade
+            sits on this wrapper). Two layers, masked/welded to the border so
+            they can never touch the matte face: a wide soft glint lip on the
+            rising side, and a crisp white glare that slides to the edge
+            facing the light. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-700 ease-out [transform:translateZ(40px)] group-hover:opacity-100"
-          style={{ clipPath: "inset(0 round 1rem)" }}
+          className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100"
         >
-          <motion.div style={{ background: sheen }} className="absolute inset-0" />
+          {/* Inner edge glow — a soft glass glow hugging the inside of the
+              rim; blooms in on hover and brightens with tilt (gone at rest). */}
+          <motion.div
+            aria-hidden
+            style={{ boxShadow: innerGlow }}
+            className="absolute inset-0 rounded-2xl"
+          />
+          {/* Glint — the wide, soft lip on the rising-side rim. An inset
+              box-shadow follows the rounded corners and stays welded to the
+              edge, so there is no radial centre to leak onto the face. */}
+          <motion.div
+            style={{ boxShadow: glintShadow }}
+            className="absolute inset-0 rounded-2xl"
+          />
+          {/* Glare — the specular hot spot: a smooth bell of light on the rim,
+              brightest where it meets the light, masked to the 1px ring so it
+              never touches the face. Three stacked drop-shadows make the bright
+              middle GLOW — a tight white hot core, a soft icy halo, and a wide
+              faint outer bloom that radiate from the brightest point onto the
+              surface and out past the rim (the bell profile keeps the glow
+              concentrated at the middle, not the dim ends). The outer bloom
+              grows brighter and wider as the cursor leaves the middle, so the
+              edge glow is hottest near the edge — see `glareGlow` to tune. */}
+          <motion.div
+            style={{
+              background: glare,
+              opacity: glareOpacity,
+              padding: "1px",
+              WebkitMask:
+                "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+              WebkitMaskComposite: "xor",
+              mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+              maskComposite: "exclude",
+              filter: glareGlow,
+            }}
+            className="absolute inset-0 rounded-2xl"
+          />
+          {/* Prism dispersion — a faint spectrum fanning along the rim out of
+              the hot spot, SCREEN-blended so it glows; opens up only at a
+              steep tilt, so it flashes when the card catches a certain angle. */}
+          <motion.div
+            aria-hidden
+            style={{
+              background: prism,
+              opacity: prismA,
+              padding: "2px",
+              WebkitMask:
+                "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+              WebkitMaskComposite: "xor",
+              mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+              maskComposite: "exclude",
+              mixBlendMode: "screen",
+            }}
+            className="absolute inset-0 rounded-2xl"
+          />
         </div>
-        {/* Rim light — the card's STROKE catching the light (not an inner
-            bloom). The mask keeps it on the ~1.5px border ring only; the
-            edges rising toward the light brighten, and the drop-shadow gives
-            the lit segment a soft bloom, like a metal edge catching the sun. */}
-        <motion.div
-          aria-hidden
-          style={{
-            background: rim,
-            padding: "1.5px",
-            WebkitMask:
-              "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-            WebkitMaskComposite: "xor",
-            mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-            maskComposite: "exclude",
-            // Tight white rim bloom so the lit stroke reads crisp; the wider
-            // outward halo is handled by the dedicated outer-glow layer behind
-            // the card (so it can actually bleed past the rim into the dark).
-            filter: "drop-shadow(0 0 3px rgba(255,255,255,0.5))",
-          }}
-          className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100"
-        />
         {/* Soft highlight skimming the top edge — diffuse, not a glossy line */}
         <div
           aria-hidden
@@ -260,20 +440,26 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
           {feature.description}
         </p>
 
-        {/* Footer zone — swaps the discipline hint for the tool chips */}
-        <div className="relative mt-2 min-h-[34px] [transform-style:preserve-3d]">
-          {/* Resting hint */}
-          <span className="absolute inset-0 flex items-center gap-4 text-[10px] uppercase tracking-[0.3em] text-neutral-600 transition-all duration-300 group-hover:-translate-y-1 group-hover:opacity-0">
+        {/* Footer zone — the discipline hint and the tool chips share ONE grid
+            cell (both pinned to row/col 1), so the cell always reserves the
+            chips' full, wrapping height. At rest the space is simply held open
+            beneath the hint; on hover the chips fill it. The chips can never
+            overflow upward into the description the way the old fixed-height
+            absolute box let them. */}
+        <div className="mt-2 grid [transform-style:preserve-3d]">
+          {/* Resting hint — kept to its own height so it sits at the top of the
+              reserved zone rather than stretching across it. */}
+          <span className="col-start-1 row-start-1 flex h-fit items-center gap-4 text-[10px] uppercase tracking-[0.3em] text-neutral-600 transition-all duration-300 delay-300 group-hover:-translate-y-1 group-hover:opacity-0 group-hover:delay-0">
             <span className="block h-px w-6 bg-current" />
             Discipline
           </span>
-          {/* Tool chips that cascade up on hover */}
-          <div className="absolute inset-0 flex flex-wrap items-center gap-2 [transform-style:preserve-3d]">
+          {/* Tool chips that cascade up on hover — this layer defines the
+              cell's height, so the description above is always clear of it. */}
+          <div className="col-start-1 row-start-1 flex flex-wrap content-start items-start gap-2 [transform-style:preserve-3d]">
             {feature.tools.map((tool, t) => (
               <span
                 key={tool}
-                style={{ transitionDelay: `${80 + t * 70}ms` }}
-                className="inline-flex translate-y-3 items-center gap-2 rounded-full border border-indigo-accent/30 bg-base/60 px-3 py-1 text-[11px] font-medium tracking-wide text-neutral-200 opacity-0 transition-all duration-700 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-hover:[transform:translateY(0)_translateZ(30px)]"
+                className={`inline-flex translate-y-3 items-center gap-2 rounded-full border border-indigo-accent/30 bg-night/60 px-3 py-1 text-[11px] font-medium tracking-wide text-neutral-200 opacity-0 transition-all duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-hover:duration-700 group-hover:[transform:translateY(0)_translateZ(30px)] ${CHIP_ENTER_DELAY[t] ?? ""}`}
               >
                 <span className="h-1 w-1 rotate-45 bg-accent-gradient" />
                 {tool}
@@ -382,8 +568,8 @@ export default function Stack() {
         style={{ x: marqueeX }}
         className="relative mt-16 flex overflow-hidden border-y border-hairline py-8"
       >
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-40 bg-gradient-to-r from-base via-base/80 to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-40 bg-gradient-to-l from-base via-base/80 to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-40 bg-gradient-to-r from-night via-night/80 to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-40 bg-gradient-to-l from-night via-night/80 to-transparent" />
         <motion.div
           style={{ skewX: skew }}
           className="flex w-full origin-center"

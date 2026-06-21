@@ -96,7 +96,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${spaceGrotesk.variable} ${dmSans.variable}`}>
-      <body className="font-sans bg-base text-neutral-100 antialiased">
+      <body className="font-sans bg-night text-neutral-100 antialiased">
         <LenisProvider>
           <PointerProvider>
             <CustomCursor />

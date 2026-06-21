@@ -32,6 +32,10 @@ import {
 type Pointer = {
   x: MotionValue<number>;
   y: MotionValue<number>;
+  /** Raw normalised (-0.5..0.5) position, unsmoothed — spring it yourself if a
+   *  feel other than the shared parallax spring is wanted. */
+  nx: MotionValue<number>;
+  ny: MotionValue<number>;
   snx: MotionValue<number>;
   sny: MotionValue<number>;
   /** True only on devices with a fine, hovering pointer (desktop). */
@@ -93,8 +97,8 @@ export function PointerProvider({ children }: { children: ReactNode }) {
   }, [x, y, nx, ny]);
 
   const value = useMemo<Pointer>(
-    () => ({ x, y, snx, sny, enabled }),
-    [x, y, snx, sny, enabled]
+    () => ({ x, y, nx, ny, snx, sny, enabled }),
+    [x, y, nx, ny, snx, sny, enabled]
   );
 
   return (
