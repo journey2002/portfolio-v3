@@ -23,7 +23,8 @@ body {
   }
   a,
   button,
-  [data-cursor-hover] {
+  [data-cursor-hover],
+  [data-cursor] {
     cursor: none;
   }
 }
@@ -57,6 +58,19 @@ body {
   background-image:
     linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 80px 80px;
+}
+
+/* Figma-style canvas dot grid — a faint dot at the centre of each 80px cell.
+   Replaces the ruled grid in the hero so the background reads like a design
+   tool's pasteboard rather than generic graph paper; GridSpotlight lights a
+   matching dot layer under the cursor. */
+.grid-dots {
+  background-image: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.07) 1.2px,
+    transparent 1.7px
+  );
   background-size: 80px 80px;
 }
 

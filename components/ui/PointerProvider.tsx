@@ -79,7 +79,7 @@ export function PointerProvider({ children }: { children: ReactNode }) {
       ny.set(py / vh - 0.5);
       scheduled = false;
     };
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e: PointerEvent) => {
       px = e.clientX;
       py = e.clientY;
       if (!scheduled) {
@@ -88,10 +88,17 @@ export function PointerProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    window.addEventListener("mousemove", onMove, { passive: true });
+    // `pointermove` rather than `mousemove`: the canvas drag handlers (pen path,
+    // resize handles) call preventDefault() on pointerdown, which suppresses the
+    // compatibility mouse events — including mousemove — for the rest of the
+    // gesture. A mousemove listener would freeze every cursor-driven decoration
+    // mid-drag. Pointer events keep firing throughout, so the cursor, spotlight
+    // and parallax track continuously while you reshape something. On desktop
+    // (the only place this provider enables) a mouse's pointermove is equivalent.
+    window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener("resize", onResize);
     return () => {
-      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("pointermove", onMove);
       window.removeEventListener("resize", onResize);
     };
   }, [x, y, nx, ny]);

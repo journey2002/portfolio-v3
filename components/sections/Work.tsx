@@ -112,10 +112,19 @@ export default function Work() {
   const viewsRef = useRef<HTMLDivElement>(null);
   const headingInView = useInView(headingRef, { once: true, margin: "-10%" });
   const inView = useInView(viewsRef, { once: true, margin: "-12%" });
+  // Live (re-firing) visibility — used to dismiss the floating preview when the
+  // section scrolls away faster than the pointer can leave the list.
+  const sectionInView = useInView(sectionRef, { margin: "-15%" });
 
   const [view, setView] = useState<WorkView>("index");
   const [hovered, setHovered] = useState<number | null>(null);
   const [open, setOpen] = useState<number | null>(null);
+
+  // A fast scroll past the section never fires a mouseleave on the list, so the
+  // preview can stay pinned after the work is out of view. Clear it on exit.
+  useEffect(() => {
+    if (!sectionInView && hovered !== null) setHovered(null);
+  }, [sectionInView, hovered]);
 
   const pointer = usePointer();
   const enabled = pointer?.enabled ?? false;

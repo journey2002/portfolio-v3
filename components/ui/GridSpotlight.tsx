@@ -9,9 +9,9 @@ type GridSpotlightProps = {
   size?: number;
   /** Grid cell size in px — should match the base grid behind. */
   gridSize?: number;
-  /** Color of the glowing grid lines. */
+  /** Color of the glowing grid dots. */
   color?: string;
-  /** Soft accent halo behind the lit grid lines. */
+  /** Soft accent halo behind the lit grid dots. */
   halo?: string;
 };
 
@@ -73,11 +73,10 @@ export default function GridSpotlight({
       style={
         {
           backgroundImage: [
-            `linear-gradient(to right, ${color} 1px, transparent 1px)`,
-            `linear-gradient(to bottom, ${color} 1px, transparent 1px)`,
+            `radial-gradient(circle, ${color} 1.2px, transparent 1.7px)`,
             `radial-gradient(${Math.round(size * 0.7)}px circle at var(--gs-x, 50%) var(--gs-y, 50%), ${halo}, transparent 70%)`,
           ].join(", "),
-          backgroundSize: `${gridSize}px ${gridSize}px, ${gridSize}px ${gridSize}px, 100% 100%`,
+          backgroundSize: `${gridSize}px ${gridSize}px, 100% 100%`,
           maskImage: mask,
           WebkitMaskImage: mask,
           opacity: "var(--gs-o, 0)",

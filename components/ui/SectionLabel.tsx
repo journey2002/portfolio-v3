@@ -1,7 +1,153 @@
 "use client";
 
-import { motion, useScroll, useTransform } from "framer-motion";
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useMotionTemplate,
+  useMotionValue,
+  type MotionValue,
+} from "framer-motion";
 import { useRef } from "react";
+
+// Static diagonal band used as the sheen mask — only its position animates.
+const SHEEN_BAND =
+  "linear-gradient(115deg, transparent 43%, #000 50%, transparent 57%)";
+
+type ReflectiveGlyphProps = {
+  /** Glyph(s) to render — a numeral like "02" or a short mark like "CV". */
+  text: string;
+  /** Scroll progress (0→1) that drives the reveal, color shift, and sheen. */
+  progress: MotionValue<number>;
+  /**
+   * Progress window over which the stroke floods up from empty → full. Omit to
+   * render the glyph statically full (e.g. a hero mark that's visible on load),
+   * with only the sheen reacting to scroll.
+   */
+  revealRange?: [number, number];
+  /** Progress window over which the reflective sheen sweeps across. */
+  sheenRange?: [number, number];
+};
+
+/**
+ * A huge hollow glyph whose *stroke* lights up and catches a moving reflection
+ * as `progress` advances. Four pixel-aligned layers share the same text/size:
+ *   1. ghost  — a faint always-on outline (the empty vessel)
+ *   2. flood  — a colored stroke revealed bottom-up, fading white → indigo
+ *   3. crest  — a near-white band tracing the rising waterline
+ *   4. sheen  — a screen-blended diagonal glint that sweeps across
+ *
+ * Reveal + crest are clip-path driven (compositor-friendly); the sheen animates
+ * mask-position. Inherits font-size/weight from its parent. Decorative.
+ */
+export function ReflectiveGlyph({
+  text,
+  progress,
+  revealRange,
+  sheenRange = [0.05, 0.55],
+}: ReflectiveGlyphProps) {
+  // With a reveal window the waterline retreats 100% → 0% across it; without
+  // one the glyph stays full and only the sheen moves.
+  const range = revealRange ?? [0, 1];
+  const floodTopDynamic = useTransform(progress, range, [100, 0]);
+  const floodTopStatic = useMotionValue(0);
+  const floodTop = revealRange ? floodTopDynamic : floodTopStatic;
+
+  // Stroke cools from a subtle white into indigo over the first ~2/3 of the
+  // reveal; a static glyph just sits at indigo.
+  const colorEnd = range[0] + (range[1] - range[0]) * 0.65;
+  const floodStrokeDynamic = useTransform(
+    progress,
+    [range[0], colorEnd],
+    ["rgba(255,255,255,0.55)", "#6366f1"]
+  );
+  const floodStroke: MotionValue<string> | string = revealRange
+    ? floodStrokeDynamic
+    : "#6366f1";
+
+  const floodClip = useMotionTemplate`inset(${floodTop}% 0% 0% 0%)`;
+  // Crest: a ~3%-tall band sitting exactly at the waterline; collapses to
+  // nothing while empty.
+  const crestBottom = useTransform(floodTop, (v) => Math.max(0, 97 - v));
+  const crestClip = useMotionTemplate`inset(${floodTop}% 0% ${crestBottom}% 0%)`;
+
+  // Reflective sheen — only the mask position animates; the band shape is static
+  // and the highlight is gated to the revealed area via the same waterline clip.
+  const sheenPos = useTransform(progress, sheenRange, [
+    "160% 160%",
+    "-60% -60%",
+  ]);
+
+  return (
+    <span className="relative block">
+      {/* Ghost outline — in-flow, sets the box the overlays clip against. */}
+      <span
+        className="block"
+        style={{
+          WebkitTextStroke: "2.5px rgba(255,255,255,0.06)",
+          color: "transparent",
+        }}
+      >
+        {text}
+      </span>
+
+      {/* Colored stroke — lights up bottom-up, fading white → indigo. */}
+      <motion.span
+        className="absolute inset-0 block"
+        style={{
+          clipPath: floodClip,
+          WebkitClipPath: floodClip,
+          WebkitTextStrokeWidth: "3px",
+          WebkitTextStrokeColor: floodStroke,
+          color: "transparent",
+          opacity: 0.85,
+        }}
+      >
+        {text}
+      </motion.span>
+
+      {/* Waterline crest — a brighter, near-white stroke tracing the edge. */}
+      <motion.span
+        className="absolute inset-0 block"
+        style={{
+          clipPath: crestClip,
+          WebkitClipPath: crestClip,
+          WebkitTextStrokeWidth: "3px",
+          WebkitTextStrokeColor: "#e9d5ff",
+          color: "transparent",
+          opacity: 0.95,
+        }}
+      >
+        {text}
+      </motion.span>
+
+      {/* Reflective sheen — a diagonal glint sweeping across, screen-blended so
+          it reads as a moving specular highlight. */}
+      <motion.span
+        className="absolute inset-0 block"
+        style={{
+          clipPath: floodClip,
+          WebkitClipPath: floodClip,
+          WebkitTextStrokeWidth: "3px",
+          WebkitTextStrokeColor: "rgba(255,255,255,0.92)",
+          color: "transparent",
+          opacity: 0.8,
+          mixBlendMode: "screen",
+          maskImage: SHEEN_BAND,
+          WebkitMaskImage: SHEEN_BAND,
+          maskSize: "250% 250%",
+          WebkitMaskSize: "250% 250%",
+          maskRepeat: "no-repeat",
+          WebkitMaskRepeat: "no-repeat",
+          maskPosition: sheenPos,
+          WebkitMaskPosition: sheenPos,
+        }}
+      >
+        {text}
+      </motion.span>
+    </span>
+  );
+}
 
 type SectionLabelProps = {
   /** Section index, shown as a giant outlined numeral. */
@@ -15,9 +161,10 @@ type SectionLabelProps = {
 };
 
 /**
- * Big floating section marker — a huge outlined numeral that parallax-drifts
- * behind content while the section is on screen, plus a small label.
- * Decorative; aria-hidden.
+ * Big floating section marker — a huge reflective numeral that parallax-drifts
+ * behind content while the section is on screen, plus a small caption. The
+ * numeral's stroke lights up and catches a sweeping sheen as you scroll (see
+ * {@link ReflectiveGlyph}). Decorative; aria-hidden.
  */
 export default function SectionLabel({
   index,
@@ -46,36 +193,46 @@ export default function SectionLabel({
     align === "left" ? ["-30px", "10px"] : ["30px", "-10px"]
   );
 
+  const numeralSize =
+    "text-[28vw] leading-none sm:text-[22vw] md:text-[18vw] lg:text-[15vw]";
+
   return (
     <div
       ref={ref}
       aria-hidden
       className={`pointer-events-none absolute inset-0 z-0 overflow-hidden ${className}`}
     >
-      {/* Giant outlined numeral */}
+      {/* Giant numeral — drifts + fades as a unit; the stroke lights up within.
+          Offset from its near edge with a font-relative value (so the distance
+          stays consistent across breakpoints rather than gapping at large sizes
+          and bleeding at small ones). The value is mirrored per side: raising it
+          pushes each digit toward its screen edge (left one left, right one
+          right); lowering it pulls them toward the center. */}
       <motion.span
         style={{ y: numeralY, opacity: numeralOpacity }}
-        className={`absolute top-0 select-none font-serif font-bold leading-none ${
-          align === "left" ? "-left-2 sm:-left-4" : "-right-2 sm:-right-4"
-        } text-[28vw] sm:text-[22vw] md:text-[18vw] lg:text-[15vw]`}
+        className={`absolute top-0 block select-none font-serif font-bold ${
+          align === "left" ? "-left-[0.04em]" : "-right-[0.04em]"
+        } ${numeralSize}`}
       >
-        <span
-          className="block"
-          style={{
-            WebkitTextStroke: "1px rgba(255,255,255,0.045)",
-            color: "transparent",
-          }}
-        >
-          {index}
-        </span>
+        <ReflectiveGlyph
+          text={index}
+          progress={scrollYProgress}
+          revealRange={[0.05, 0.34]}
+        />
       </motion.span>
 
-      {/* Small caption sliding in opposite direction */}
+      {/* Small caption sliding in opposite direction. Sits on z-10 above the
+          numeral, with a dark halo so it stays legible once the stroke lights
+          up behind it — the glow is invisible over the plain dark background and
+          only reads where it overlaps the bright outline or crest. */}
       <motion.span
-        style={{ x: captionX }}
-        className={`absolute top-12 ${
+        style={{
+          x: captionX,
+          textShadow: "0 0 10px rgba(8,8,8,0.92), 0 1px 3px rgba(8,8,8,0.7)",
+        }}
+        className={`absolute top-12 z-10 ${
           align === "left" ? "left-6 sm:left-10" : "right-6 sm:right-10"
-        } text-[10px] uppercase tracking-[0.4em] text-neutral-600`}
+        } text-[10px] uppercase tracking-[0.4em] text-neutral-400`}
       >
         — {caption}
       </motion.span>

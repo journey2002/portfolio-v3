@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import {
   motion,
+  Reorder,
   useMotionValue,
   useScroll,
   useSpring,
@@ -12,6 +13,7 @@ import {
   ArrowUpRight,
   Eye,
   Frame as FrameIcon,
+  GripVertical,
   Hand,
   Lock,
   MessageSquareDashed,
@@ -36,6 +38,11 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 const SCALE_MIN = 0.4;
 const SCALE_MAX = 1.5;
 
+// Widest the artboard frame can be dragged (px). The default is a narrower,
+// centred artboard (≈64rem, set on --fw below); dragging a corner expands it out
+// to this max, which still leaves gutters for the layers + inspector panels.
+const FRAME_MAX_W = 1376;
+
 const MARQUEE_TAGS = [
   "UX/UI Designer",
   "Digital Artist",
@@ -44,13 +51,26 @@ const MARQUEE_TAGS = [
   "Available for Work",
 ];
 
-// The artboard's "layers" — a static stand-in for a design tool's layer list.
-const LAYERS = [
-  { name: "presence", type: "◇" },
-  { name: "statement", type: "T", selected: true },
-  { name: "actions", type: "◇" },
-  { name: "canvas.bg", type: "▦", locked: true },
-];
+// The artboard's reorderable "layers". Each id maps to a real block of the hero
+// content (rendered in `layerOrder` sequence) so dragging a row in the panel
+// physically restacks the matching block — e.g. dragging `statement` to the top
+// lifts the "Designing experiences." headline above everything else. `canvas.bg`
+// is the locked background and lives outside the order (always bottom-most).
+type LayerId = "presence" | "statement" | "actions";
+
+const LAYER_META: Record<LayerId, { type: string; label: string }> = {
+  presence: { type: "◇", label: "presence" },
+  statement: { type: "T", label: "statement" },
+  actions: { type: "◇", label: "actions" },
+};
+
+const DEFAULT_LAYER_ORDER: LayerId[] = ["presence", "statement", "actions"];
+
+// Copies of the tag set inside each of the marquee's two halves. The strip is a
+// single animated element holding two identical halves and sliding -50%, so the
+// wrap is pixel-seamless; each half must be wide enough to cover the container,
+// hence three copies. Speed is held constant by scaling the duration to match.
+const MARQUEE_REPEAT = 3;
 
 // 8 selection handles (4 corners + 4 edge midpoints) with their resize cursors
 // and the behaviour each one drives:
@@ -79,6 +99,16 @@ const FRAME_CORNERS = [
   { x: 100, y: 100, cursor: "nwse-resize" },
   { x: 0, y: 100, cursor: "nesw-resize" },
 ] as const;
+
+// The custom cursor hides the OS pointer on these handles (they carry
+// `data-cursor`) and instead draws its own resize glyph, swivelled to the axis
+// the handle resizes along. This maps the old OS cursor name → that rotation.
+const RESIZE_ANGLE: Record<string, number> = {
+  "ew-resize": 0,
+  "ns-resize": 90,
+  "nwse-resize": 45,
+  "nesw-resize": -45,
+};
 
 /**
  * Hero, staged as a live design canvas instead of a conventional headline block.
@@ -137,7 +167,7 @@ export default function Hero() {
     const startDX = e.clientX - cx || 1;
     const startDY = e.clientY - cy || 1;
     const startDist = Math.hypot(e.clientX - cx, e.clientY - cy) || 1;
-    const maxFW = window.innerWidth - 48; // keep the frame inside the viewport
+    const maxFW = Math.min(window.innerWidth - 48, FRAME_MAX_W); // cap to artboard max
 
     // Grow the box width and carry the frame along by the same delta (constant
     // gutter), clamped to the viewport and floored at the longest word.
@@ -217,7 +247,7 @@ export default function Hero() {
 
     const startDX = e.clientX - cx || 1;
     const startDY = e.clientY - cy || 1;
-    const maxW = window.innerWidth - 48;
+    const maxW = Math.min(window.innerWidth - 48, FRAME_MAX_W);
     const maxH = Math.max(minH, window.innerHeight - 40);
     // A corner only drives the axes it actually sits on (hx/hy are 0 or 100,
     // 50 would mean "centred" → that axis is left alone). Corners use both.
@@ -262,16 +292,162 @@ export default function Hero() {
 
   const marqueeHoverRef = useMarqueeSlowOnHover<HTMLDivElement>();
 
+  // Live layer order, shared by the layers panel (drag to reorder) and the frame
+  // content (rendered in this sequence). Reordering one reorders the other.
+  const [layerOrder, setLayerOrder] = useState<LayerId[]>(DEFAULT_LAYER_ORDER);
+  const [selectedLayer, setSelectedLayer] = useState<LayerId>("statement");
+
+  // The hero content blocks, keyed by layer id. Rendered through `layerOrder`
+  // below so the panel's drag-to-reorder physically restacks them, with a
+  // `layout` transition animating each block to its new slot.
+  const blocks: Record<LayerId, React.ReactNode> = {
+    presence: (
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, delay: 0.5, ease: EASE }}
+        className="flex flex-wrap items-center gap-3"
+      >
+        <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-white/[0.02] px-3.5 py-1.5 text-[11px] uppercase tracking-[0.18em] text-neutral-400 backdrop-blur">
+          <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-accent-gradient" />
+          Available for work
+        </span>
+        <span className="hidden text-[10px] uppercase tracking-[0.28em] text-neutral-600 sm:inline">
+          UX/UI &amp; Digital Art
+        </span>
+      </motion.div>
+    ),
+    statement: (
+      // Headline = a resizable "text box". The words FLOW (not forced onto
+      // separate lines) inside a width of var(--bw): the default `min-content`
+      // keeps the longest word per line — i.e. the current two-line look — while
+      // dragging an edge handle re-wraps them. Size (--hs) and leading (--lh)
+      // ride the same container.
+      <div
+        ref={headlineRef}
+        className="relative inline-block select-none"
+        style={{
+          fontSize: "calc(clamp(2.75rem,8.5vw,6rem) * var(--hs,1))",
+          width: "var(--bw, min-content)",
+          lineHeight: "var(--lh, 0.94)",
+        }}
+      >
+        <h1 className="font-serif font-bold tracking-tight text-white">
+          <SplitText
+            text="Designing"
+            as="span"
+            delay={0.55}
+            stagger={0.035}
+            fromY={90}
+            fromRotate={5}
+          />{" "}
+          <span className="inline-flex items-end">
+            <SplitText
+              text="experiences."
+              as="span"
+              className="pb-2"
+              charClassName="bg-accent-gradient bg-clip-text text-transparent"
+              delay={0.9}
+              stagger={0.03}
+              fromY={90}
+              fromRotate={-4}
+            />
+            {/* Blinking text-insertion caret — scales with the text (em) */}
+            <motion.span
+              aria-hidden
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.5 }}
+              className="animate-caret-blink mb-[0.3em] ml-1 h-[0.72em] w-[3px] rounded-full bg-accent-gradient sm:w-1"
+            />
+          </span>
+        </h1>
+
+        {/* Selection bounding box + draggable resize handles (desktop) */}
+        <motion.div
+          initial={{ opacity: 0, scale: 1.02 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 1.25, ease: EASE }}
+          className="pointer-events-none absolute -inset-x-3 -inset-y-2 hidden md:block"
+        >
+          <span className="absolute inset-0 rounded-[2px] ring-1 ring-indigo-accent/55" />
+          {RESIZE_HANDLES.map((h) => (
+            <span
+              key={`${h.x}-${h.y}`}
+              onPointerDown={(e) => startResize(e, h.role)}
+              data-cursor="resize"
+              data-cursor-angle={RESIZE_ANGLE[h.cursor]}
+              // 24px hit area around an 8px dot so the small handles are
+              // easy to grab; the dot grows on hover to read as draggable.
+              // No `cursor` here — it inherits `cursor: none` so the custom
+              // resize glyph (driven by data-cursor) stands in for the OS one.
+              className="pointer-events-auto absolute flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center [&:hover>span]:scale-150"
+              style={{ left: `${h.x}%`, top: `${h.y}%` }}
+            >
+              <span className="h-2 w-2 rounded-[1px] border border-indigo-accent bg-night transition-transform duration-150" />
+            </span>
+          ))}
+        </motion.div>
+      </div>
+    ),
+    actions: (
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.9, delay: 1.45, ease: EASE }}
+        className="grid grid-cols-1 items-end gap-8 sm:grid-cols-12 sm:gap-6"
+      >
+        <p className="text-base text-neutral-400 sm:col-span-6 sm:text-lg">
+          <Balancer>
+            UX/UI designer &amp; digital artist crafting{" "}
+            <span className="text-neutral-200">interfaces people love</span> —
+            from research to pixel-perfect prototype.
+          </Balancer>
+        </p>
+
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-4 sm:col-span-6 sm:justify-end">
+          <MagneticButton
+            href="#work"
+            glow
+            className="px-7 py-3.5 text-sm font-medium text-white"
+          >
+            View my work
+            <span className="relative inline-flex h-4 w-4 items-center justify-center">
+              <ArrowUpRight
+                className="absolute h-4 w-4 transition-all duration-300 group-hover:rotate-45 group-hover:scale-50 group-hover:opacity-0"
+                strokeWidth={2}
+              />
+              <Eye
+                className="absolute h-4 w-4 scale-50 opacity-0 transition-all duration-300 group-hover:scale-100 group-hover:opacity-100"
+                strokeWidth={2}
+              />
+            </span>
+          </MagneticButton>
+          <a
+            href="#contact"
+            className="group inline-flex items-center gap-1.5 text-sm text-neutral-400 transition-colors hover:text-white"
+          >
+            Get in touch
+            <ArrowUpRight
+              className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+              strokeWidth={2}
+            />
+          </a>
+        </div>
+      </motion.div>
+    ),
+  };
+
   return (
     <section
       id="top"
       ref={sectionRef}
       className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 sm:px-10"
     >
-      {/* ── Background: grid + cursor-glow, aurora, accents, dust ───────────── */}
+      {/* ── Background: dot grid + cursor-glow, aurora, accents, dust ───────────── */}
       <motion.div style={{ y: gridY }} className="absolute inset-0">
         <MouseParallax strength={16} className="absolute inset-0">
-          <div className="grid-lines pointer-events-none absolute -inset-16" />
+          <div className="grid-dots pointer-events-none absolute -inset-16" />
           <GridSpotlight className="-inset-16" size={620} gridSize={80} />
         </MouseParallax>
       </motion.div>
@@ -318,20 +494,33 @@ export default function Hero() {
         style={{ opacity: uiOpacity }}
         className="pointer-events-none absolute inset-0 z-20 hidden lg:block"
       >
-        <LayersPanel />
         <InspectorPanel />
         <ScrollCue />
+      </motion.div>
+
+      {/* ── Interactive layers panel (own wrapper so it isn't aria-hidden) ──── */}
+      {/* The wrapper owns the scroll-driven opacity; the panel inside owns its
+          entrance + the pointer events for dragging. */}
+      <motion.div
+        style={{ opacity: uiOpacity }}
+        className="pointer-events-none absolute inset-0 z-20 hidden lg:block"
+      >
+        <LayersPanel
+          order={layerOrder}
+          setOrder={setLayerOrder}
+          selected={selectedLayer}
+          onSelect={setSelectedLayer}
+        />
       </motion.div>
 
       {/* ── The artboard frame + its content (interactive) ─────────────────── */}
       {/* Width tracks the headline box via --fw (set while dragging a handle),
           so the big frame stays responsive to the small text box inside it.
-          Default is a wide full-bleed artboard: fills the width on laptops, caps
-          at 75rem and centres on wide screens. Dragging a frame corner overrides
-          it via --fw. */}
+          Default is a centred artboard (64rem, capped at the viewport on small
+          screens); dragging a frame corner expands --fw out to FRAME_MAX_W. */}
       <motion.div
         ref={frameWrapRef}
-        style={{ opacity: uiOpacity, width: "var(--fw, min(75rem, 100%))" }}
+        style={{ opacity: uiOpacity, width: "var(--fw, min(64rem, 100%))" }}
         className="relative z-10"
       >
         {/* Top ruler — sits above the frame, spanning its width */}
@@ -353,14 +542,16 @@ export default function Hero() {
         </div>
 
         {/* Frame body — min-height tracks --fh (set while dragging a frame
-            corner); content is centred so it stays balanced as the box grows. */}
+            corner); content is centred so it stays balanced as the box grows.
+            At xl the extra horizontal padding keeps the headline/actions clear
+            of the layers + inspector panels that float over the now-wide frame. */}
         <motion.div
           ref={frameBodyRef}
           initial={{ opacity: 0, scale: 0.985 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.9, delay: 0.2, ease: EASE }}
           style={{ minHeight: "var(--fh)" }}
-          className="relative flex flex-col justify-center rounded-md border border-hairline bg-[#0a0a0c]/40 px-6 py-12 backdrop-blur-[2px] sm:px-12 sm:py-16 lg:px-16 lg:py-20"
+          className="relative flex flex-col justify-center rounded-md border border-hairline bg-[#0a0a0c]/40 px-6 py-12 backdrop-blur-[2px] sm:px-12 sm:py-16 lg:px-16 lg:py-20 xl:px-48"
         >
           {/* Top sheen on the frame edge */}
           <span
@@ -371,152 +562,20 @@ export default function Hero() {
           {/* Corner selection handles around the frame — drag to resize it */}
           <FrameHandles onResize={startFrameResize} />
 
-          {/* Interactive vector pen-path — fills the open canvas to the right of
-              the headline. Only shown where the wide frame leaves room (xl+). */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.9, delay: 1.7, ease: EASE }}
-            // y via motion (not a Tailwind translate, which motion's transform
-            // would override) so the path stays vertically centred in the frame.
-            style={{ y: "-50%" }}
-            className="pointer-events-none absolute right-[6%] top-1/2 hidden xl:block"
-          >
-            <PenPath />
-          </motion.div>
-
-          <motion.div style={{ y: contentY }}>
-            {/* Presence row — availability, framed as a layer status */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.5, ease: EASE }}
-              className="mb-9 flex flex-wrap items-center gap-3"
-            >
-              <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-white/[0.02] px-3.5 py-1.5 text-[11px] uppercase tracking-[0.18em] text-neutral-400 backdrop-blur">
-                <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-accent-gradient" />
-                Available for work
-              </span>
-              <span className="hidden text-[10px] uppercase tracking-[0.28em] text-neutral-600 sm:inline">
-                UX/UI &amp; Digital Art
-              </span>
-            </motion.div>
-
-            {/* Headline = a resizable "text box". The words FLOW (not forced onto
-                separate lines) inside a width of var(--bw): the default
-                `min-content` keeps the longest word per line — i.e. the current
-                two-line look — while dragging an edge handle re-wraps them. Size
-                (--hs) and leading (--lh) ride the same container. */}
-            <div
-              ref={headlineRef}
-              className="relative inline-block select-none"
-              style={{
-                fontSize: "calc(clamp(2.75rem,8.5vw,6rem) * var(--hs,1))",
-                width: "var(--bw, min-content)",
-                lineHeight: "var(--lh, 0.94)",
-              }}
-            >
-              <h1 className="font-serif font-bold tracking-tight text-white">
-                <SplitText
-                  text="Designing"
-                  as="span"
-                  delay={0.55}
-                  stagger={0.035}
-                  fromY={90}
-                  fromRotate={5}
-                />{" "}
-                <span className="inline-flex items-end">
-                  <SplitText
-                    text="experiences."
-                    as="span"
-                    className="pb-2"
-                    charClassName="bg-accent-gradient bg-clip-text text-transparent"
-                    delay={0.9}
-                    stagger={0.03}
-                    fromY={90}
-                    fromRotate={-4}
-                  />
-                  {/* Blinking text-insertion caret — scales with the text (em) */}
-                  <motion.span
-                    aria-hidden
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 1.5 }}
-                    className="animate-caret-blink mb-[0.3em] ml-1 h-[0.72em] w-[3px] rounded-full bg-accent-gradient sm:w-1"
-                  />
-                </span>
-              </h1>
-
-              {/* Selection bounding box + draggable resize handles (desktop) */}
+          {/* Content blocks, rendered in live `layerOrder`. Each is wrapped in a
+              `layout` motion.div so dragging the matching row in the layers panel
+              animates the block to its new slot. `space-y` (not per-block margins)
+              keeps the gaps identical no matter the order. */}
+          <motion.div style={{ y: contentY }} className="space-y-10">
+            {layerOrder.map((id) => (
               <motion.div
-                initial={{ opacity: 0, scale: 1.02 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.6, delay: 1.25, ease: EASE }}
-                className="pointer-events-none absolute -inset-x-3 -inset-y-2 hidden md:block"
+                key={id}
+                layout="position"
+                transition={{ layout: { duration: 0.55, ease: EASE } }}
               >
-                <span className="absolute inset-0 rounded-[2px] ring-1 ring-indigo-accent/55" />
-                {RESIZE_HANDLES.map((h) => (
-                  <span
-                    key={`${h.x}-${h.y}`}
-                    onPointerDown={(e) => startResize(e, h.role)}
-                    // 24px hit area around an 8px dot so the small handles are
-                    // easy to grab; the dot grows on hover to read as draggable.
-                    className="pointer-events-auto absolute flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center [&:hover>span]:scale-150"
-                    style={{ left: `${h.x}%`, top: `${h.y}%`, cursor: h.cursor }}
-                  >
-                    <span className="h-2 w-2 rounded-[1px] border border-indigo-accent bg-night transition-transform duration-150" />
-                  </span>
-                ))}
+                {blocks[id]}
               </motion.div>
-            </div>
-
-            {/* Tagline + actions */}
-            <motion.div
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.9, delay: 1.45, ease: EASE }}
-              className="mt-10 grid grid-cols-1 items-end gap-8 sm:grid-cols-12 sm:gap-6"
-            >
-              <p className="text-base text-neutral-400 sm:col-span-6 sm:text-lg">
-                <Balancer>
-                  UX/UI designer &amp; digital artist crafting{" "}
-                  <span className="text-neutral-200">
-                    interfaces people love
-                  </span>{" "}
-                  — from research to pixel-perfect prototype.
-                </Balancer>
-              </p>
-
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-4 sm:col-span-6 sm:justify-end">
-                <MagneticButton
-                  href="#work"
-                  glow
-                  className="px-7 py-3.5 text-sm font-medium text-white"
-                >
-                  View my work
-                  <span className="relative inline-flex h-4 w-4 items-center justify-center">
-                    <ArrowUpRight
-                      className="absolute h-4 w-4 transition-all duration-300 group-hover:rotate-45 group-hover:scale-50 group-hover:opacity-0"
-                      strokeWidth={2}
-                    />
-                    <Eye
-                      className="absolute h-4 w-4 scale-50 opacity-0 transition-all duration-300 group-hover:scale-100 group-hover:opacity-100"
-                      strokeWidth={2}
-                    />
-                  </span>
-                </MagneticButton>
-                <a
-                  href="#contact"
-                  className="group inline-flex items-center gap-1.5 text-sm text-neutral-400 transition-colors hover:text-white"
-                >
-                  Get in touch
-                  <ArrowUpRight
-                    className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                    strokeWidth={2}
-                  />
-                </a>
-              </div>
-            </motion.div>
+            ))}
           </motion.div>
         </motion.div>
 
@@ -583,15 +642,30 @@ export default function Hero() {
           </div>
 
           {/* Center — role marquee */}
+          {/* Edges fade via a mask (alpha), not a dark gradient overlay, so the
+              text dissolves into the real translucent status bar instead of into
+              an opaque black bar at the ends. */}
           <div
             ref={marqueeHoverRef}
             className="relative flex flex-1 overflow-hidden"
+            style={{
+              maskImage:
+                "linear-gradient(to right, transparent, #000 3rem, #000 calc(100% - 3rem), transparent)",
+              WebkitMaskImage:
+                "linear-gradient(to right, transparent, #000 3rem, #000 calc(100% - 3rem), transparent)",
+            }}
           >
-            {/* edge fades */}
-            <span className="pointer-events-none absolute left-0 top-0 z-10 h-full w-12 bg-gradient-to-r from-[#080808] to-transparent" />
-            <span className="pointer-events-none absolute right-0 top-0 z-10 h-full w-12 bg-gradient-to-l from-[#080808] to-transparent" />
-            <MarqueeTrack />
-            <MarqueeTrack aria-hidden />
+            {/* A single animated track sliding -50% of its own width. It holds two
+                identical halves, so the half scrolling out is pixel-for-pixel the
+                half scrolling in — the wrap is seamless with no reset. Duration
+                scales with the content so the on-screen speed is unchanged. */}
+            <div
+              className="animate-marquee flex shrink-0 items-center [will-change:transform]"
+              style={{ animationDuration: `${MARQUEE_REPEAT * 28}s` }}
+            >
+              <MarqueeHalf />
+              <MarqueeHalf aria-hidden />
+            </div>
           </div>
 
           {/* Right — live cursor coordinates + presence */}
@@ -616,22 +690,30 @@ export default function Hero() {
 
 /* ── Sub-components ────────────────────────────────────────────────────────── */
 
-/** One marquee track of role tags. Two are rendered for a seamless loop. */
-function MarqueeTrack(props: { "aria-hidden"?: boolean }) {
+/**
+ * One half of the marquee — the tag set repeated `MARQUEE_REPEAT` times so a
+ * single half is wide enough to span the container. Two identical halves sit in
+ * the animated track; when it slides -50% the second half lands exactly where the
+ * first began, so the loop is seamless. The trailing `pr-8` matches the inter-tag
+ * gap so the spacing stays even across the wrap.
+ */
+function MarqueeHalf(props: { "aria-hidden"?: boolean }) {
   return (
     <div
       {...props}
-      className="animate-marquee flex shrink-0 items-center gap-8 pr-8"
+      className="flex shrink-0 items-center gap-8 pr-8"
     >
-      {MARQUEE_TAGS.concat(MARQUEE_TAGS).map((tag, i) => (
-        <span
-          key={`${tag}-${i}`}
-          className="flex shrink-0 items-center gap-8 text-[10px] uppercase tracking-[0.32em] text-neutral-500"
-        >
-          {tag}
-          <span className="h-1 w-1 rotate-45 bg-accent-gradient" />
-        </span>
-      ))}
+      {Array.from({ length: MARQUEE_REPEAT }).flatMap((_, r) =>
+        MARQUEE_TAGS.map((tag, i) => (
+          <span
+            key={`${r}-${tag}-${i}`}
+            className="flex shrink-0 items-center gap-8 text-[10px] uppercase tracking-[0.32em] text-neutral-500"
+          >
+            {tag}
+            <span className="h-1 w-1 rotate-45 bg-accent-gradient" />
+          </span>
+        )),
+      )}
     </div>
   );
 }
@@ -701,10 +783,13 @@ function FrameHandles({
         <span
           key={`${x}-${y}`}
           onPointerDown={(e) => onResize(e, x, y)}
+          data-cursor="resize"
+          data-cursor-angle={RESIZE_ANGLE[cursor]}
           // 24px hit area around the small square so the corner is easy to grab;
           // the square grows on hover to read as draggable (matches the headline).
+          // `cursor` omitted so it inherits `none` and the custom glyph takes over.
           className="pointer-events-auto absolute flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center [&:hover>span]:scale-150"
-          style={{ left: `${x}%`, top: `${y}%`, cursor }}
+          style={{ left: `${x}%`, top: `${y}%` }}
         >
           <span className="h-2.5 w-2.5 rounded-[2px] border border-neutral-500 bg-[#0c0c0c] transition-transform duration-150" />
         </span>
@@ -714,166 +799,90 @@ function FrameHandles({
 }
 
 /**
- * An interactive vector "pen path" — a live cubic-bézier curve a visitor can
- * reshape by dragging its anchor points (squares) or control points (circles),
- * a nod to the Pen tool in the status-bar dock. The container is pointer-through;
- * only the small points capture input, so it never blocks the copy beneath it.
+ * Interactive Figma-style layers panel. Drag a row to reorder it and the matching
+ * hero block restacks to the same slot — both the panel and the content render
+ * from the shared `order`. `canvas.bg` is the locked background: it lives outside
+ * the reorderable group and is always pinned to the bottom.
  */
-function PenPath() {
-  const W = 360;
-  const H = 300;
-  const PAD = 14;
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [pts, setPts] = useState({
-    p0: { x: 28, y: 236 },
-    c1: { x: 64, y: 38 },
-    c2: { x: 264, y: 274 },
-    p3: { x: 330, y: 92 },
-  });
-  const dragKey = useRef<keyof typeof pts | null>(null);
-
-  const onDown = (key: keyof typeof pts) => (e: React.PointerEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragKey.current = key;
-    const move = (ev: PointerEvent) => {
-      const rect = svgRef.current?.getBoundingClientRect();
-      if (!rect || !dragKey.current) return;
-      // Map client → viewBox coords (svg may be scaled by responsive width).
-      const x = ((ev.clientX - rect.left) / rect.width) * W;
-      const y = ((ev.clientY - rect.top) / rect.height) * H;
-      setPts((p) => ({
-        ...p,
-        [dragKey.current!]: {
-          x: Math.max(PAD, Math.min(W - PAD, x)),
-          y: Math.max(PAD, Math.min(H - PAD, y)),
-        },
-      }));
-    };
-    const up = () => {
-      dragKey.current = null;
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-  };
-
-  const { p0, c1, c2, p3 } = pts;
-  const d = `M ${p0.x} ${p0.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${p3.x} ${p3.y}`;
-  const points: { key: keyof typeof pts; anchor: boolean }[] = [
-    { key: "c1", anchor: false },
-    { key: "c2", anchor: false },
-    { key: "p0", anchor: true },
-    { key: "p3", anchor: true },
-  ];
-
-  return (
-    <svg
-      ref={svgRef}
-      viewBox={`0 0 ${W} ${H}`}
-      width={W}
-      height={H}
-      className="pointer-events-none overflow-visible"
-      aria-hidden
-    >
-      <defs>
-        <linearGradient id="pen-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#6366f1" />
-          <stop offset="100%" stopColor="#a855f7" />
-        </linearGradient>
-        <filter id="pen-glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="5" />
-        </filter>
-      </defs>
-
-      {/* control-handle leashes from each anchor to its control point */}
-      <line x1={p0.x} y1={p0.y} x2={c1.x} y2={c1.y} stroke="rgba(255,255,255,0.16)" strokeWidth={1} strokeDasharray="3 4" />
-      <line x1={p3.x} y1={p3.y} x2={c2.x} y2={c2.y} stroke="rgba(255,255,255,0.16)" strokeWidth={1} strokeDasharray="3 4" />
-
-      {/* the curve: a soft glow under a crisp gradient stroke */}
-      <path d={d} fill="none" stroke="url(#pen-grad)" strokeWidth={9} strokeLinecap="round" opacity={0.35} filter="url(#pen-glow)" />
-      <path d={d} fill="none" stroke="url(#pen-grad)" strokeWidth={3} strokeLinecap="round" />
-
-      {points.map(({ key, anchor }) => {
-        const p = pts[key];
-        return (
-          <g
-            key={key}
-            onPointerDown={onDown(key)}
-            className="group pointer-events-auto cursor-grab [&:active]:cursor-grabbing"
-          >
-            {/* generous transparent hit target */}
-            <circle cx={p.x} cy={p.y} r={14} fill="transparent" />
-            {anchor ? (
-              <rect
-                x={p.x - 5}
-                y={p.y - 5}
-                width={10}
-                height={10}
-                rx={1.5}
-                strokeWidth={1.5}
-                className="origin-center fill-white stroke-indigo-accent transition-transform [transform-box:fill-box] group-hover:scale-125"
-              />
-            ) : (
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={5.5}
-                strokeWidth={1.5}
-                className="origin-center fill-[#0c0c0c] stroke-indigo-accent transition-transform [transform-box:fill-box] group-hover:scale-125"
-              />
-            )}
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-/** Figma-style layers panel, parked at the left edge of the canvas. */
-function LayersPanel() {
+function LayersPanel({
+  order,
+  setOrder,
+  selected,
+  onSelect,
+}: {
+  order: LayerId[];
+  setOrder: (order: LayerId[]) => void;
+  selected: LayerId;
+  onSelect: (id: LayerId) => void;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, x: -16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.7, delay: 0.7, ease: EASE }}
-      className="absolute left-6 top-1/2 hidden w-44 -translate-y-1/2 select-none rounded-lg border border-hairline bg-[#0b0b0d]/70 p-2.5 backdrop-blur xl:block"
+      className="pointer-events-auto absolute left-6 top-1/2 hidden w-44 -translate-y-1/2 select-none rounded-lg border border-hairline bg-[#0b0b0d]/70 p-2.5 backdrop-blur xl:block"
     >
       <div className="mb-2 flex items-center justify-between px-1 text-[10px] uppercase tracking-[0.25em] text-neutral-500">
         Layers
-        <span className="text-neutral-700">4</span>
+        <span className="text-neutral-700">{order.length + 1}</span>
       </div>
-      <ul className="space-y-0.5 text-xs">
-        {LAYERS.map((layer) => (
-          <li
-            key={layer.name}
-            className={`flex items-center gap-2 rounded-md px-2 py-1.5 ${
-              layer.selected
-                ? "bg-indigo-accent/15 text-white ring-1 ring-inset ring-indigo-accent/30"
-                : "text-neutral-500"
-            }`}
-          >
-            <span
-              className={`w-3 text-center text-[10px] ${
-                layer.selected ? "text-indigo-200" : "text-neutral-600"
+      <Reorder.Group
+        axis="y"
+        values={order}
+        onReorder={setOrder}
+        as="ul"
+        className="space-y-0.5 text-xs"
+      >
+        {order.map((id) => {
+          const meta = LAYER_META[id];
+          const isSelected = selected === id;
+          return (
+            <Reorder.Item
+              key={id}
+              value={id}
+              onPointerDown={() => onSelect(id)}
+              whileDrag={{ scale: 1.04 }}
+              data-cursor-hover
+              className={`group flex cursor-grab items-center gap-1.5 rounded-md px-2 py-1.5 active:cursor-grabbing ${
+                isSelected
+                  ? "bg-indigo-accent/15 text-white ring-1 ring-inset ring-indigo-accent/30"
+                  : "text-neutral-500 hover:bg-white/[0.03] hover:text-neutral-300"
               }`}
             >
-              {layer.type}
-            </span>
-            <span className="flex-1 truncate">{layer.name}</span>
-            {layer.locked ? (
-              <Lock className="h-3 w-3 text-neutral-700" strokeWidth={2} />
-            ) : (
-              <Eye
-                className={`h-3 w-3 ${
-                  layer.selected ? "text-indigo-200/80" : "text-neutral-700"
+              <GripVertical
+                className={`h-3 w-3 shrink-0 transition-opacity ${
+                  isSelected
+                    ? "text-indigo-200/60"
+                    : "text-neutral-600 opacity-0 group-hover:opacity-100"
                 }`}
                 strokeWidth={2}
               />
-            )}
-          </li>
-        ))}
+              <span
+                className={`w-3 text-center text-[10px] ${
+                  isSelected ? "text-indigo-200" : "text-neutral-600"
+                }`}
+              >
+                {meta.type}
+              </span>
+              <span className="flex-1 truncate">{meta.label}</span>
+              <Eye
+                className={`h-3 w-3 shrink-0 ${
+                  isSelected ? "text-indigo-200/80" : "text-neutral-700"
+                }`}
+                strokeWidth={2}
+              />
+            </Reorder.Item>
+          );
+        })}
+      </Reorder.Group>
+      {/* Locked background layer — pinned to the bottom, not reorderable */}
+      <ul className="mt-0.5 text-xs">
+        <li className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-neutral-500">
+          <span aria-hidden className="h-3 w-3 shrink-0" />
+          <span className="w-3 text-center text-[10px] text-neutral-600">▦</span>
+          <span className="flex-1 truncate">canvas.bg</span>
+          <Lock className="h-3 w-3 shrink-0 text-neutral-700" strokeWidth={2} />
+        </li>
       </ul>
     </motion.div>
   );

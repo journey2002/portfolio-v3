@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, useInView, type Variants } from "framer-motion";
+import { motion, useInView, useScroll, type Variants } from "framer-motion";
 import NumberFlow from "@number-flow/react";
 import { Balancer } from "react-wrap-balancer";
 import {
@@ -19,7 +19,7 @@ import {
   Award,
   type LucideIcon,
 } from "lucide-react";
-import SectionLabel from "@/components/ui/SectionLabel";
+import SectionLabel, { ReflectiveGlyph } from "@/components/ui/SectionLabel";
 import SplitText from "@/components/ui/SplitText";
 
 type TimelineItem = {
@@ -254,8 +254,14 @@ export default function Resume() {
 /*  Hero — big "Resume." title with gradient on the word, aurora glow */
 /* ------------------------------------------------------------------ */
 function ResumeHero() {
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress: heroProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
   return (
     <section
+      ref={heroRef}
       id="top"
       className="relative overflow-hidden pb-12 pt-40 sm:pt-44 md:pt-48"
     >
@@ -307,13 +313,18 @@ function ResumeHero() {
         </span>
       </div>
 
-      {/* Big floating index numeral on the right edge */}
+      {/* Big floating index mark on the right edge — hollow reflective stroke
+          that catches a moving sheen as the hero scrolls. */}
       <div
         aria-hidden
         className="pointer-events-none absolute right-6 top-1/2 hidden -translate-y-1/2 select-none flex-col items-end gap-4 sm:right-10 sm:flex"
       >
-        <span className="font-serif text-[9rem] font-bold leading-none text-white/[0.04] sm:text-[12rem]">
-          CV
+        <span className="block font-serif text-[9rem] font-bold leading-none opacity-50 sm:text-[12rem]">
+          <ReflectiveGlyph
+            text="CV"
+            progress={heroProgress}
+            sheenRange={[0, 0.6]}
+          />
         </span>
         <span className="text-[10px] uppercase tracking-[0.35em] text-neutral-600">
           Index — Resume
