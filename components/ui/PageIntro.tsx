@@ -71,7 +71,7 @@ export default function PageIntro() {
             initial={{ y: 0 }}
             exit={{ y: "-100%" }}
             transition={{ duration: 0.95, ease: [0.76, 0, 0.24, 1] as const }}
-            className="absolute inset-x-0 top-0 h-1/2 bg-[#080808]"
+            className="absolute inset-x-0 top-0 h-1/2 bg-[rgb(var(--canvas))]"
           />
           {/* Bottom half — slightly delayed so it reads as two doors parting */}
           <motion.div
@@ -82,7 +82,7 @@ export default function PageIntro() {
               delay: 0.05,
               ease: [0.76, 0, 0.24, 1] as const,
             }}
-            className="absolute inset-x-0 bottom-0 h-1/2 bg-[#080808]"
+            className="absolute inset-x-0 bottom-0 h-1/2 bg-[rgb(var(--canvas))]"
           />
 
           {/* Centerpiece — initials + counter */}
@@ -96,10 +96,10 @@ export default function PageIntro() {
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
                 transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] as const }}
-                className="absolute -bottom-6 left-1/2 h-px w-32 origin-left -translate-x-1/2 bg-gradient-to-r from-transparent via-white/50 to-transparent"
+                className="absolute -bottom-6 left-1/2 h-px w-32 origin-left -translate-x-1/2 bg-gradient-to-r from-transparent via-[var(--sheen)] to-transparent"
               />
 
-              <div className="flex items-baseline gap-3 font-serif text-white">
+              <div className="flex items-baseline gap-3 font-serif text-ink-strong">
                 {/* Initials reveal letter by letter */}
                 {["W", "S"].map((letter, i) => (
                   <span
@@ -128,7 +128,7 @@ export default function PageIntro() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.25 }}
-                className="absolute -right-12 top-0 font-serif text-xs tabular-nums tracking-widest text-neutral-500 sm:-right-16"
+                className="absolute -right-12 top-0 font-serif text-xs tabular-nums tracking-widest text-ink-subtle sm:-right-16"
               >
                 {String(count).padStart(3, "0")}
               </motion.span>

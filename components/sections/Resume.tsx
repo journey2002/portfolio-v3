@@ -273,13 +273,18 @@ function ResumeHero() {
         <div className="grid-lines absolute -inset-16" />
       </div>
 
-      {/* Aurora — centered behind the headline, soft blur, no hard edge */}
+      {/* Aurora — soft blur behind the headline. Anchored to a viewport-relative
+          offset (top-[42vh]) rather than top-1/2: this hero has no fixed height,
+          so it's sized by its content. Centering the glow on the section meant it
+          jumped upward a beat after load, when the title/subtitle reflowed (font
+          swap, Balancer re-wrap, hydration) and the section shrank. A vh anchor
+          is independent of that reflow, so the glow stays put. */}
       <motion.div
         aria-hidden
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.5 }}
         transition={{ duration: 1.6, delay: 0.4, ease: "easeOut" }}
-        className="bg-aurora animate-aurora-shift pointer-events-none absolute left-1/2 top-1/2 h-[120vh] w-[120vh] -translate-x-1/2 -translate-y-1/2 blur-3xl"
+        className="bg-aurora animate-aurora-shift pointer-events-none absolute left-1/2 top-[42vh] h-[120vh] w-[120vh] -translate-x-1/2 -translate-y-1/2 blur-3xl"
       />
 
       {/* Secondary accent orbs — opposite corners, softer */}
@@ -293,7 +298,7 @@ function ResumeHero() {
       />
 
       {/* Smoothed vignette — 5 stops so the fade-to-dark has no visible edge */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(130%_130%_at_50%_0%,transparent_38%,rgba(0,0,0,0.12)_58%,rgba(0,0,0,0.32)_76%,rgba(0,0,0,0.5)_90%,rgba(0,0,0,0.62)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[image:var(--vignette)]" />
       {/* Grain */}
       <div
         aria-hidden
@@ -305,10 +310,10 @@ function ResumeHero() {
         aria-hidden
         className="pointer-events-none absolute inset-y-0 left-6 hidden flex-col items-center justify-between py-32 sm:flex sm:left-10"
       >
-        <span className="text-[10px] uppercase tracking-[0.35em] text-neutral-700 [writing-mode:vertical-rl]">
+        <span className="text-[10px] uppercase tracking-[0.35em] text-ink-faint [writing-mode:vertical-rl]">
           Curriculum vitae · 2026
         </span>
-        <span className="text-[10px] uppercase tracking-[0.35em] text-neutral-700 [writing-mode:vertical-rl]">
+        <span className="text-[10px] uppercase tracking-[0.35em] text-ink-faint [writing-mode:vertical-rl]">
           Worapat Settapak
         </span>
       </div>
@@ -326,7 +331,7 @@ function ResumeHero() {
             sheenRange={[0, 0.6]}
           />
         </span>
-        <span className="text-[10px] uppercase tracking-[0.35em] text-neutral-600">
+        <span className="text-[10px] uppercase tracking-[0.35em] text-ink-faint">
           Index — Resume
         </span>
       </div>
@@ -343,18 +348,18 @@ function ResumeHero() {
           }}
           className="flex flex-wrap items-center gap-3"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-white/[0.02] px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-neutral-400 backdrop-blur">
+          <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-glass px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-ink-muted backdrop-blur">
             <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-accent-gradient" />
             Curriculum vitae · 2026
           </span>
           <span className="hidden h-px w-12 bg-hairline sm:block" />
-          <span className="hidden text-[10px] uppercase tracking-[0.3em] text-neutral-600 sm:block">
+          <span className="hidden text-[10px] uppercase tracking-[0.3em] text-ink-faint sm:block">
             Worapat Settapak
           </span>
         </motion.div>
 
         {/* Title */}
-        <h1 className="mt-10 font-serif font-bold leading-[0.94] tracking-tight text-white">
+        <h1 className="mt-10 font-serif font-bold leading-[0.94] tracking-tight text-ink-strong">
           <SplitText
             text="My"
             as="span"
@@ -387,11 +392,11 @@ function ResumeHero() {
           }}
           className="mt-10 grid grid-cols-1 items-end gap-10 sm:grid-cols-12 sm:gap-6"
         >
-          <p className="text-base text-neutral-400 sm:col-span-7 sm:text-lg">
+          <p className="text-base text-ink-muted sm:col-span-7 sm:text-lg">
             <Balancer>
               A snapshot of the experience, education, and tools behind my work
               —{" "}
-              <span className="text-neutral-200">
+              <span className="text-ink">
                 built between Bangkok and Auckland
               </span>{" "}
               over the last few years.
@@ -414,7 +419,7 @@ function ResumeHero() {
             <a
               href="/"
               data-cursor-hover
-              className="group inline-flex items-center gap-1.5 text-sm text-neutral-400 transition-colors hover:text-white"
+              className="group inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink-strong"
             >
               <ArrowLeft
                 className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5"
@@ -443,9 +448,9 @@ function ResumeHero() {
           }
           className={`animate-float-y absolute hidden whitespace-nowrap rounded-full ${
             chip.accent
-              ? "border border-indigo-accent/40 text-indigo-200"
-              : "border border-hairline text-neutral-400"
-          } bg-[#0c0c0c]/80 px-3.5 py-1.5 text-[10px] uppercase tracking-[0.3em] backdrop-blur md:block ${chip.className}`}
+              ? "border border-indigo-accent/40 text-[color:var(--accent-soft)]"
+              : "border border-hairline text-ink-muted"
+          } bg-panel px-3.5 py-1.5 text-[10px] uppercase tracking-[0.3em] backdrop-blur md:block ${chip.className}`}
         >
           {chip.text}
         </div>
@@ -479,7 +484,7 @@ function ProfileBar() {
             const Icon = item.icon;
             const inner = (
               <>
-                <span className="text-[10px] uppercase tracking-[0.35em] text-neutral-600">
+                <span className="text-[10px] uppercase tracking-[0.35em] text-ink-faint">
                   {item.label}
                 </span>
                 <div className="mt-3 flex items-start gap-3">
@@ -487,7 +492,7 @@ function ProfileBar() {
                     className="mt-0.5 h-4 w-4 shrink-0 text-indigo-accent"
                     strokeWidth={1.5}
                   />
-                  <span className="break-words text-sm leading-snug text-neutral-200 sm:text-base">
+                  <span className="break-words text-sm leading-snug text-ink sm:text-base">
                     {item.value}
                   </span>
                 </div>
@@ -509,7 +514,7 @@ function ProfileBar() {
                   <a
                     href={item.href}
                     data-cursor-hover
-                    className="group block transition-colors hover:text-white"
+                    className="group block transition-colors hover:text-ink-strong"
                   >
                     {inner}
                   </a>
@@ -537,7 +542,7 @@ function StatsStrip() {
     <section className="relative overflow-hidden">
       <div className="mx-auto max-w-7xl px-6 sm:px-10">
         {/* Header hairline + tiny label */}
-        <div className="flex items-center gap-3 pt-12 text-[10px] uppercase tracking-[0.4em] text-neutral-600 sm:pt-16">
+        <div className="flex items-center gap-3 pt-12 text-[10px] uppercase tracking-[0.4em] text-ink-faint sm:pt-16">
           <span>↳ By the numbers</span>
           <span className="h-px flex-1 bg-hairline" />
           <span>Quick stats</span>
@@ -559,10 +564,10 @@ function StatsStrip() {
               }}
               className="group relative"
             >
-              <span className="text-[10px] uppercase tracking-[0.35em] text-neutral-600">
+              <span className="text-[10px] uppercase tracking-[0.35em] text-ink-faint">
                 {stat.label}
               </span>
-              <p className="mt-3 font-serif text-[3.25rem] font-bold leading-none tracking-tight text-white sm:text-[3.75rem]">
+              <p className="mt-3 font-serif text-[3.25rem] font-bold leading-none tracking-tight text-ink-strong sm:text-[3.75rem]">
                 {/* NumberFlow renders its digits in a shadow DOM, which
                     `background-clip: text` can't pierce — a gradient-clipped
                     wrapper leaves the digits transparent/invisible. `color`
@@ -585,7 +590,7 @@ function StatsStrip() {
                 </span>
               </p>
               <div className="mt-4 h-px w-10 origin-left bg-accent-gradient transition-transform duration-500 group-hover:scale-x-[2.5]" />
-              <p className="mt-3 text-xs text-neutral-500">{stat.note}</p>
+              <p className="mt-3 text-xs text-ink-subtle">{stat.note}</p>
             </motion.div>
           ))}
         </div>
@@ -656,9 +661,9 @@ function AchievementsGrid() {
   return (
     <section className="relative overflow-hidden py-20 md:py-24">
       <div className="relative mx-auto max-w-7xl px-6 sm:px-10">
-        <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.4em] text-neutral-600">
+        <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.4em] text-ink-faint">
           <span className="h-px w-12 bg-hairline" />
-          <span className="text-neutral-300">Highlights</span>
+          <span className="text-ink">Highlights</span>
           <span>Awards &amp; recognitions</span>
           <span className="h-px flex-1 bg-hairline" />
         </div>
@@ -692,20 +697,20 @@ function AchievementsGrid() {
                   className="pointer-events-none absolute inset-0 -z-10 rounded-xl bg-gradient-to-br from-indigo-500/15 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
                 />
 
-                <span className="text-[9px] uppercase tracking-[0.4em] text-neutral-700">
+                <span className="text-[9px] uppercase tracking-[0.4em] text-ink-faint">
                   0{i + 1}
                 </span>
                 <Icon
                   className="h-6 w-6 text-indigo-accent transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110"
                   strokeWidth={1.5}
                 />
-                <h3 className="font-serif text-base font-semibold leading-tight text-white">
+                <h3 className="font-serif text-base font-semibold leading-tight text-ink-strong">
                   {a.title}
                 </h3>
-                <p className="text-xs leading-relaxed text-neutral-400">
+                <p className="text-xs leading-relaxed text-ink-muted">
                   {a.description}
                 </p>
-                <div className="mt-auto flex items-center gap-2 pt-2 text-[9px] uppercase tracking-[0.3em] text-neutral-600">
+                <div className="mt-auto flex items-center gap-2 pt-2 text-[9px] uppercase tracking-[0.3em] text-ink-faint">
                   <span className="h-px w-4 bg-current transition-transform duration-500 group-hover:scale-x-150" />
                   {a.year}
                 </div>
@@ -758,11 +763,11 @@ function TimelineSection({
           className="grid grid-cols-12 items-end gap-6"
         >
           <div className="col-span-12 sm:col-span-8">
-            <p className="text-xs uppercase tracking-[0.25em] text-neutral-500">
-              <span className="text-neutral-300">[{index}]</span> &nbsp;{" "}
+            <p className="text-xs uppercase tracking-[0.25em] text-ink-subtle">
+              <span className="text-ink">[{index}]</span> &nbsp;{" "}
               {caption}
             </p>
-            <h2 className="mt-6 font-serif text-4xl font-bold leading-tight text-white sm:text-5xl md:text-6xl">
+            <h2 className="mt-6 font-serif text-4xl font-bold leading-tight text-ink-strong sm:text-5xl md:text-6xl">
               <SplitText
                 text={title1}
                 as="span"
@@ -784,7 +789,7 @@ function TimelineSection({
               />
             </h2>
           </div>
-          <div className="col-span-12 hidden text-right text-[10px] uppercase tracking-[0.35em] text-neutral-600 sm:col-span-4 sm:block">
+          <div className="col-span-12 hidden text-right text-[10px] uppercase tracking-[0.35em] text-ink-faint sm:col-span-4 sm:block">
             ↳ {items.length.toString().padStart(2, "0")} entr
             {items.length === 1 ? "y" : "ies"}
           </div>
@@ -832,21 +837,21 @@ function TimelineSection({
               {/* Index stamp */}
               <span
                 aria-hidden
-                className="absolute right-6 top-6 text-[9px] uppercase tracking-[0.35em] text-neutral-700 md:right-10 md:top-10"
+                className="absolute right-6 top-6 text-[9px] uppercase tracking-[0.35em] text-ink-faint md:right-10 md:top-10"
               >
                 0{i + 1} / 0{items.length}
               </span>
 
               {/* Date column */}
               <div className="md:col-span-4">
-                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-neutral-500">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-ink-subtle">
                   <Calendar
                     className="h-3.5 w-3.5 text-indigo-accent"
                     strokeWidth={1.5}
                   />
                   {item.date}
                 </div>
-                <div className="mt-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-neutral-600">
+                <div className="mt-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-ink-faint">
                   <MapPin className="h-3.5 w-3.5" strokeWidth={1.5} />
                   {item.location}
                 </div>
@@ -861,10 +866,10 @@ function TimelineSection({
                     strokeWidth={1.5}
                   />
                   <div>
-                    <h3 className="font-serif text-xl font-semibold leading-tight text-white sm:text-2xl">
+                    <h3 className="font-serif text-xl font-semibold leading-tight text-ink-strong sm:text-2xl">
                       {item.headline}
                     </h3>
-                    <p className="mt-1.5 text-sm text-neutral-400">
+                    <p className="mt-1.5 text-sm text-ink-muted">
                       {item.subhead}
                     </p>
                   </div>
@@ -874,7 +879,7 @@ function TimelineSection({
                   {item.bullets.map((bullet, bi) => (
                     <li
                       key={bi}
-                      className="flex items-start gap-3 text-sm leading-relaxed text-neutral-300 sm:text-[15px]"
+                      className="flex items-start gap-3 text-sm leading-relaxed text-ink sm:text-[15px]"
                     >
                       <span
                         aria-hidden
@@ -920,10 +925,10 @@ function SkillsSection() {
           className="grid grid-cols-12 items-end gap-6"
         >
           <div className="col-span-12 sm:col-span-8">
-            <p className="text-xs uppercase tracking-[0.25em] text-neutral-500">
-              <span className="text-neutral-300">[03]</span> &nbsp; Skills
+            <p className="text-xs uppercase tracking-[0.25em] text-ink-subtle">
+              <span className="text-ink">[03]</span> &nbsp; Skills
             </p>
-            <h2 className="mt-6 font-serif text-4xl font-bold leading-tight text-white sm:text-5xl md:text-6xl">
+            <h2 className="mt-6 font-serif text-4xl font-bold leading-tight text-ink-strong sm:text-5xl md:text-6xl">
               <SplitText
                 text="Tools &"
                 as="span"
@@ -945,7 +950,7 @@ function SkillsSection() {
               />
             </h2>
           </div>
-          <div className="col-span-12 hidden text-right text-[10px] uppercase tracking-[0.35em] text-neutral-600 sm:col-span-4 sm:block">
+          <div className="col-span-12 hidden text-right text-[10px] uppercase tracking-[0.35em] text-ink-faint sm:col-span-4 sm:block">
             ↳ {TECHNICAL_SKILLS.length + SOFT_SKILLS.length} skills · 02
             categories
           </div>
@@ -1002,14 +1007,14 @@ function SkillsBlock({
 
       <div className="flex items-end justify-between">
         <div>
-          <span className="text-[10px] uppercase tracking-[0.4em] text-neutral-600">
+          <span className="text-[10px] uppercase tracking-[0.4em] text-ink-faint">
             {subtitle}
           </span>
-          <h3 className="mt-2 font-serif text-2xl font-semibold text-white">
+          <h3 className="mt-2 font-serif text-2xl font-semibold text-ink-strong">
             {title}
           </h3>
         </div>
-        <span className="text-[10px] uppercase tracking-[0.3em] text-neutral-700">
+        <span className="text-[10px] uppercase tracking-[0.3em] text-ink-faint">
           0{items.length}
         </span>
       </div>
@@ -1040,7 +1045,7 @@ function SkillsBlock({
               },
             } satisfies Variants}
             whileHover={{ y: -3 }}
-            className="cursor-default rounded-full border border-hairline bg-white/[0.02] px-4 py-1.5 text-xs text-neutral-300 backdrop-blur transition-colors hover:border-indigo-accent/40 hover:text-white"
+            className="cursor-default rounded-full border border-hairline bg-glass px-4 py-1.5 text-xs text-ink backdrop-blur transition-colors hover:border-indigo-accent/40 hover:text-ink-strong"
           >
             {item}
           </motion.span>
@@ -1076,14 +1081,14 @@ function ResumeFooter() {
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] as const }}
-          className="flex items-center gap-3 text-[10px] uppercase tracking-[0.4em] text-neutral-600"
+          className="flex items-center gap-3 text-[10px] uppercase tracking-[0.4em] text-ink-faint"
         >
-          <span className="text-neutral-300">[04]</span>
+          <span className="text-ink">[04]</span>
           <span className="h-px w-12 bg-hairline" />
           <span>Next</span>
         </motion.div>
 
-        <h2 className="mt-8 font-serif text-4xl font-bold leading-[1.05] text-white sm:text-6xl md:text-7xl">
+        <h2 className="mt-8 font-serif text-4xl font-bold leading-[1.05] text-ink-strong sm:text-6xl md:text-7xl">
           <SplitText
             text="Let's work"
             as="span"
@@ -1112,13 +1117,13 @@ function ResumeFooter() {
           className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-12 md:items-end"
         >
           <div className="md:col-span-7">
-            <p className="text-[10px] uppercase tracking-[0.35em] text-neutral-600">
+            <p className="text-[10px] uppercase tracking-[0.35em] text-ink-faint">
               Reach me at
             </p>
             <a
               href="mailto:Worapat2002@gmail.com"
               data-cursor-hover
-              className="group mt-3 inline-flex items-baseline gap-3 text-2xl text-neutral-300 transition-colors hover:text-white sm:text-3xl"
+              className="group mt-3 inline-flex items-baseline gap-3 text-2xl text-ink transition-colors hover:text-ink-strong sm:text-3xl"
             >
               <span className="underline-wipe">Worapat2002@gmail.com</span>
               <ArrowUpRight
@@ -1126,7 +1131,7 @@ function ResumeFooter() {
                 strokeWidth={2}
               />
             </a>
-            <div className="mt-3 flex items-center gap-2 text-sm text-neutral-500">
+            <div className="mt-3 flex items-center gap-2 text-sm text-ink-subtle">
               <Phone className="h-3.5 w-3.5" strokeWidth={1.5} />
               <span>092-672-3004</span>
             </div>
@@ -1136,7 +1141,7 @@ function ResumeFooter() {
             <a
               href="/#work"
               data-cursor-hover
-              className="group inline-flex items-center gap-1.5 text-sm text-neutral-400 transition-colors hover:text-white"
+              className="group inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink-strong"
             >
               See my work
               <ArrowUpRight
@@ -1147,7 +1152,7 @@ function ResumeFooter() {
             <a
               href="/"
               data-cursor-hover
-              className="group inline-flex items-center gap-1.5 text-sm text-neutral-400 transition-colors hover:text-white"
+              className="group inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink-strong"
             >
               <ArrowLeft
                 className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5"
@@ -1160,7 +1165,7 @@ function ResumeFooter() {
       </div>
 
       {/* Personality marquee — light-touch ticker before the copyright bar */}
-      <div className="group relative overflow-hidden border-t border-hairline bg-[#080808]/40 backdrop-blur">
+      <div className="group relative overflow-hidden border-t border-hairline bg-panel-weak backdrop-blur">
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-32 bg-gradient-to-r from-night via-night/80 to-transparent" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-32 bg-gradient-to-l from-night via-night/80 to-transparent" />
         <div className="relative flex py-3">
@@ -1168,7 +1173,7 @@ function ResumeFooter() {
             {FOOTER_MARQUEE.concat(FOOTER_MARQUEE).map((tag, i) => (
               <span
                 key={`${tag}-${i}`}
-                className="flex shrink-0 items-center gap-10 text-[11px] uppercase tracking-[0.35em] text-neutral-500"
+                className="flex shrink-0 items-center gap-10 text-[11px] uppercase tracking-[0.35em] text-ink-subtle"
               >
                 {tag}
                 <span className="h-1 w-1 rotate-45 bg-accent-gradient" />
@@ -1182,7 +1187,7 @@ function ResumeFooter() {
             {FOOTER_MARQUEE.concat(FOOTER_MARQUEE).map((tag, i) => (
               <span
                 key={`dup-${tag}-${i}`}
-                className="flex shrink-0 items-center gap-10 text-[11px] uppercase tracking-[0.35em] text-neutral-500"
+                className="flex shrink-0 items-center gap-10 text-[11px] uppercase tracking-[0.35em] text-ink-subtle"
               >
                 {tag}
                 <span className="h-1 w-1 rotate-45 bg-accent-gradient" />
@@ -1194,7 +1199,7 @@ function ResumeFooter() {
 
       {/* Footer bar */}
       <div className="relative border-t border-hairline">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-6 py-6 text-sm text-neutral-500 sm:flex-row sm:px-10">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-6 py-6 text-sm text-ink-subtle sm:flex-row sm:px-10">
           <p>
             © {new Date().getFullYear()} Worapat Settapak. All rights reserved.
           </p>

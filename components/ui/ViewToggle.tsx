@@ -61,7 +61,7 @@ function ViewToggleBase({
       onClick={() => onChange(isGallery ? "index" : "gallery")}
       whileTap={{ scale: 0.94 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      className="group relative flex shrink-0 items-center gap-3 rounded-full border border-hairline bg-surface/60 px-4 py-2 text-xs uppercase tracking-wider text-neutral-400 transition-colors hover:border-indigo-accent/40 hover:text-neutral-200"
+      className="group relative flex shrink-0 items-center gap-3 rounded-full border border-hairline bg-surface/60 px-4 py-2 text-xs uppercase tracking-wider text-ink-muted transition-colors hover:border-indigo-accent/40 hover:text-ink"
     >
       {/* Ring ripple — remounts on each view change and pulses outward. */}
       <motion.span

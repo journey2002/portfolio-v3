@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTheme } from "@/components/ui/ThemeProvider";
 
 type ParticlesProps = {
   className?: string;
   /** Particle count — kept small for "subtle". */
   count?: number;
-  /** Base color used for dots. */
+  /** Base color used for dots. Defaults to a theme-aware dust tint. */
   color?: string;
 };
 
@@ -20,9 +21,15 @@ type ParticlesProps = {
 export default function Particles({
   className = "",
   count = 48,
-  color = "rgba(165,180,252,0.65)",
+  color,
 }: ParticlesProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { theme } = useTheme();
+  // Pale indigo dust on dark; a deeper, denser indigo so it still reads on the
+  // warm-white canvas.
+  const dustColor =
+    color ??
+    (theme === "light" ? "rgba(99,102,241,0.5)" : "rgba(165,180,252,0.65)");
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -108,7 +115,7 @@ export default function Particles({
         const twinkle = 0.6 + Math.sin(p.aPhase) * 0.4;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = color.replace(
+        ctx.fillStyle = dustColor.replace(
           /rgba\(([^,]+),([^,]+),([^,]+),([^)]+)\)/,
           (_m, r, g, b, a) =>
             `rgba(${r},${g},${b},${Math.min(1, parseFloat(a) * p.a * twinkle)})`
@@ -154,7 +161,7 @@ export default function Particles({
       observer.disconnect();
       window.removeEventListener("resize", handleResize);
     };
-  }, [count, color]);
+  }, [count, dustColor]);
 
   return (
     <canvas

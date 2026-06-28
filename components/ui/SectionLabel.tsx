@@ -17,7 +17,7 @@ const SHEEN_BAND =
 type ReflectiveGlyphProps = {
   /** Glyph(s) to render — a numeral like "02" or a short mark like "CV". */
   text: string;
-  /** Scroll progress (0→1) that drives the reveal, color shift, and sheen. */
+  /** Scroll progress (0→1) that drives the color shift and sheen. */
   progress: MotionValue<number>;
   /**
    * Progress window over which the stroke floods up from empty → full. Omit to
@@ -25,6 +25,12 @@ type ReflectiveGlyphProps = {
    * with only the sheen reacting to scroll.
    */
   revealRange?: [number, number];
+  /**
+   * Optional separate progress that drives the reveal flood (so it can finish on
+   * a different cadence than the sheen — e.g. as the section scrolls into view
+   * rather than across its whole height). Defaults to `progress`.
+   */
+  revealProgress?: MotionValue<number>;
   /** Progress window over which the reflective sheen sweeps across. */
   sheenRange?: [number, number];
 };
@@ -44,12 +50,17 @@ export function ReflectiveGlyph({
   text,
   progress,
   revealRange,
+  revealProgress,
   sheenRange = [0.05, 0.55],
 }: ReflectiveGlyphProps) {
+  // The flood can track a different progress than the sheen (e.g. the section's
+  // entry into view rather than its full scroll-through).
+  const floodProgress = revealProgress ?? progress;
+
   // With a reveal window the waterline retreats 100% → 0% across it; without
   // one the glyph stays full and only the sheen moves.
   const range = revealRange ?? [0, 1];
-  const floodTopDynamic = useTransform(progress, range, [100, 0]);
+  const floodTopDynamic = useTransform(floodProgress, range, [100, 0]);
   const floodTopStatic = useMotionValue(0);
   const floodTop = revealRange ? floodTopDynamic : floodTopStatic;
 
@@ -57,7 +68,7 @@ export function ReflectiveGlyph({
   // reveal; a static glyph just sits at indigo.
   const colorEnd = range[0] + (range[1] - range[0]) * 0.65;
   const floodStrokeDynamic = useTransform(
-    progress,
+    floodProgress,
     [range[0], colorEnd],
     ["rgba(255,255,255,0.55)", "#6366f1"]
   );
@@ -84,7 +95,7 @@ export function ReflectiveGlyph({
       <span
         className="block"
         style={{
-          WebkitTextStroke: "2.5px rgba(255,255,255,0.06)",
+          WebkitTextStroke: "2.5px var(--glyph-ghost)",
           color: "transparent",
         }}
       >
@@ -113,7 +124,7 @@ export function ReflectiveGlyph({
           clipPath: crestClip,
           WebkitClipPath: crestClip,
           WebkitTextStrokeWidth: "3px",
-          WebkitTextStrokeColor: "#e9d5ff",
+          WebkitTextStrokeColor: "var(--glyph-crest)",
           color: "transparent",
           opacity: 0.95,
         }}
@@ -178,6 +189,16 @@ export default function SectionLabel({
     offset: ["start end", "end start"],
   });
 
+  // Entry-only progress: 0 when the section's top first enters the bottom of the
+  // viewport, 1 when that top reaches the top of the viewport. Unlike the full
+  // scroll-through above this is independent of section height, so a fixed range
+  // on it always means the same amount of the section is on screen. We use it to
+  // top off the numeral's reveal just as the section nearly fills the viewport.
+  const { scrollYProgress: entryProgress } = useScroll({
+    target: ref,
+    offset: ["start end", "start start"],
+  });
+
   // Numeral drifts upward as you scroll through the section.
   const numeralY = useTransform(scrollYProgress, [0, 1], ["12%", "-32%"]);
   const numeralOpacity = useTransform(
@@ -217,7 +238,8 @@ export default function SectionLabel({
         <ReflectiveGlyph
           text={index}
           progress={scrollYProgress}
-          revealRange={[0.05, 0.34]}
+          revealProgress={entryProgress}
+          revealRange={[0.12, 0.96]}
         />
       </motion.span>
 
@@ -228,11 +250,12 @@ export default function SectionLabel({
       <motion.span
         style={{
           x: captionX,
-          textShadow: "0 0 10px rgba(8,8,8,0.92), 0 1px 3px rgba(8,8,8,0.7)",
+          textShadow:
+            "0 0 10px var(--glyph-halo), 0 1px 3px var(--glyph-halo-soft)",
         }}
         className={`absolute top-12 z-10 ${
           align === "left" ? "left-6 sm:left-10" : "right-6 sm:right-10"
-        } text-[10px] uppercase tracking-[0.4em] text-neutral-400`}
+        } text-[10px] uppercase tracking-[0.4em] text-ink-muted`}
       >
         — {caption}
       </motion.span>

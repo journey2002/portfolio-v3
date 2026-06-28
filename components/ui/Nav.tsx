@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 
 /** Planet mark (planet-svgrepo-com), recoloured to the brand gradient. */
 function PlanetLogo() {
@@ -163,7 +164,7 @@ function MenuToggle({
       aria-controls="mobile-nav-panel"
       aria-label={open ? "Close menu" : "Open menu"}
       data-cursor-hover
-      className="relative z-10 ml-3 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/[0.05] ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/[0.1] md:hidden"
+      className="relative z-10 ml-3 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-glass ring-1 ring-inset ring-[var(--ring)] transition-colors hover:bg-glass-strong md:hidden"
     >
       <motion.span
         aria-hidden
@@ -353,8 +354,8 @@ export default function Nav() {
           onMouseEnter={() => setUserExpanded(true)}
           className={`group/nav pointer-events-auto relative flex h-14 items-center rounded-full px-3.5 backdrop-blur-xl transition-[background,box-shadow] duration-300 ${
             scrolled
-              ? "bg-[#0c0c0c]/90 shadow-[0_8px_40px_-8px_rgba(0,0,0,0.6)]"
-              : "bg-[#080808]/55 shadow-[0_4px_24px_-10px_rgba(0,0,0,0.5)]"
+              ? "bg-panel-strong shadow-[0_8px_40px_-8px_rgba(0,0,0,0.6)]"
+              : "bg-panel shadow-[0_4px_24px_-10px_rgba(0,0,0,0.5)]"
           }`}
         >
           {/* Top-lit gradient hairline border */}
@@ -374,7 +375,7 @@ export default function Nav() {
           {/* Soft sheen line across the top edge */}
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent"
+            className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[var(--sheen)] to-transparent"
           />
 
           {/* Scroll-progress ring, sitting outside the header */}
@@ -391,10 +392,10 @@ export default function Nav() {
           >
             <PlanetLogo />
             <span className="flex flex-col leading-none md:hidden">
-              <span className="font-serif text-sm font-semibold leading-none tracking-tight text-white">
+              <span className="font-serif text-sm font-semibold leading-none tracking-tight text-ink-strong">
                 Worapat
               </span>
-              <span className="mt-1 text-[8.5px] font-medium uppercase tracking-[0.22em] text-neutral-500">
+              <span className="mt-1 text-[8.5px] font-medium uppercase tracking-[0.22em] text-ink-subtle">
                 UX/UI · Digital Art
               </span>
             </span>
@@ -415,7 +416,7 @@ export default function Nav() {
           >
             {/* Links */}
             <ul
-              className="ml-5 hidden items-center gap-0.5 text-sm text-neutral-400 md:flex"
+              className="ml-5 hidden items-center gap-0.5 text-sm text-ink-muted md:flex"
               onMouseLeave={() => setHovered(null)}
             >
               {LINKS.map((link) => (
@@ -430,7 +431,7 @@ export default function Nav() {
                     whileTap={{ scale: 0.94 }}
                     transition={{ type: "spring", stiffness: 400, damping: 22 }}
                     className={`relative z-10 block whitespace-nowrap rounded-full px-3.5 py-1.5 transition-colors duration-200 ${
-                      hovered === link.href ? "text-white" : "hover:text-white"
+                      hovered === link.href ? "text-ink-strong" : "hover:text-ink-strong"
                     }`}
                   >
                     {link.label}
@@ -450,7 +451,7 @@ export default function Nav() {
                         },
                         layout: { type: "spring", stiffness: 320, damping: 34, mass: 0.9 },
                       }}
-                      className="absolute inset-0 rounded-full bg-white/[0.07] ring-1 ring-inset ring-white/10 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]"
+                      className="absolute inset-0 rounded-full bg-glass-strong ring-1 ring-inset ring-[var(--ring)] backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]"
                     />
                   )}
                 </li>
@@ -471,8 +472,12 @@ export default function Nav() {
             </motion.a>
           </motion.div>
 
+          {/* Theme switch — sits at the right end of the pill, always visible
+              (outside the collapsible content) on both desktop and mobile. */}
+          <ThemeToggle className="ml-3" />
+
           {/* Hairline divider between the brand and the toggle (mobile only) */}
-          <span aria-hidden className="ml-3 h-5 w-px bg-white/10 md:hidden" />
+          <span aria-hidden className="ml-3 h-5 w-px bg-[var(--ring)] md:hidden" />
 
           {/* Mobile menu toggle */}
           <MenuToggle open={menuOpen} onClick={() => setMenuOpen((o) => !o)} />
@@ -511,7 +516,7 @@ export default function Nav() {
               }}
               transition={{ type: "spring", stiffness: 340, damping: 32, mass: 0.8 }}
               style={{ transformOrigin: "top right" }}
-              className="fixed inset-x-4 top-[5.25rem] z-50 overflow-hidden rounded-[26px] bg-[#0a0a0c]/95 shadow-[0_28px_70px_-14px_rgba(0,0,0,0.75)] backdrop-blur-2xl md:hidden"
+              className="fixed inset-x-4 top-[5.25rem] z-50 overflow-hidden rounded-[26px] bg-panel-strong shadow-[0_28px_70px_-14px_rgba(0,0,0,0.75)] backdrop-blur-2xl md:hidden"
             >
               {/* Gradient hairline border */}
               <span
@@ -530,7 +535,7 @@ export default function Nav() {
               {/* Top sheen */}
               <span
                 aria-hidden
-                className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent"
+                className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-[var(--sheen)] to-transparent"
               />
               {/* Drifting aurora glows — CSS keyframes, so they auto-still under
                   prefers-reduced-motion via the global media query. */}
@@ -547,17 +552,17 @@ export default function Nav() {
                 {/* Panel header — frames the menu as the site's index and
                     surfaces the live availability signal. */}
                 <div className="mb-1 flex items-center justify-between px-2.5 pt-1">
-                  <span className="text-[10px] font-medium uppercase tracking-[0.3em] text-neutral-500">
+                  <span className="text-[10px] font-medium uppercase tracking-[0.3em] text-ink-subtle">
                     Index
                   </span>
-                  <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.28em] text-neutral-500">
+                  <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.28em] text-ink-subtle">
                     <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-accent-gradient" />
                     Open to work
                   </span>
                 </div>
                 <span
                   aria-hidden
-                  className="mx-2.5 mb-1 block h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                  className="mx-2.5 mb-1 block h-px bg-gradient-to-r from-transparent via-[var(--sheen)] to-transparent"
                 />
 
                 {/* Links */}
@@ -587,14 +592,14 @@ export default function Nav() {
                           aria-current={active ? "true" : undefined}
                           className={`group/item relative flex items-center gap-4 overflow-hidden rounded-2xl px-3 py-3 transition-colors duration-300 ${
                             active
-                              ? "text-white"
-                              : "text-neutral-300 hover:text-white"
+                              ? "text-ink-strong"
+                              : "text-ink hover:text-ink-strong"
                           }`}
                         >
                           {/* Hover / active fill sweep */}
                           <span
                             aria-hidden
-                            className={`pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-white/[0.09] via-white/[0.03] to-transparent transition-opacity duration-300 ${
+                            className={`pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-glass-strong via-glass to-transparent transition-opacity duration-300 ${
                               active
                                 ? "opacity-100"
                                 : "opacity-0 group-hover/item:opacity-100"
@@ -612,7 +617,7 @@ export default function Nav() {
                             className={`relative w-5 shrink-0 text-[10px] font-medium tabular-nums tracking-[0.15em] transition-colors duration-300 ${
                               active
                                 ? "text-indigo-300"
-                                : "text-neutral-600 group-hover/item:text-indigo-300"
+                                : "text-ink-faint group-hover/item:text-indigo-300"
                             }`}
                           >
                             0{i + 1}
@@ -626,8 +631,8 @@ export default function Nav() {
                             aria-hidden
                             className={`relative ml-auto text-base transition-all duration-300 ${
                               active
-                                ? "translate-x-0.5 text-white"
-                                : "text-neutral-700 group-hover/item:translate-x-0.5 group-hover/item:text-white"
+                                ? "translate-x-0.5 text-ink-strong"
+                                : "text-ink-faint group-hover/item:translate-x-0.5 group-hover/item:text-ink-strong"
                             }`}
                           >
                             →
@@ -656,7 +661,7 @@ export default function Nav() {
                     data-cursor-hover
                     className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-2xl bg-indigo-500 px-4 py-3.5 text-sm font-semibold text-white shadow-[0_12px_34px_-10px_rgba(99,102,241,0.8)] transition-colors hover:bg-violet-500"
                   >
-                    <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                    <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-[var(--sheen)] to-transparent transition-transform duration-700 group-hover:translate-x-full" />
                     <span className="relative">Let&apos;s talk</span>
                     <span className="relative transition-transform duration-300 group-hover:translate-x-0.5">
                       →
@@ -670,7 +675,7 @@ export default function Nav() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0, transition: { duration: 0.1 } }}
                   transition={{ delay: 0.14 + LINKS.length * 0.06, duration: 0.5 }}
-                  className="mt-3 flex items-center justify-between border-t border-white/5 px-2.5 pb-1 pt-3 text-[9.5px] font-medium uppercase tracking-[0.25em] text-neutral-600"
+                  className="mt-3 flex items-center justify-between border-t border-[var(--ring)] px-2.5 pb-1 pt-3 text-[9.5px] font-medium uppercase tracking-[0.25em] text-ink-faint"
                 >
                   <span>Worapat Settapak</span>
                   <span>Bangkok · 2026</span>

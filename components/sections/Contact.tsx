@@ -73,15 +73,15 @@ export default function Contact() {
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] as const }}
-          className="flex items-center gap-3 text-[10px] uppercase tracking-[0.4em] text-neutral-600"
+          className="flex items-center gap-3 text-[10px] uppercase tracking-[0.4em] text-ink-faint"
         >
-          <span className="text-neutral-300">[04]</span>
+          <span className="text-ink">[04]</span>
           <span className="h-px w-12 bg-hairline" />
           <span>Get in touch</span>
         </motion.div>
 
         {/* Heading */}
-        <h2 className="mt-8 font-serif text-5xl font-bold leading-[1.02] text-white sm:text-7xl md:text-8xl">
+        <h2 className="mt-8 font-serif text-5xl font-bold leading-[1.02] text-ink-strong sm:text-7xl md:text-8xl">
           <SplitText
             text="Let's create"
             as="span"
@@ -110,7 +110,7 @@ export default function Contact() {
               initial={{ opacity: 0, y: 16 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: 0.25 }}
-              className="text-xs uppercase tracking-[0.35em] text-neutral-600"
+              className="text-xs uppercase tracking-[0.35em] text-ink-faint"
             >
               Reach me at
             </motion.p>
@@ -124,7 +124,7 @@ export default function Contact() {
                 ease: [0.16, 1, 0.3, 1] as const,
                 delay: 0.3,
               }}
-              className="group mt-3 inline-flex items-baseline gap-3 text-2xl text-neutral-300 transition-colors duration-200 hover:text-white sm:text-3xl"
+              className="group mt-3 inline-flex items-baseline gap-3 text-2xl text-ink transition-colors duration-200 hover:text-ink-strong sm:text-3xl"
             >
               <span className="underline-wipe">Worapat2002@gmail.com</span>
               <ArrowUpRight
@@ -139,7 +139,7 @@ export default function Contact() {
                 duration: 0.6,
                 delay: 0.4,
               }}
-              className="mt-4 flex items-center gap-2 text-sm text-neutral-500"
+              className="mt-4 flex items-center gap-2 text-sm text-ink-subtle"
             >
               <Phone className="h-3.5 w-3.5" strokeWidth={1.5} />
               <span>092-672-3004</span>
@@ -163,13 +163,13 @@ export default function Contact() {
                 <Globe size={96} />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-[0.3em] text-neutral-500">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-ink-subtle">
                   Currently in
                 </p>
-                <p className="mt-1 font-serif text-lg font-semibold leading-tight text-white sm:text-xl">
+                <p className="mt-1 font-serif text-lg font-semibold leading-tight text-ink-strong sm:text-xl">
                   Bangkok, Thailand
                 </p>
-                <p className="mt-1 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.3em] text-neutral-500">
+                <p className="mt-1 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.3em] text-ink-subtle">
                   <span className="relative flex h-1.5 w-1.5">
                     <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -210,7 +210,7 @@ export default function Contact() {
                   } satisfies Variants}
                   whileHover={{ y: -6 }}
                   transition={{ type: "spring", stiffness: 320, damping: 22 }}
-                  className="group relative flex aspect-square flex-col justify-between rounded-2xl border border-hairline bg-surface/40 p-5 text-neutral-400 backdrop-blur transition-colors duration-300 hover:border-indigo-accent/40 hover:text-white"
+                  className="group relative flex aspect-square flex-col justify-between rounded-2xl border border-hairline bg-surface/40 p-5 text-ink-muted backdrop-blur transition-colors duration-300 hover:border-indigo-accent/40 hover:text-ink-strong"
                 >
                   <social.icon className="h-6 w-6" strokeWidth={1.5} />
                   <div className="flex items-end justify-between">
@@ -238,7 +238,7 @@ export default function Contact() {
         >
           <span
             style={{
-              WebkitTextStroke: "1px rgba(255,255,255,0.08)",
+              WebkitTextStroke: "1px var(--hairline)",
               color: "transparent",
             }}
           >
@@ -249,7 +249,7 @@ export default function Contact() {
 
       {/* Footer bar */}
       <div className="relative border-t border-hairline">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-6 py-6 text-sm text-neutral-500 sm:flex-row sm:px-10">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-6 py-6 text-sm text-ink-subtle sm:flex-row sm:px-10">
           <p>
             © {new Date().getFullYear()} Worapat Settapak. All rights reserved.
           </p>

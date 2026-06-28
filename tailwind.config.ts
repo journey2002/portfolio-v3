@@ -8,31 +8,59 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Surfaces + ink are theme tokens: the value is a CSS variable holding
+        // RGB CHANNELS, wrapped so Tailwind's `/alpha` modifier still works
+        // (e.g. bg-surface/40 → rgb(var(--surface) / 0.4)). The actual values
+        // live in app/globals.css and swap with [data-theme]. See that file.
+
         // Deepest background tone. Named `night` (not `base`) on purpose:
         // a color token called `base` makes Tailwind emit `text-base` as a
         // color utility, which collides with the built-in `text-base`
-        // font-size utility and silently paints text #080808 (invisible).
-        night: "#080808",
-        surface: "#111111",
-        "surface-raised": "#161616",
+        // font-size utility and silently paints text invisible.
+        night: "rgb(var(--canvas) / <alpha-value>)",
+        surface: "rgb(var(--surface) / <alpha-value>)",
+        "surface-raised": "rgb(var(--surface-raised) / <alpha-value>)",
+        // Semantic text ladder, strong → faint.
+        ink: {
+          strong: "rgb(var(--ink-strong) / <alpha-value>)",
+          DEFAULT: "rgb(var(--ink) / <alpha-value>)",
+          muted: "rgb(var(--ink-muted) / <alpha-value>)",
+          subtle: "rgb(var(--ink-subtle) / <alpha-value>)",
+          faint: "rgb(var(--ink-faint) / <alpha-value>)",
+        },
+        // Accent stays a literal brand color in both themes.
         indigo: {
           accent: "#6366f1",
         },
         violet: {
           accent: "#a855f7",
         },
-        hairline: "rgba(255,255,255,0.08)",
+        // Alpha-baked decorative tokens (theme-swapped full colors).
+        hairline: "var(--hairline)",
+        ring: "var(--ring)",
+        glass: {
+          DEFAULT: "var(--glass)",
+          strong: "var(--glass-strong)",
+        },
+        sheen: "var(--sheen)",
+        panel: {
+          weak: "var(--panel-weak)",
+          DEFAULT: "var(--panel)",
+          strong: "var(--panel-strong)",
+        },
       },
       fontFamily: {
         serif: ["var(--font-space-grotesk)", "system-ui", "sans-serif"],
         sans: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
+        hand: ["var(--font-caveat)", "ui-rounded", "cursive"],
       },
       backgroundImage: {
         "accent-gradient":
           "linear-gradient(135deg, #6366f1 0%, #a855f7 100%)",
-        // Smoother aurora: many intermediate stops eliminate visible banding on dark backgrounds.
-        "aurora":
-          "radial-gradient(70% 70% at 80% 80%, rgba(99,102,241,0.42) 0%, rgba(124,98,232,0.36) 14%, rgba(149,93,239,0.30) 28%, rgba(168,85,247,0.24) 42%, rgba(140,103,235,0.17) 55%, rgba(99,118,228,0.11) 68%, rgba(73,128,236,0.06) 80%, rgba(59,130,246,0.02) 90%, transparent 100%)",
+        // Aurora wash gradient is themed in globals.css (--aurora): the dark
+        // theme keeps the original many-stop gradient; the light theme uses a
+        // more saturated, lower-alpha variant so it reads on white.
+        "aurora": "var(--aurora)",
       },
       keyframes: {
         // Transform-only so the giant blurred aurora layers stay on the GPU
@@ -77,7 +105,7 @@ const config: Config = {
         "aurora-shift": "aurora-shift 8s ease-in-out infinite",
         "float-card": "float-card 5s ease-in-out infinite",
         "reveal-up": "reveal-up 0.7s cubic-bezier(0.16,1,0.3,1) forwards",
-        "marquee": "marquee 28s linear infinite",
+        "marquee": "marquee 65s linear infinite",
         "pulse-dot": "pulse-dot 2s ease-in-out infinite",
         "scroll-line": "scroll-line 2.2s ease-in-out infinite",
         "orbit-slow": "orbit-slow 22s linear infinite",

@@ -177,7 +177,6 @@ export default function CustomCursor() {
           height="30"
           viewBox="0 0 30 30"
           fill="none"
-          stroke="#c7d2fe"
           strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -186,6 +185,7 @@ export default function CustomCursor() {
             marginLeft: -15,
             marginTop: -15,
             transformOrigin: "center",
+            stroke: "var(--accent-soft)",
             filter: "drop-shadow(0 0 5px rgba(99,102,241,0.55))",
           }}
           initial={false}

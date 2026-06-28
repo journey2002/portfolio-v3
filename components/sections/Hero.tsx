@@ -308,11 +308,11 @@ export default function Hero() {
         transition={{ duration: 0.7, delay: 0.5, ease: EASE }}
         className="flex flex-wrap items-center gap-3"
       >
-        <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-white/[0.02] px-3.5 py-1.5 text-[11px] uppercase tracking-[0.18em] text-neutral-400 backdrop-blur">
+        <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-glass px-3.5 py-1.5 text-[11px] uppercase tracking-[0.18em] text-ink-muted backdrop-blur">
           <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-accent-gradient" />
           Available for work
         </span>
-        <span className="hidden text-[10px] uppercase tracking-[0.28em] text-neutral-600 sm:inline">
+        <span className="hidden text-[10px] uppercase tracking-[0.28em] text-ink-faint sm:inline">
           UX/UI &amp; Digital Art
         </span>
       </motion.div>
@@ -332,7 +332,7 @@ export default function Hero() {
           lineHeight: "var(--lh, 0.94)",
         }}
       >
-        <h1 className="font-serif font-bold tracking-tight text-white">
+        <h1 className="font-serif font-bold tracking-tight text-ink-strong">
           <SplitText
             text="Designing"
             as="span"
@@ -397,10 +397,10 @@ export default function Hero() {
         transition={{ duration: 0.9, delay: 1.45, ease: EASE }}
         className="grid grid-cols-1 items-end gap-8 sm:grid-cols-12 sm:gap-6"
       >
-        <p className="text-base text-neutral-400 sm:col-span-6 sm:text-lg">
+        <p className="text-base text-ink-muted sm:col-span-6 sm:text-lg">
           <Balancer>
             UX/UI designer &amp; digital artist crafting{" "}
-            <span className="text-neutral-200">interfaces people love</span> —
+            <span className="text-ink">interfaces people love</span> —
             from research to pixel-perfect prototype.
           </Balancer>
         </p>
@@ -425,7 +425,7 @@ export default function Hero() {
           </MagneticButton>
           <a
             href="#contact"
-            className="group inline-flex items-center gap-1.5 text-sm text-neutral-400 transition-colors hover:text-white"
+            className="group inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink-strong"
           >
             Get in touch
             <ArrowUpRight
@@ -442,7 +442,7 @@ export default function Hero() {
     <section
       id="top"
       ref={sectionRef}
-      className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 sm:px-10"
+      className="relative flex min-h-[max(100vh,60rem)] items-center justify-center overflow-hidden px-5 py-16 sm:px-10"
     >
       {/* ── Background: dot grid + cursor-glow, aurora, accents, dust ───────────── */}
       <motion.div style={{ y: gridY }} className="absolute inset-0">
@@ -481,7 +481,7 @@ export default function Hero() {
       <Particles count={48} />
 
       {/* Smoothed vignette */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(130%_130%_at_50%_0%,transparent_38%,rgba(0,0,0,0.12)_58%,rgba(0,0,0,0.32)_76%,rgba(0,0,0,0.5)_90%,rgba(0,0,0,0.62)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[image:var(--vignette)]" />
       {/* Film grain */}
       <div
         aria-hidden
@@ -532,12 +532,12 @@ export default function Hero() {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: EASE }}
-            className="inline-flex items-center gap-2 text-[11px] font-medium tracking-wide text-indigo-200/80"
+            className="inline-flex items-center gap-2 text-[11px] font-medium tracking-wide text-[color:var(--accent-soft)]"
           >
             <span className="h-2 w-2 rounded-[2px] bg-accent-gradient" />
             Frame&nbsp;01
-            <span className="text-neutral-600">/</span>
-            <span className="text-neutral-400">Hero</span>
+            <span className="text-ink-faint">/</span>
+            <span className="text-ink-muted">Hero</span>
           </motion.span>
         </div>
 
@@ -551,12 +551,12 @@ export default function Hero() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.9, delay: 0.2, ease: EASE }}
           style={{ minHeight: "var(--fh)" }}
-          className="relative flex flex-col justify-center rounded-md border border-hairline bg-[#0a0a0c]/40 px-6 py-12 backdrop-blur-[2px] sm:px-12 sm:py-16 lg:px-16 lg:py-20 xl:px-48"
+          className="relative flex flex-col justify-center rounded-md border border-hairline bg-panel-weak px-6 py-12 backdrop-blur-[2px] sm:px-12 sm:py-16 lg:px-16 lg:py-20 xl:px-48"
         >
           {/* Top sheen on the frame edge */}
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
+            className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[var(--sheen)] to-transparent"
           />
 
           {/* Corner selection handles around the frame — drag to resize it */}
@@ -584,7 +584,7 @@ export default function Hero() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.6 }}
-          className="mt-3 hidden items-center justify-center gap-2 text-[10px] uppercase tracking-[0.3em] text-neutral-600 sm:flex"
+          className="mt-6 hidden items-center justify-center gap-2 text-[10px] uppercase tracking-[0.3em] text-ink-faint sm:flex"
         >
           <span className="h-px w-6 bg-hairline" />
           Worapat Settapak · Portfolio 2026
@@ -605,7 +605,7 @@ export default function Hero() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 1.6, ease: EASE }}
-        className="border-t border-hairline bg-[#080808]/55 backdrop-blur"
+        className="border-t border-hairline bg-panel backdrop-blur"
        >
         <div className="flex h-10 items-center justify-between gap-4 pl-2 pr-3 sm:h-11">
           {/* Left — tool dock + zoom */}
@@ -623,8 +623,8 @@ export default function Hero() {
                   key={i}
                   className={`grid h-7 w-7 place-items-center rounded-md transition-colors ${
                     active
-                      ? "bg-indigo-accent/20 text-indigo-200"
-                      : "text-neutral-600"
+                      ? "bg-indigo-accent/20 text-[color:var(--accent-soft)]"
+                      : "text-ink-faint"
                   }`}
                 >
                   <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
@@ -632,9 +632,9 @@ export default function Hero() {
               ))}
             </div>
             <span className="mx-1 h-4 w-px bg-hairline" />
-            <div className="flex items-center gap-1 text-neutral-500">
+            <div className="flex items-center gap-1 text-ink-subtle">
               <Minus className="h-3 w-3" strokeWidth={2} />
-              <span className="w-10 text-center text-[11px] tabular-nums tracking-wide text-neutral-400">
+              <span className="w-10 text-center text-[11px] tabular-nums tracking-wide text-ink-muted">
                 100%
               </span>
               <Plus className="h-3 w-3" strokeWidth={2} />
@@ -669,11 +669,11 @@ export default function Hero() {
           </div>
 
           {/* Right — live cursor coordinates + presence */}
-          <div className="flex shrink-0 items-center gap-3 text-[11px] text-neutral-500">
+          <div className="flex shrink-0 items-center gap-3 text-[11px] text-ink-subtle">
             <span className="hidden items-center gap-1.5 tabular-nums sm:flex">
-              <span className="text-neutral-600">X</span>
+              <span className="text-ink-faint">X</span>
               <LiveCoord axis="x" />
-              <span className="ml-1 text-neutral-600">Y</span>
+              <span className="ml-1 text-ink-faint">Y</span>
               <LiveCoord axis="y" />
             </span>
             <span className="inline-flex items-center gap-1.5">
@@ -707,7 +707,7 @@ function MarqueeHalf(props: { "aria-hidden"?: boolean }) {
         MARQUEE_TAGS.map((tag, i) => (
           <span
             key={`${r}-${tag}-${i}`}
-            className="flex shrink-0 items-center gap-8 text-[10px] uppercase tracking-[0.32em] text-neutral-500"
+            className="flex shrink-0 items-center gap-8 text-[10px] uppercase tracking-[0.32em] text-ink-subtle"
           >
             {tag}
             <span className="h-1 w-1 rotate-45 bg-accent-gradient" />
@@ -756,14 +756,14 @@ function Ruler() {
           className="absolute -left-8 -right-8 bottom-0 h-1.5 opacity-50"
           style={{
             backgroundImage:
-              "repeating-linear-gradient(90deg, rgba(255,255,255,0.22) 0 1px, transparent 1px 8px)",
+              "repeating-linear-gradient(90deg, rgb(var(--ink-faint) / 0.45) 0 1px, transparent 1px 8px)",
           }}
         />
         <div
           className="absolute -left-8 -right-8 bottom-0 h-3 opacity-40"
           style={{
             backgroundImage:
-              "repeating-linear-gradient(90deg, rgba(255,255,255,0.3) 0 1px, transparent 1px 80px)",
+              "repeating-linear-gradient(90deg, rgb(var(--ink-faint) / 0.6) 0 1px, transparent 1px 80px)",
           }}
         />
       </motion.div>
@@ -791,7 +791,7 @@ function FrameHandles({
           className="pointer-events-auto absolute flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center [&:hover>span]:scale-150"
           style={{ left: `${x}%`, top: `${y}%` }}
         >
-          <span className="h-2.5 w-2.5 rounded-[2px] border border-neutral-500 bg-[#0c0c0c] transition-transform duration-150" />
+          <span className="h-2.5 w-2.5 rounded-[2px] border border-ink-faint bg-surface transition-transform duration-150" />
         </span>
       ))}
     </span>
@@ -820,11 +820,11 @@ function LayersPanel({
       initial={{ opacity: 0, x: -16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.7, delay: 0.7, ease: EASE }}
-      className="pointer-events-auto absolute left-6 top-1/2 hidden w-44 -translate-y-1/2 select-none rounded-lg border border-hairline bg-[#0b0b0d]/70 p-2.5 backdrop-blur xl:block"
+      className="pointer-events-auto absolute left-6 top-1/2 hidden w-44 -translate-y-1/2 select-none rounded-lg border border-hairline bg-panel p-2.5 backdrop-blur xl:block"
     >
-      <div className="mb-2 flex items-center justify-between px-1 text-[10px] uppercase tracking-[0.25em] text-neutral-500">
+      <div className="mb-2 flex items-center justify-between px-1 text-[10px] uppercase tracking-[0.25em] text-ink-subtle">
         Layers
-        <span className="text-neutral-700">{order.length + 1}</span>
+        <span className="text-ink-faint">{order.length + 1}</span>
       </div>
       <Reorder.Group
         axis="y"
@@ -845,21 +845,21 @@ function LayersPanel({
               data-cursor-hover
               className={`group flex cursor-grab items-center gap-1.5 rounded-md px-2 py-1.5 active:cursor-grabbing ${
                 isSelected
-                  ? "bg-indigo-accent/15 text-white ring-1 ring-inset ring-indigo-accent/30"
-                  : "text-neutral-500 hover:bg-white/[0.03] hover:text-neutral-300"
+                  ? "bg-indigo-accent/15 text-ink-strong ring-1 ring-inset ring-indigo-accent/30"
+                  : "text-ink-subtle hover:bg-glass hover:text-ink"
               }`}
             >
               <GripVertical
                 className={`h-3 w-3 shrink-0 transition-opacity ${
                   isSelected
-                    ? "text-indigo-200/60"
-                    : "text-neutral-600 opacity-0 group-hover:opacity-100"
+                    ? "text-[color:var(--accent-soft)]"
+                    : "text-ink-faint opacity-0 group-hover:opacity-100"
                 }`}
                 strokeWidth={2}
               />
               <span
                 className={`w-3 text-center text-[10px] ${
-                  isSelected ? "text-indigo-200" : "text-neutral-600"
+                  isSelected ? "text-[color:var(--accent-soft)]" : "text-ink-faint"
                 }`}
               >
                 {meta.type}
@@ -867,7 +867,7 @@ function LayersPanel({
               <span className="flex-1 truncate">{meta.label}</span>
               <Eye
                 className={`h-3 w-3 shrink-0 ${
-                  isSelected ? "text-indigo-200/80" : "text-neutral-700"
+                  isSelected ? "text-[color:var(--accent-soft)]" : "text-ink-faint"
                 }`}
                 strokeWidth={2}
               />
@@ -877,11 +877,11 @@ function LayersPanel({
       </Reorder.Group>
       {/* Locked background layer — pinned to the bottom, not reorderable */}
       <ul className="mt-0.5 text-xs">
-        <li className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-neutral-500">
+        <li className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-ink-subtle">
           <span aria-hidden className="h-3 w-3 shrink-0" />
-          <span className="w-3 text-center text-[10px] text-neutral-600">▦</span>
+          <span className="w-3 text-center text-[10px] text-ink-faint">▦</span>
           <span className="flex-1 truncate">canvas.bg</span>
-          <Lock className="h-3 w-3 shrink-0 text-neutral-700" strokeWidth={2} />
+          <Lock className="h-3 w-3 shrink-0 text-ink-faint" strokeWidth={2} />
         </li>
       </ul>
     </motion.div>
@@ -895,9 +895,9 @@ function InspectorPanel() {
       initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.7, delay: 0.8, ease: EASE }}
-      className="absolute right-6 top-1/2 hidden w-44 -translate-y-1/2 select-none rounded-lg border border-hairline bg-[#0b0b0d]/70 p-3 backdrop-blur xl:block"
+      className="absolute right-6 top-1/2 hidden w-44 -translate-y-1/2 select-none rounded-lg border border-hairline bg-panel p-3 backdrop-blur xl:block"
     >
-      <div className="mb-3 text-[10px] uppercase tracking-[0.25em] text-neutral-500">
+      <div className="mb-3 text-[10px] uppercase tracking-[0.25em] text-ink-subtle">
         Inspect
       </div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
@@ -911,16 +911,16 @@ function InspectorPanel() {
         <Field label="H">812</Field>
       </div>
       <div className="my-3 h-px bg-hairline" />
-      <div className="flex items-center justify-between text-[11px] text-neutral-500">
+      <div className="flex items-center justify-between text-[11px] text-ink-subtle">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-3 w-3 rounded-[3px] bg-accent-gradient" />
           Fill
         </span>
-        <span className="tabular-nums text-neutral-400">#6366F1</span>
+        <span className="tabular-nums text-ink-muted">#6366F1</span>
       </div>
-      <div className="mt-2 flex items-center justify-between text-[11px] text-neutral-500">
+      <div className="mt-2 flex items-center justify-between text-[11px] text-ink-subtle">
         <span>Opacity</span>
-        <span className="tabular-nums text-neutral-400">100%</span>
+        <span className="tabular-nums text-ink-muted">100%</span>
       </div>
     </motion.div>
   );
@@ -934,9 +934,9 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-md bg-white/[0.03] px-2 py-1.5">
-      <span className="text-neutral-600">{label}</span>
-      <span className="tabular-nums text-neutral-300">{children}</span>
+    <div className="flex items-center gap-2 rounded-md bg-glass px-2 py-1.5">
+      <span className="text-ink-faint">{label}</span>
+      <span className="tabular-nums text-ink">{children}</span>
     </div>
   );
 }
@@ -958,7 +958,7 @@ function ScrollCue() {
     <a
       href="#about"
       aria-label="Scroll to about"
-      className="absolute bottom-16 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.3em] text-neutral-500"
+      className="absolute bottom-20 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.3em] text-ink-subtle"
     >
       <span className="flex flex-col items-center gap-3">
         Scroll

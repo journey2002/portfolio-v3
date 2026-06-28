@@ -2,17 +2,169 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/* ──────────────────────────────────────────────────────────────────────────
+   Theme tokens. Both themes resolve against the same semantic variables; a
+   `data-theme` attribute on <html> swaps the values. Surfaces and ink are
+   stored as space-separated RGB CHANNELS so Tailwind's `/alpha` modifier still
+   works (e.g. bg-surface/40 → rgb(var(--surface)/0.4)). Decorative tokens that
+   already bake in their own alpha are stored as full color strings.
+
+   Dark is the default and lives on :root so it applies before the no-flash
+   script runs (and if JS is off entirely). The accent indigo/violet stays a
+   literal brand color in both themes (see tailwind.config.ts).
+   ────────────────────────────────────────────────────────────────────────── */
+:root,
+[data-theme="dark"] {
   color-scheme: dark;
+
+  /* Surfaces (RGB channels) */
+  --canvas: 8 8 8; /* #080808 */
+  --surface: 17 17 17; /* #111111 */
+  --surface-raised: 22 22 22; /* #161616 */
+
+  /* Ink (RGB channels) — strong→faint contrast ladder */
+  --ink-strong: 255 255 255;
+  --ink: 222 222 222; /* ~neutral-200/300 */
+  --ink-muted: 163 163 163; /* neutral-400 */
+  --ink-subtle: 115 115 115; /* neutral-500 */
+  --ink-faint: 82 82 82; /* neutral-600/700 */
+
+  /* Floating glass panels — three opacities */
+  --panel-weak: rgba(10, 10, 12, 0.4);
+  --panel: rgba(11, 11, 13, 0.7);
+  --panel-strong: rgba(12, 12, 12, 0.92);
+
+  /* Stack's feature cards stay a dark matte sheet in BOTH themes — their glare /
+     sheen / prism rim-light only reads on dark, so on light they become a dark
+     glass band rather than washing out. */
+  --feature-card: rgba(17, 17, 17, 0.3);
+
+  /* Lines + translucent fills (full color) */
+  --hairline: rgba(255, 255, 255, 0.08);
+  --ring: rgba(255, 255, 255, 0.1);
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-strong: rgba(255, 255, 255, 0.06);
+  /* Top-edge highlight line on panels/frames */
+  --sheen: rgba(255, 255, 255, 0.3);
+
+  /* Atmosphere */
+  --grid-line: rgba(255, 255, 255, 0.025);
+  --grid-dot: rgba(255, 255, 255, 0.07);
+  --noise-opacity: 0.06;
+  --aurora-opacity: 0.5;
+  /* The big hero/resume vignette gradient, themed as a whole. */
+  --vignette: radial-gradient(
+    130% 130% at 50% 0%,
+    transparent 38%,
+    rgba(0, 0, 0, 0.12) 58%,
+    rgba(0, 0, 0, 0.32) 76%,
+    rgba(0, 0, 0, 0.5) 90%,
+    rgba(0, 0, 0, 0.62) 100%
+  );
+  /* Aurora wash — tuned per theme. */
+  --aurora: radial-gradient(
+    70% 70% at 80% 80%,
+    rgba(99, 102, 241, 0.42) 0%,
+    rgba(124, 98, 232, 0.36) 14%,
+    rgba(149, 93, 239, 0.3) 28%,
+    rgba(168, 85, 247, 0.24) 42%,
+    rgba(140, 103, 235, 0.17) 55%,
+    rgba(99, 118, 228, 0.11) 68%,
+    rgba(73, 128, 236, 0.06) 80%,
+    rgba(59, 130, 246, 0.02) 90%,
+    transparent 100%
+  );
+
+  /* Reflective section numerals (SectionLabel) */
+  --glyph-ghost: rgba(255, 255, 255, 0.06);
+  --glyph-crest: #e9d5ff;
+  --glyph-halo: rgba(8, 8, 8, 0.92);
+  --glyph-halo-soft: rgba(8, 8, 8, 0.7);
+
+  /* Soft accent text (chrome labels / handwriting) — pale on dark so it reads
+     as a tint; goes deep on light so it keeps contrast on the warm white. */
+  --accent-soft: #c7d2fe; /* indigo-200 */
+  --accent-soft-2: #ddd6fe; /* violet-200 */
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Surfaces — warm near-white canvas, white raised cards */
+  --canvas: 246 245 243; /* #f6f5f3 */
+  --surface: 255 255 255;
+  --surface-raised: 255 255 255;
+
+  /* Ink — preserve the dark theme's contrast ladder, inverted */
+  --ink-strong: 10 10 10;
+  --ink: 38 38 38; /* neutral-800 */
+  --ink-muted: 82 82 82; /* neutral-600 */
+  --ink-subtle: 113 113 122; /* zinc-500 */
+  --ink-faint: 161 161 170; /* zinc-400 */
+
+  /* Light glass panels */
+  --panel-weak: rgba(255, 255, 255, 0.5);
+  --panel: rgba(255, 255, 255, 0.74);
+  --panel-strong: rgba(252, 252, 251, 0.94);
+
+  /* A dark glass card on the warm-white page (see dark theme note above). */
+  --feature-card: rgba(20, 20, 24, 0.62);
+
+  /* Lines + fills go to dark-alpha on light */
+  --hairline: rgba(0, 0, 0, 0.1);
+  --ring: rgba(0, 0, 0, 0.12);
+  --glass: rgba(0, 0, 0, 0.025);
+  --glass-strong: rgba(0, 0, 0, 0.05);
+  /* A faint dark edge so panel tops keep definition on white */
+  --sheen: rgba(0, 0, 0, 0.12);
+
+  /* Atmosphere */
+  --grid-line: rgba(0, 0, 0, 0.04);
+  --grid-dot: rgba(0, 0, 0, 0.06);
+  --noise-opacity: 0.035;
+  --aurora-opacity: 0.6;
+  /* A soft cool lift toward the lower edges rather than a dark vignette. */
+  --vignette: radial-gradient(
+    130% 130% at 50% 0%,
+    transparent 42%,
+    rgba(99, 102, 241, 0.04) 68%,
+    rgba(80, 70, 120, 0.06) 86%,
+    rgba(60, 55, 95, 0.08) 100%
+  );
+  /* More saturated but lower-alpha so it reads as a colored wash on white. */
+  --aurora: radial-gradient(
+    70% 70% at 80% 80%,
+    rgba(99, 102, 241, 0.3) 0%,
+    rgba(124, 98, 232, 0.26) 14%,
+    rgba(149, 93, 239, 0.22) 28%,
+    rgba(168, 85, 247, 0.18) 42%,
+    rgba(140, 103, 235, 0.13) 55%,
+    rgba(99, 118, 228, 0.09) 68%,
+    rgba(73, 128, 236, 0.05) 80%,
+    rgba(59, 130, 246, 0.02) 90%,
+    transparent 100%
+  );
+
+  /* Section numerals: dark ghost stroke, light halo behind the caption */
+  --glyph-ghost: rgba(0, 0, 0, 0.07);
+  --glyph-crest: #7c3aed;
+  --glyph-halo: rgba(246, 245, 243, 0.95);
+  --glyph-halo-soft: rgba(246, 245, 243, 0.75);
+
+  --accent-soft: #4f46e5; /* indigo-600 */
+  --accent-soft-2: #7c3aed; /* violet-600 */
 }
 
 /* scroll-behavior is intentionally omitted — Lenis handles all smooth scrolling */
 
 body {
-  background-color: #080808;
-  color: #f5f5f5;
+  background-color: rgb(var(--canvas));
+  color: rgb(var(--ink-strong));
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Theme swap shouldn't snap — ease the page tone. Decorative children with
+     their own transitions are unaffected. */
+  transition: background-color 0.5s ease, color 0.5s ease;
 }
 
 /* Hide native cursor on devices with a fine pointer (desktop) where the
@@ -32,7 +184,7 @@ body {
 /* Text selection */
 ::selection {
   background: rgba(99, 102, 241, 0.35);
-  color: #ffffff;
+  color: rgb(var(--ink-strong));
 }
 
 /* Native scrollbar hidden — scroll progress is shown by the ring around the header */
@@ -56,8 +208,8 @@ body {
 /* Faint grid lines layered behind content for depth */
 .grid-lines {
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
   background-size: 80px 80px;
 }
 
@@ -68,21 +220,22 @@ body {
 .grid-dots {
   background-image: radial-gradient(
     circle,
-    rgba(255, 255, 255, 0.07) 1.2px,
+    var(--grid-dot) 1.2px,
     transparent 1.7px
   );
   background-size: 80px 80px;
 }
 
-/* Subtle film grain — dithers gradient banding on dark backgrounds.
-   SVG fractal noise is rendered once and tiled.
-   mix-blend-mode removed: it forced an isolation/composite pass over every
-   layer beneath the overlay, which was expensive on full-section overlays.
-   Plain alpha blending looks nearly identical on a near-black background. */
+/* Subtle film grain — dithers gradient banding. The dark theme tiles white
+   flecks; the light theme swaps to dark flecks (see below) so the grain reads
+   as texture on paper rather than dirty static. SVG fractal noise, tiled. */
 .noise-overlay {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   background-size: 240px 240px;
-  opacity: 0.06;
+  opacity: var(--noise-opacity);
+}
+[data-theme="light"] .noise-overlay {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 
 /* Gentle infinite bob used by the floating personality chips. Runs on the

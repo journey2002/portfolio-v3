@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type CSSProperties } from "react";
 import { usePointer } from "@/components/ui/PointerProvider";
+import { useTheme } from "@/components/ui/ThemeProvider";
 
 type GridSpotlightProps = {
   className?: string;
@@ -26,11 +27,19 @@ export default function GridSpotlight({
   className = "",
   size = 620,
   gridSize = 80,
-  color = "rgba(196, 161, 255, 0.55)",
-  halo = "rgba(168, 85, 247, 0.18)",
+  color,
+  halo,
 }: GridSpotlightProps) {
   const ref = useRef<HTMLDivElement>(null);
   const pointer = usePointer();
+  const { theme } = useTheme();
+  // Deeper, denser purple on light so the lit dots read on the warm white.
+  const dotColor =
+    color ??
+    (theme === "light" ? "rgba(124, 58, 237, 0.45)" : "rgba(196, 161, 255, 0.55)");
+  const haloColor =
+    halo ??
+    (theme === "light" ? "rgba(124, 58, 237, 0.12)" : "rgba(168, 85, 247, 0.18)");
 
   useEffect(() => {
     const el = ref.current;
@@ -73,8 +82,8 @@ export default function GridSpotlight({
       style={
         {
           backgroundImage: [
-            `radial-gradient(circle, ${color} 1.2px, transparent 1.7px)`,
-            `radial-gradient(${Math.round(size * 0.7)}px circle at var(--gs-x, 50%) var(--gs-y, 50%), ${halo}, transparent 70%)`,
+            `radial-gradient(circle, ${dotColor} 1.2px, transparent 1.7px)`,
+            `radial-gradient(${Math.round(size * 0.7)}px circle at var(--gs-x, 50%) var(--gs-y, 50%), ${haloColor}, transparent 70%)`,
           ].join(", "),
           backgroundSize: `${gridSize}px ${gridSize}px, 100% 100%`,
           maskImage: mask,

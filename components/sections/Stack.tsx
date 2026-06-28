@@ -298,7 +298,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
         onPointerMove={handleMove}
         onPointerLeave={handleLeave}
         style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-        className="relative flex h-full flex-col gap-5 rounded-2xl border border-hairline bg-surface/30 p-7 backdrop-blur-xl transition-colors duration-500 group-hover:border-white/20"
+        className="relative flex h-full flex-col gap-5 rounded-2xl border border-white/[0.08] bg-[var(--feature-card)] p-7 backdrop-blur-xl transition-colors duration-500 group-hover:border-white/20"
       >
         {/* Surface finish — the matte-metal layers, clipped to the rounded
             card. overflow-hidden lives here (not on the card) so the card
@@ -459,7 +459,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
             {feature.tools.map((tool, t) => (
               <span
                 key={tool}
-                className={`inline-flex translate-y-3 items-center gap-2 rounded-full border border-indigo-accent/30 bg-night/60 px-3 py-1 text-[11px] font-medium tracking-wide text-neutral-200 opacity-0 transition-all duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-hover:duration-700 group-hover:[transform:translateY(0)_translateZ(30px)] ${CHIP_ENTER_DELAY[t] ?? ""}`}
+                className={`inline-flex translate-y-3 items-center gap-2 rounded-full border border-indigo-accent/30 bg-black/40 px-3 py-1 text-[11px] font-medium tracking-wide text-neutral-200 opacity-0 transition-all duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-hover:duration-700 group-hover:[transform:translateY(0)_translateZ(30px)] ${CHIP_ENTER_DELAY[t] ?? ""}`}
               >
                 <span className="h-1 w-1 rotate-45 bg-accent-gradient" />
                 {tool}
@@ -524,11 +524,11 @@ export default function Stack() {
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] as const }}
             className="col-span-12 sm:col-span-8"
           >
-            <p className="text-xs uppercase tracking-[0.25em] text-neutral-500">
-              <span className="text-neutral-300">[03]</span> &nbsp; Skills &amp;
+            <p className="text-xs uppercase tracking-[0.25em] text-ink-subtle">
+              <span className="text-ink">[03]</span> &nbsp; Skills &amp;
               tools
             </p>
-            <h2 className="mt-6 font-serif text-4xl font-bold leading-tight text-white sm:text-5xl md:text-6xl">
+            <h2 className="mt-6 font-serif text-4xl font-bold leading-tight text-ink-strong sm:text-5xl md:text-6xl">
               <SplitText
                 text="A toolkit"
                 as="span"
@@ -555,7 +555,7 @@ export default function Stack() {
             initial={{ opacity: 0 }}
             animate={headingInView ? { opacity: 1 } : {}}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="col-span-12 hidden text-right text-[10px] uppercase tracking-[0.35em] text-neutral-600 sm:col-span-4 sm:block"
+            className="col-span-12 hidden text-right text-[10px] uppercase tracking-[0.35em] text-ink-faint sm:col-span-4 sm:block"
           >
             ↳ 09 tools · 03 disciplines
           </motion.div>
@@ -579,7 +579,7 @@ export default function Stack() {
               {TICKER.map((item) => (
                 <span
                   key={item}
-                  className="inline-flex shrink-0 items-center gap-14 font-serif text-3xl font-medium text-neutral-600 transition-colors duration-200 hover:text-white sm:text-4xl md:text-5xl"
+                  className="inline-flex shrink-0 items-center gap-14 font-serif text-3xl font-medium text-ink-faint transition-colors duration-200 hover:text-ink-strong sm:text-4xl md:text-5xl"
                 >
                   {item}
                   <span className="h-1.5 w-1.5 rotate-45 bg-accent-gradient" />
@@ -593,7 +593,7 @@ export default function Stack() {
               {TICKER.map((item) => (
                 <span
                   key={`${item}-dup`}
-                  className="inline-flex shrink-0 items-center gap-14 font-serif text-3xl font-medium text-neutral-600 transition-colors duration-200 hover:text-white sm:text-4xl md:text-5xl"
+                  className="inline-flex shrink-0 items-center gap-14 font-serif text-3xl font-medium text-ink-faint transition-colors duration-200 hover:text-ink-strong sm:text-4xl md:text-5xl"
                 >
                   {item}
                   <span className="h-1.5 w-1.5 rotate-45 bg-accent-gradient" />

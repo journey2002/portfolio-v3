@@ -1,11 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Space_Grotesk, DM_Sans } from "next/font/google";
+import { Space_Grotesk, DM_Sans, Caveat } from "next/font/google";
 import dynamic from "next/dynamic";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import LenisProvider from "@/components/ui/LenisProvider";
 import { PointerProvider } from "@/components/ui/PointerProvider";
+import { ThemeProvider } from "@/components/ui/ThemeProvider";
 import "./globals.css";
+
+// Runs synchronously during HTML parse — before first paint — so a stored light
+// preference applies with no dark flash. Default (and fallback) is dark.
+const NO_FLASH_THEME = `(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark')t='dark';document.documentElement.dataset.theme=t;var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='light'?'#f6f5f3':'#080808');}catch(e){document.documentElement.dataset.theme='dark';}})();`;
 
 // Decorative client-only chrome — loaded after first paint so they don't
 // gate hydration or block LCP.
@@ -27,6 +32,15 @@ const dmSans = DM_Sans({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-dm-sans",
+  display: "swap",
+});
+
+// Handwriting face — used sparingly for marginalia, signatures, and asides so
+// the otherwise-precise UI gains a human, hand-annotated layer.
+const caveat = Caveat({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-caveat",
   display: "swap",
 });
 
@@ -95,15 +109,25 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} ${dmSans.variable}`}>
-      <body className="font-sans bg-night text-neutral-100 antialiased">
-        <LenisProvider>
-          <PointerProvider>
-            <CustomCursor />
-            <PageIntro />
-            {children}
-          </PointerProvider>
-        </LenisProvider>
+    <html
+      lang="en"
+      // The no-flash script sets data-theme on <html> before hydration, so the
+      // client tree differs from the server's. This is expected — suppress the
+      // one-level attribute mismatch warning for <html> only.
+      suppressHydrationWarning
+      className={`${spaceGrotesk.variable} ${dmSans.variable} ${caveat.variable}`}
+    >
+      <body className="font-sans bg-night text-ink-strong antialiased">
+        <script dangerouslySetInnerHTML={{ __html: NO_FLASH_THEME }} />
+        <ThemeProvider>
+          <LenisProvider>
+            <PointerProvider>
+              <CustomCursor />
+              <PageIntro />
+              {children}
+            </PointerProvider>
+          </LenisProvider>
+        </ThemeProvider>
         <SpeedInsights />
         <Analytics />
       </body>

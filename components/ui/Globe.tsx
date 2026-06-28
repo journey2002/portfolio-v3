@@ -2,6 +2,7 @@
 
 import createGlobe from "cobe";
 import { useEffect, useRef, useState } from "react";
+import { useTheme } from "@/components/ui/ThemeProvider";
 
 declare module "cobe" {
   interface COBEOptions {
@@ -27,6 +28,7 @@ type GlobeProps = {
  */
 export default function Globe({ className = "", size = 240 }: GlobeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { theme } = useTheme();
   // Mount the WebGL canvas only when motion is allowed and we're not on a small
   // screen — otherwise the static marker below is the permanent treatment.
   const [enabled, setEnabled] = useState(false);
@@ -51,6 +53,9 @@ export default function Globe({ className = "", size = 240 }: GlobeProps) {
 
     let isVisible = false;
     let hasPainted = false;
+    // Light theme: a pale globe on the white tile; dark theme: the original
+    // moody indigo sphere.
+    const light = theme === "light";
     let globe: { destroy: () => void };
     try {
       globe = createGlobe(canvas, {
@@ -59,13 +64,13 @@ export default function Globe({ className = "", size = 240 }: GlobeProps) {
         height: size * dpr,
         phi: 0,
         theta: 0.25,
-        dark: 1,
-        diffuse: 1.2,
+        dark: light ? 0 : 1,
+        diffuse: light ? 1.6 : 1.2,
         mapSamples: 12000,
-        mapBrightness: 5,
-        baseColor: [0.28, 0.28, 0.32],
+        mapBrightness: light ? 8 : 5,
+        baseColor: light ? [0.82, 0.82, 0.88] : [0.28, 0.28, 0.32],
         markerColor: [0.65, 0.55, 1.0],
-        glowColor: [0.45, 0.4, 0.85],
+        glowColor: light ? [0.92, 0.9, 1.0] : [0.45, 0.4, 0.85],
         markers: [
           // Bangkok
           { location: [13.7563, 100.5018], size: 0.06 },
@@ -100,7 +105,7 @@ export default function Globe({ className = "", size = 240 }: GlobeProps) {
       observer.disconnect();
       globe.destroy();
     };
-  }, [enabled, size]);
+  }, [enabled, size, theme]);
 
   return (
     <div

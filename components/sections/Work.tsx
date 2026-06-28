@@ -153,10 +153,10 @@ export default function Work() {
           className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end"
         >
           <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-neutral-500">
-              <span className="text-neutral-300">[02]</span> &nbsp; Selected work
+            <p className="text-xs uppercase tracking-[0.25em] text-ink-subtle">
+              <span className="text-ink">[02]</span> &nbsp; Selected work
             </p>
-            <h2 className="mt-6 font-serif text-4xl font-bold leading-tight text-white sm:text-5xl md:text-6xl">
+            <h2 className="mt-6 font-serif text-4xl font-bold leading-tight text-ink-strong sm:text-5xl md:text-6xl">
               <SplitText
                 text="Things I've"
                 as="span"
@@ -222,7 +222,7 @@ export default function Work() {
         {/* Bottom rail — counter shifts with scroll */}
         <motion.div
           style={{ y: counterY }}
-          className="mt-16 flex items-center justify-between text-[10px] uppercase tracking-[0.35em] text-neutral-600"
+          className="mt-16 flex items-center justify-between text-[10px] uppercase tracking-[0.35em] text-ink-faint"
         >
           <span>
             {view === "index"
@@ -300,7 +300,7 @@ function IndexView({
               className="group relative flex cursor-pointer items-center gap-4 py-6 sm:gap-6 sm:py-8"
             >
               {/* Index numeral */}
-              <span className="w-7 shrink-0 text-xs tabular-nums tracking-[0.3em] text-neutral-600 sm:w-12">
+              <span className="w-7 shrink-0 text-xs tabular-nums tracking-[0.3em] text-ink-faint sm:w-12">
                 {String(i + 1).padStart(2, "0")}
               </span>
 
@@ -310,7 +310,7 @@ function IndexView({
                 style={{
                   background: lit
                     ? `linear-gradient(${p.from}, ${p.to})`
-                    : "rgba(255,255,255,0.08)",
+                    : "var(--hairline)",
                 }}
               />
 
@@ -322,7 +322,7 @@ function IndexView({
                   className={`font-serif text-2xl font-semibold tracking-tight transition-colors duration-300 sm:text-4xl md:text-5xl ${
                     lit
                       ? "text-transparent"
-                      : "text-neutral-500 group-hover:text-neutral-300"
+                      : "text-ink-subtle group-hover:text-ink"
                   }`}
                   style={
                     lit
@@ -339,7 +339,7 @@ function IndexView({
                 <motion.div
                   animate={{ x: isActive ? 16 : 0 }}
                   transition={{ type: "spring", stiffness: 240, damping: 26 }}
-                  className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] uppercase tracking-[0.25em] text-neutral-600"
+                  className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] uppercase tracking-[0.25em] text-ink-faint"
                 >
                   <span>{p.caption}</span>
                   <span className="hidden h-px w-6 bg-hairline sm:block" />
@@ -358,7 +358,7 @@ function IndexView({
               >
                 <ArrowUpRight
                   className={`h-5 w-5 sm:h-6 sm:w-6 ${
-                    isActive ? "" : "text-neutral-600"
+                    isActive ? "" : "text-ink-faint"
                   }`}
                   strokeWidth={1.5}
                 />
@@ -395,14 +395,14 @@ function IndexView({
                       />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm leading-relaxed text-neutral-400">
+                      <p className="text-sm leading-relaxed text-ink-muted">
                         {p.description}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {p.tags.map((t) => (
                           <span
                             key={t}
-                            className="rounded-full border border-hairline px-3 py-1 text-[10px] uppercase tracking-wider text-neutral-500"
+                            className="rounded-full border border-hairline px-3 py-1 text-[10px] uppercase tracking-wider text-ink-subtle"
                           >
                             {t}
                           </span>
@@ -426,7 +426,14 @@ function IndexView({
 
 const CARD_W = 300;
 const CARD_H = 392;
+const CARD_DEPTH = 34; // visible thickness of the slab's side faces
 const EDGE = 28; // gap between the cursor and the card
+
+// A soft iridescent sheen over a dark base — a subtle prism reflection on the
+// card's thick side, rather than a full RGB rainbow. Brightest mid-height so it
+// reads as a glint catching the edge.
+const PRISM_EDGE =
+  "linear-gradient(180deg, rgba(150,185,255,0) 0%, rgba(150,185,255,0.5) 24%, rgba(186,150,245,0.58) 50%, rgba(120,205,235,0.46) 76%, rgba(150,185,255,0) 100%), #141419";
 
 type Side = "left" | "right";
 
@@ -456,6 +463,13 @@ function FloatingPreview({
   );
   const coverShift = useTransform(bank, [-14, 14], [12, -12]);
 
+  // Velocity yaw — the card faces forward at rest and turns into its motion as
+  // it moves, which is what exposes the thick side. (No baked-in rest tilt.)
+  const yaw = useSpring(
+    useTransform(vx, [-2200, 2200], [-16, 16], { clamp: true }),
+    { stiffness: 200, damping: 26 }
+  );
+
   const [vp, setVp] = useState(() => ({
     w: typeof window === "undefined" ? 1280 : window.innerWidth,
     h: typeof window === "undefined" ? 800 : window.innerHeight,
@@ -477,6 +491,14 @@ function FloatingPreview({
   const flippingRef = useRef(false);
   const offsetX = useMotionValue(offsetFor(initialSide));
   const flip = useMotionValue(0); // rotateY, in degrees
+
+  // Net Y rotation: the velocity yaw, plus the flip's swing. The yaw fades to
+  // nothing at the flip's edge-on midpoint (×settle) so the side-swap still
+  // hides cleanly, then eases back. At rest this is 0 — the card faces forward.
+  const rotateYTotal = useTransform([flip, yaw], ([f, y]: number[]) => {
+    const settle = 1 - Math.min(1, Math.abs(f) / 90);
+    return f + y * settle;
+  });
 
   // Watch the cursor (dead-zone around centre to avoid flicker) and, when it
   // crosses to the other half, run a 3D flip: turn edge-on, swap sides while
@@ -518,18 +540,42 @@ function FloatingPreview({
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ type: "spring", stiffness: 260, damping: 26 }}
     >
-      {/* Perspective stage so the side-switch reads as a real 3D flip */}
+      {/* Perspective stage so the tilt, thickness and flip read in real 3D. */}
       <div className="[perspective:1200px]">
         <motion.div
-          style={{ rotateZ: bank, rotateY: flip }}
-          className="origin-center [transform-style:preserve-3d]"
+          style={{ rotateZ: bank, rotateY: rotateYTotal }}
+          className="relative w-[300px] origin-center [transform-style:preserve-3d]"
         >
+          {/* Thick sides — real faces extruded back from each vertical edge, so
+              whichever edge turns away exposes a glowing prism thickness. The
+              opaque front face occludes the side that isn't showing. Inset from
+              the rounded corners so they sit along the straight edge. */}
+          <div
+            aria-hidden
+            className="absolute inset-y-4 left-0 origin-left rounded-l-sm"
+            style={{
+              width: CARD_DEPTH,
+              transform: `rotateY(90deg)`,
+              background: PRISM_EDGE,
+              boxShadow: "inset 0 0 18px rgba(0,0,0,0.55)",
+            }}
+          />
+          <div
+            aria-hidden
+            className="absolute inset-y-4 right-0 origin-right rounded-r-sm"
+            style={{
+              width: CARD_DEPTH,
+              transform: `rotateY(-90deg)`,
+              background: PRISM_EDGE,
+              boxShadow: "inset 0 0 18px rgba(0,0,0,0.55)",
+            }}
+          />
           <motion.div
             key={index}
             initial={{ opacity: 0.35, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="w-[300px] overflow-hidden rounded-2xl border border-white/15 bg-surface shadow-[0_40px_90px_-25px_rgba(0,0,0,0.85)]"
+            className="relative w-full overflow-hidden rounded-2xl border border-[var(--ring)] bg-surface shadow-[0_40px_90px_-25px_rgba(0,0,0,0.85)]"
           >
             <div className="relative h-[188px] overflow-hidden">
               <motion.div
@@ -552,14 +598,14 @@ function FloatingPreview({
               }}
             />
             <div className="p-5">
-              <p className="text-[10px] uppercase tracking-[0.3em] text-neutral-500">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-ink-subtle">
                 {project.caption}
               </p>
-              <h3 className="mt-2 font-serif text-xl font-semibold text-white">
+              <h3 className="mt-2 font-serif text-xl font-semibold text-ink-strong">
                 {project.title}
               </h3>
               <p
-                className="mt-2 text-xs leading-relaxed text-neutral-400"
+                className="mt-2 text-xs leading-relaxed text-ink-muted"
                 style={{
                   display: "-webkit-box",
                   WebkitLineClamp: 3,
@@ -573,7 +619,7 @@ function FloatingPreview({
                 {project.tags.slice(0, 3).map((t) => (
                   <span
                     key={t}
-                    className="rounded-full border border-hairline px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-neutral-400"
+                    className="rounded-full border border-hairline px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-ink-muted"
                   >
                     {t}
                   </span>

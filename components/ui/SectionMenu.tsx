@@ -78,7 +78,7 @@ export default function SectionMenu() {
                 tabIndex={open ? 0 : -1}
                 data-cursor-hover
                 onClick={handleLinkClick}
-                className="block whitespace-nowrap rounded-full border border-hairline bg-[#0c0c0c]/90 px-4 py-2 text-sm text-neutral-300 backdrop-blur-md transition-colors duration-200 hover:border-white/20 hover:text-white"
+                className="block whitespace-nowrap rounded-full border border-hairline bg-panel-strong px-4 py-2 text-sm text-ink backdrop-blur-md transition-colors duration-200 hover:border-[var(--ring)] hover:text-ink-strong"
               >
                 {section.label}
               </a>
@@ -92,7 +92,7 @@ export default function SectionMenu() {
         aria-label={open ? "Close section menu" : "Open section menu"}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="group relative flex h-12 w-12 items-center justify-center rounded-full border border-hairline bg-[#0c0c0c]/90 text-neutral-300 backdrop-blur-md transition-[border-color,color,transform] duration-200 hover:border-white/20 hover:text-white active:scale-95"
+        className="group relative flex h-12 w-12 items-center justify-center rounded-full border border-hairline bg-panel-strong text-ink backdrop-blur-md transition-[border-color,color,transform] duration-200 hover:border-[var(--ring)] hover:text-ink-strong active:scale-95"
       >
         <span className="pointer-events-none absolute -inset-px rounded-full bg-accent-gradient opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-40" />
         <span className="relative inline-flex h-5 w-5">
