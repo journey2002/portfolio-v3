@@ -238,7 +238,7 @@ export default function Contact() {
         >
           <span
             style={{
-              WebkitTextStroke: "1px var(--hairline)",
+              WebkitTextStroke: "1px var(--wordmark-stroke)",
               color: "transparent",
             }}
           >

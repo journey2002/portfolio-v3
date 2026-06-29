@@ -11,6 +11,7 @@ import {
 } from "framer-motion";
 import { LayoutGrid, List } from "lucide-react";
 import { memo, useEffect } from "react";
+import { useTheme } from "@/components/ui/ThemeProvider";
 
 export type WorkView = "index" | "gallery";
 
@@ -32,6 +33,14 @@ function ViewToggleBase({
   onChange: (view: WorkView) => void;
 }) {
   const isGallery = view === "gallery";
+  const { theme } = useTheme();
+  // The "off" (index) track reads as a neutral groove in EACH theme: a dark
+  // slate on the dark UI, a light slate on the warm-white page. A fixed dark
+  // grey here looked like a leftover dark-theme element once the page went
+  // light. framer animates backgroundColor, so we feed it a concrete colour
+  // per theme rather than a CSS var it can't interpolate.
+  const offTrack =
+    theme === "light" ? "rgba(212,212,216,1)" : "rgba(82,82,82,1)";
 
   // Knob position is a motion value so we can derive a squash from its speed:
   // the faster it travels, the more it stretches along X, then it settles.
@@ -114,9 +123,7 @@ function ViewToggleBase({
       <motion.span
         className="relative h-5 w-9 rounded-full"
         animate={{
-          backgroundColor: isGallery
-            ? "rgba(99,102,241,0.45)"
-            : "rgba(82,82,82,1)",
+          backgroundColor: isGallery ? "rgba(99,102,241,0.45)" : offTrack,
         }}
         transition={{ duration: 0.3 }}
       >

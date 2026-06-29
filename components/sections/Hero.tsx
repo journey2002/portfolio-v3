@@ -284,7 +284,12 @@ export default function Hero() {
     target: sectionRef,
     offset: ["start start", "end start"],
   });
-  const uiOpacity = useTransform(scrollYProgress, [0, 0.55], [1, 0]);
+  // One shared exit curve for EVERY foreground layer — the framed content, the
+  // side panels, and the bottom chrome (status bar + scroll cue) — so they all
+  // dissolve in parallel at matching opacity, fully gone by 90% of the hero's
+  // scroll-out. (The bottom chrome used to fall on a faster curve; matching the
+  // rate is what makes the whole composition fade away together.)
+  const exitOpacity = useTransform(scrollYProgress, [0, 0.9], [1, 0]);
   const contentY = useTransform(scrollYProgress, [0, 1], [0, -110]);
   const auroraScale = useTransform(scrollYProgress, [0, 1], [1, 1.4]);
   const auroraY = useTransform(scrollYProgress, [0, 1], [0, 160]);
@@ -442,7 +447,7 @@ export default function Hero() {
     <section
       id="top"
       ref={sectionRef}
-      className="relative flex min-h-[max(100vh,60rem)] items-center justify-center overflow-hidden px-5 py-16 sm:px-10"
+      className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-16 sm:px-10"
     >
       {/* ── Background: dot grid + cursor-glow, aurora, accents, dust ───────────── */}
       <motion.div style={{ y: gridY }} className="absolute inset-0">
@@ -491,10 +496,18 @@ export default function Hero() {
       {/* ── Decorative workspace chrome (non-interactive, fades on scroll) ──── */}
       <motion.div
         aria-hidden
-        style={{ opacity: uiOpacity }}
+        style={{ opacity: exitOpacity }}
         className="pointer-events-none absolute inset-0 z-20 hidden lg:block"
       >
         <InspectorPanel />
+      </motion.div>
+      {/* Scroll cue is bottom-anchored — it scrolls with the hero and fades on
+          the shared `exitOpacity` curve, in lockstep with the rest of the hero. */}
+      <motion.div
+        aria-hidden
+        style={{ opacity: exitOpacity }}
+        className="pointer-events-none absolute inset-0 z-20 hidden lg:block"
+      >
         <ScrollCue />
       </motion.div>
 
@@ -502,7 +515,7 @@ export default function Hero() {
       {/* The wrapper owns the scroll-driven opacity; the panel inside owns its
           entrance + the pointer events for dragging. */}
       <motion.div
-        style={{ opacity: uiOpacity }}
+        style={{ opacity: exitOpacity }}
         className="pointer-events-none absolute inset-0 z-20 hidden lg:block"
       >
         <LayersPanel
@@ -520,7 +533,7 @@ export default function Hero() {
           screens); dragging a frame corner expands --fw out to FRAME_MAX_W. */}
       <motion.div
         ref={frameWrapRef}
-        style={{ opacity: uiOpacity, width: "var(--fw, min(64rem, 100%))" }}
+        style={{ opacity: exitOpacity, width: "var(--fw, min(64rem, 100%))" }}
         className="relative z-10"
       >
         {/* Top ruler — sits above the frame, spanning its width */}
@@ -593,12 +606,13 @@ export default function Hero() {
       </motion.div>
 
       {/* ── App-style status bar ──────────────────────────────────────────── */}
-      {/* Split in two: the outer wrapper owns the scroll-driven opacity (a
-          controlled MotionValue), the inner owns the entrance fade + slide. On
-          a single element the controlled `style.opacity` would swallow the
+      {/* Sits at the section's bottom edge and scrolls away with the hero. Split
+          in two: the outer wrapper owns the scroll-driven opacity (the shared
+          `exitOpacity` curve), the inner owns the entrance fade + slide. On a
+          single element the controlled `style.opacity` would swallow the
           entrance's opacity keyframe, so the bar would slide in without fading. */}
       <motion.div
-        style={{ opacity: uiOpacity }}
+        style={{ opacity: exitOpacity }}
         className="absolute inset-x-0 bottom-0 z-20"
       >
        <motion.div
@@ -962,8 +976,8 @@ function ScrollCue() {
     >
       <span className="flex flex-col items-center gap-3">
         Scroll
-        <span className="relative h-8 w-px overflow-hidden bg-neutral-800">
-          <span className="animate-scroll-line absolute inset-x-0 top-0 h-full bg-gradient-to-b from-transparent via-white to-transparent" />
+        <span className="relative h-8 w-px overflow-hidden bg-ink-faint/40">
+          <span className="animate-scroll-line absolute inset-x-0 top-0 h-full bg-gradient-to-b from-transparent via-ink-strong to-transparent" />
         </span>
       </span>
     </a>

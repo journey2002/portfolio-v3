@@ -17,6 +17,7 @@ import { Layers, PenTool, MousePointer2, type LucideIcon } from "lucide-react";
 import SectionLabel from "@/components/ui/SectionLabel";
 import SplitText from "@/components/ui/SplitText";
 import { useMarqueeSlowOnHover } from "@/components/ui/useMarqueeSlowOnHover";
+import { useTheme } from "@/components/ui/ThemeProvider";
 
 const TICKER = [
   "Figma",
@@ -102,6 +103,15 @@ type Feature = {
 function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   const ref = useRef<HTMLDivElement>(null);
 
+  // The rim/face reflection is a white studio light on dark, but a white glare
+  // is invisible on the light theme's white card — so on light it becomes a
+  // brand-purple light (indigo→violet). Only the colours change; the geometry,
+  // tilt response and ramps below are shared. The theme-varying colours are fed
+  // into the motion templates as interpolated strings (they update on toggle,
+  // and any stale frame self-corrects on the next pointer move — hover-only).
+  const { theme } = useTheme();
+  const isLight = theme === "light";
+
   // Pointer position within the card, normalised to -0.5..0.5.
   const px = useMotionValue(0);
   const py = useMotionValue(0);
@@ -164,7 +174,12 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   // The "64% 64%" size = how far the bell spreads along the rim (bigger =
   // softer/wider); lightA * 1.6 = brightness ramp.
   const glareOpacity = useTransform(lightA, (a) => Math.min(1, a * 1.6));
-  const glare = useMotionTemplate`radial-gradient(64% 64% at ${lightPosX}% ${lightPosY}%, rgba(255,255,255,1) 0%, rgba(255,255,255,1) 6%, rgba(245,249,255,0.9) 15%, rgba(222,233,255,0.74) 26%, rgba(198,216,255,0.57) 37%, rgba(178,198,253,0.41) 48%, rgba(163,180,249,0.27) 60%, rgba(154,167,246,0.15) 72%, rgba(150,160,245,0.06) 84%, transparent 96%)`;
+  // Falloff stops: a near-white hot core easing through icy blue on dark; a
+  // bright violet core easing into saturated indigo→violet on light.
+  const glareStops = isLight
+    ? "rgba(243,240,255,1) 0%, rgba(237,233,254,0.98) 6%, rgba(221,214,254,0.86) 15%, rgba(196,181,253,0.7) 26%, rgba(167,139,250,0.55) 37%, rgba(139,92,246,0.4) 48%, rgba(124,58,237,0.27) 60%, rgba(124,58,237,0.15) 72%, rgba(139,92,246,0.06) 84%, transparent 96%"
+    : "rgba(255,255,255,1) 0%, rgba(255,255,255,1) 6%, rgba(245,249,255,0.9) 15%, rgba(222,233,255,0.74) 26%, rgba(198,216,255,0.57) 37%, rgba(178,198,253,0.41) 48%, rgba(163,180,249,0.27) 60%, rgba(154,167,246,0.15) 72%, rgba(150,160,245,0.06) 84%, transparent 96%";
+  const glare = useMotionTemplate`radial-gradient(64% 64% at ${lightPosX}% ${lightPosY}%, ${glareStops})`;
   // The same glare on a blurred layer behind the card, so the lit edge spills
   // more light past the rim into the dark — directional, never a centred blob
   // (the mask pins it to the rising edge; tilt gates it away at rest).
@@ -179,7 +194,13 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   // centre; the `* e` terms = how much extra glow builds toward the edge.
   const glareGlowA = useTransform(edgeBoost, (e) => 0.55 + e * 0.4);
   const glareGlowPx = useTransform(edgeBoost, (e) => 42 + e * 34);
-  const glareGlow = useMotionTemplate`drop-shadow(0 0 6px rgba(255,255,255,1)) drop-shadow(0 0 22px rgba(210,230,255,0.9)) drop-shadow(0 0 ${glareGlowPx}px rgba(190,212,255,${glareGlowA}))`;
+  // The two tight inner shadows are static; the wide outer bloom carries the
+  // motion values. Violet bloom on light, icy-white on dark.
+  const glowInner = isLight
+    ? "drop-shadow(0 0 6px rgba(196,181,253,0.95)) drop-shadow(0 0 22px rgba(139,92,246,0.7))"
+    : "drop-shadow(0 0 6px rgba(255,255,255,1)) drop-shadow(0 0 22px rgba(210,230,255,0.9))";
+  const glowBloomRGB = isLight ? "124,58,237" : "190,212,255";
+  const glareGlow = useMotionTemplate`${glowInner} drop-shadow(0 0 ${glareGlowPx}px rgba(${glowBloomRGB},${glareGlowA}))`;
 
   // Prism dispersion — past a certain tilt the lit edge splits the light into
   // a faint spectrum, the way a glass/crystal edge throws a rainbow when it
@@ -207,7 +228,9 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   const glintOffY = useTransform(rotateX, (v) => -v * 1.3);
   const glintA = useTransform(lightA, (a) => a * 0.32);
   const glintIce = useTransform(lightA, (a) => a * 0.18);
-  const glintShadow = useMotionTemplate`inset ${glintOffX}px ${glintOffY}px 9px -6px rgba(255,255,255,${glintA}), inset ${glintOffX}px ${glintOffY}px 14px -8px rgba(186,224,255,${glintIce})`;
+  const glintRGB = isLight ? "167,139,250" : "255,255,255";
+  const glintIceRGB = isLight ? "139,92,246" : "186,224,255";
+  const glintShadow = useMotionTemplate`inset ${glintOffX}px ${glintOffY}px 9px -6px rgba(${glintRGB},${glintA}), inset ${glintOffX}px ${glintOffY}px 14px -8px rgba(${glintIceRGB},${glintIce})`;
 
   // Inner edge glow — a soft glass glow hugging the INSIDE of the rim. It
   // lives on the hover layer (gone at rest) and its strength rides the tilt
@@ -216,7 +239,8 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   // a * 0.18 term = how much it brightens with tilt; the 24px blur = how soft
   // and deep it reaches inward.
   const innerGlowA = useTransform(lightA, (a) => 0.07 + a * 0.18);
-  const innerGlow = useMotionTemplate`inset 0 0 24px -6px rgba(206,224,255,${innerGlowA})`;
+  const innerGlowRGB = isLight ? "167,139,250" : "206,224,255";
+  const innerGlow = useMotionTemplate`inset 0 0 24px -6px rgba(${innerGlowRGB},${innerGlowA})`;
 
   // Face sheen — a soft diagonal streak of light skimming the surface
   // (replacing the old radial pool). The gradient itself is FIXED; the streak
@@ -230,6 +254,10 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   const sheenY = useTransform(rotateX, [-6, 6], [-26, 26]);
   const sheenRotate = useTransform(rotateY, [-6, 6], [6, -6]);
   const sheenOpacity = useTransform(lightA, (a) => 0.5 + a * 0.5);
+  // The diagonal face streak: a white skim on dark, a violet skim on light.
+  const faceSheen = isLight
+    ? "linear-gradient(116deg, transparent 34%, rgba(139,92,246,0.16) 50%, transparent 66%)"
+    : "linear-gradient(116deg, transparent 34%, rgba(255,255,255,0.12) 50%, transparent 66%)";
 
   function handleMove(e: React.PointerEvent<HTMLDivElement>) {
     const el = ref.current;
@@ -298,7 +326,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
         onPointerMove={handleMove}
         onPointerLeave={handleLeave}
         style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-        className="relative flex h-full flex-col gap-5 rounded-2xl border border-white/[0.08] bg-[var(--feature-card)] p-7 backdrop-blur-xl transition-colors duration-500 group-hover:border-white/20"
+        className="relative flex h-full flex-col gap-5 rounded-2xl border border-hairline bg-[var(--feature-card)] p-7 backdrop-blur-xl transition-colors duration-500 group-hover:border-[var(--feature-border-hover)]"
       >
         {/* Surface finish — the matte-metal layers, clipped to the rounded
             card. overflow-hidden lives here (not on the card) so the card
@@ -315,10 +343,10 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
           {/* Metallic volume — the faintest vertical shading toward the base.
               No white light on the face: the surface stays truly matte at rest
               so all of the glass lives on the hover layers. */}
-          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-black/20" />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-[var(--feature-shade)]" />
           {/* Corner vignette — edges fall gently into shadow so the face
               reads as a solid sheet, not a flat digital fill. */}
-          <div className="absolute inset-0 bg-[radial-gradient(150%_140%_at_50%_55%,transparent_52%,rgba(0,0,0,0.26)_100%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(150%_140%_at_50%_55%,transparent_52%,var(--feature-vignette)_100%)]" />
           {/* Matte micro-grain — fine noise that takes the gloss off the
               surface; per-card seed so the sheets aren't clones. */}
           <div
@@ -338,8 +366,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
                 y: sheenY,
                 rotate: sheenRotate,
                 opacity: sheenOpacity,
-                backgroundImage:
-                  "linear-gradient(116deg, transparent 34%, rgba(255,255,255,0.12) 50%, transparent 66%)",
+                backgroundImage: faceSheen,
                 WebkitMaskImage:
                   "radial-gradient(62% 78% at 50% 50%, #000 28%, transparent 80%)",
                 maskImage:
@@ -417,11 +444,11 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
         {/* Soft highlight skimming the top edge — diffuse, not a glossy line */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 blur-[1px] transition-opacity duration-700 group-hover:opacity-100"
+          className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[var(--feature-sheen)] to-transparent opacity-0 blur-[1px] transition-opacity duration-700 group-hover:opacity-100"
         />
 
         {/* Index */}
-        <span className="text-[10px] uppercase tracking-[0.4em] text-neutral-600 transition-transform duration-700 ease-out group-hover:[transform:translateZ(12px)]">
+        <span className="text-[10px] uppercase tracking-[0.4em] text-ink-faint transition-transform duration-700 ease-out group-hover:[transform:translateZ(12px)]">
           0{index + 1}
         </span>
 
@@ -433,10 +460,10 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
           />
         </div>
 
-        <h3 className="font-serif text-2xl font-semibold text-white transition-transform duration-700 ease-out group-hover:[transform:translateZ(30px)]">
+        <h3 className="font-serif text-2xl font-semibold text-ink-strong transition-transform duration-700 ease-out group-hover:[transform:translateZ(30px)]">
           {feature.label}
         </h3>
-        <p className="text-sm leading-relaxed text-neutral-400 transition-transform duration-700 ease-out group-hover:[transform:translateZ(16px)]">
+        <p className="text-sm leading-relaxed text-ink-muted transition-transform duration-700 ease-out group-hover:[transform:translateZ(16px)]">
           {feature.description}
         </p>
 
@@ -449,7 +476,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
         <div className="mt-2 grid [transform-style:preserve-3d]">
           {/* Resting hint — kept to its own height so it sits at the top of the
               reserved zone rather than stretching across it. */}
-          <span className="col-start-1 row-start-1 flex h-fit items-center gap-4 text-[10px] uppercase tracking-[0.3em] text-neutral-600 transition-all duration-300 delay-300 group-hover:-translate-y-1 group-hover:opacity-0 group-hover:delay-0">
+          <span className="col-start-1 row-start-1 flex h-fit items-center gap-4 text-[10px] uppercase tracking-[0.3em] text-ink-faint transition-all duration-300 delay-300 group-hover:-translate-y-1 group-hover:opacity-0 group-hover:delay-0">
             <span className="block h-px w-6 bg-current" />
             Discipline
           </span>
@@ -459,7 +486,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
             {feature.tools.map((tool, t) => (
               <span
                 key={tool}
-                className={`inline-flex translate-y-3 items-center gap-2 rounded-full border border-indigo-accent/30 bg-black/40 px-3 py-1 text-[11px] font-medium tracking-wide text-neutral-200 opacity-0 transition-all duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-hover:duration-700 group-hover:[transform:translateY(0)_translateZ(30px)] ${CHIP_ENTER_DELAY[t] ?? ""}`}
+                className={`inline-flex translate-y-3 items-center gap-2 rounded-full border border-indigo-accent/30 bg-[var(--feature-chip)] px-3 py-1 text-[11px] font-medium tracking-wide text-ink opacity-0 transition-all duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-hover:duration-700 group-hover:[transform:translateY(0)_translateZ(30px)] ${CHIP_ENTER_DELAY[t] ?? ""}`}
               >
                 <span className="h-1 w-1 rotate-45 bg-accent-gradient" />
                 {tool}
@@ -562,16 +589,18 @@ export default function Stack() {
         </div>
       </div>
 
-      {/* Velocity-skewed marquee */}
-      <motion.div
+      {/* Velocity-skewed marquee. The parallax x-shift rides the inner skewed
+          track (below), NOT this container — otherwise the edge-fade overlays
+          slide left with the strip and the left edge loses its fade. This
+          container stays put so both fades stay welded to the visible edges. */}
+      <div
         ref={marqueeHoverRef}
-        style={{ x: marqueeX }}
         className="relative mt-16 flex overflow-hidden border-y border-hairline py-8"
       >
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-40 bg-gradient-to-r from-night via-night/80 to-transparent" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-40 bg-gradient-to-l from-night via-night/80 to-transparent" />
         <motion.div
-          style={{ skewX: skew }}
+          style={{ skewX: skew, x: marqueeX }}
           className="flex w-full origin-center"
         >
           <div className="animate-marquee flex shrink-0 items-center">
@@ -602,7 +631,7 @@ export default function Stack() {
             </div>
           </div>
         </motion.div>
-      </motion.div>
+      </div>
 
       {/* Feature grid */}
       <motion.div

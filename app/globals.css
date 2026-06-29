@@ -34,10 +34,33 @@
   --panel: rgba(11, 11, 13, 0.7);
   --panel-strong: rgba(12, 12, 12, 0.92);
 
-  /* Stack's feature cards stay a dark matte sheet in BOTH themes — their glare /
-     sheen / prism rim-light only reads on dark, so on light they become a dark
-     glass band rather than washing out. */
+  /* Stack's feature cards. The surface + all of its matte shading are themed:
+     a dark matte sheet on dark, a clean raised white card on light. The glare /
+     sheen / prism rim-light (hover-only) is white-based and reads best on dark;
+     on light it degrades to a subtle brightening, which is fine for a flourish. */
   --feature-card: rgba(17, 17, 17, 0.3);
+  --feature-shade: rgba(0, 0, 0, 0.2); /* bottom metallic falloff */
+  --feature-vignette: rgba(0, 0, 0, 0.26); /* corner darkening */
+  --feature-sheen: rgba(255, 255, 255, 0.2); /* top edge highlight (hover) */
+  --feature-chip: rgba(0, 0, 0, 0.4); /* tool-chip fill */
+  --feature-border-hover: rgba(255, 255, 255, 0.2);
+
+  /* Floating project preview (Work) — the cursor-flown card is extruded into a
+     real slab: its side faces show a prism glint over a base tone, and the card
+     casts its own drop shadow. Themed so the slab reads as a dark edge on dark
+     and as the pale thickness of a white card on light, instead of a jarring
+     dark strip when the card banks or flips. */
+  --prism-edge: linear-gradient(
+      180deg,
+      rgba(150, 185, 255, 0) 0%,
+      rgba(150, 185, 255, 0.5) 24%,
+      rgba(186, 150, 245, 0.58) 50%,
+      rgba(120, 205, 235, 0.46) 76%,
+      rgba(150, 185, 255, 0) 100%
+    ),
+    #141419;
+  --prism-edge-inset: inset 0 0 18px rgba(0, 0, 0, 0.55);
+  --prism-card-shadow: 0 40px 90px -25px rgba(0, 0, 0, 0.85);
 
   /* Lines + translucent fills (full color) */
   --hairline: rgba(255, 255, 255, 0.08);
@@ -81,6 +104,12 @@
   --glyph-halo: rgba(8, 8, 8, 0.92);
   --glyph-halo-soft: rgba(8, 8, 8, 0.7);
 
+  /* Giant footer wordmark — a hollow ghost stroke (Contact). Mirrors the old
+     hairline value on dark; the light theme overrides it with a noticeably
+     stronger stroke, since a thin dark line on the warm white otherwise reads
+     as nearly invisible. */
+  --wordmark-stroke: rgba(255, 255, 255, 0.08);
+
   /* Soft accent text (chrome labels / handwriting) — pale on dark so it reads
      as a tint; goes deep on light so it keeps contrast on the warm white. */
   --accent-soft: #c7d2fe; /* indigo-200 */
@@ -107,8 +136,29 @@
   --panel: rgba(255, 255, 255, 0.74);
   --panel-strong: rgba(252, 252, 251, 0.94);
 
-  /* A dark glass card on the warm-white page (see dark theme note above). */
-  --feature-card: rgba(20, 20, 24, 0.62);
+  /* A clean raised white card on the warm-white page (see dark theme note). The
+     matte shading goes near-flat so the surface doesn't read grey/dirty. */
+  --feature-card: rgba(255, 255, 255, 0.85);
+  --feature-shade: rgba(15, 23, 42, 0.05);
+  --feature-vignette: rgba(15, 23, 42, 0.05);
+  --feature-sheen: rgba(0, 0, 0, 0.1);
+  --feature-chip: rgba(99, 102, 241, 0.1);
+  --feature-border-hover: rgba(0, 0, 0, 0.16);
+
+  /* See dark note. The slab base goes pale, the sheen and inset soften, and the
+     drop shadow lightens — so the exposed edge reads as a white card's thickness
+     rather than a dark slab against the warm white. */
+  --prism-edge: linear-gradient(
+      180deg,
+      rgba(120, 150, 235, 0) 0%,
+      rgba(120, 150, 235, 0.3) 24%,
+      rgba(150, 110, 225, 0.34) 50%,
+      rgba(90, 180, 215, 0.28) 76%,
+      rgba(120, 150, 235, 0) 100%
+    ),
+    #e7e8ee;
+  --prism-edge-inset: inset 0 0 14px rgba(15, 23, 42, 0.14);
+  --prism-card-shadow: 0 40px 80px -30px rgba(30, 30, 60, 0.3);
 
   /* Lines + fills go to dark-alpha on light */
   --hairline: rgba(0, 0, 0, 0.1);
@@ -150,6 +200,10 @@
   --glyph-crest: #7c3aed;
   --glyph-halo: rgba(246, 245, 243, 0.95);
   --glyph-halo-soft: rgba(246, 245, 243, 0.75);
+
+  /* Stronger than the dark equivalent so the hollow wordmark stays legible on
+     the warm white instead of washing out to a barely-there outline. */
+  --wordmark-stroke: rgba(0, 0, 0, 0.2);
 
   --accent-soft: #4f46e5; /* indigo-600 */
   --accent-soft-2: #7c3aed; /* violet-600 */

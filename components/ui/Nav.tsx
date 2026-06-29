@@ -104,8 +104,9 @@ function ProgressRing({ w, h }: { w: number; h: number }) {
           <stop offset="100%" stopColor="#a855f7" />
         </linearGradient>
       </defs>
-      {/* Faint full track so it reads as a complete ring */}
-      <rect {...common} stroke="rgba(255,255,255,0.08)" strokeWidth={sw} />
+      {/* Faint full track so it reads as a complete ring — themed so it stays
+          visible on the warm-white page (a hardcoded white was invisible). */}
+      <rect {...common} stroke="var(--hairline)" strokeWidth={sw} />
       {/* Progress arc body (full opacity). drop-shadow filter removed — it
           forced a costly filter pass on every scroll tick. */}
       {body > 0 && (
@@ -228,6 +229,8 @@ export default function Nav() {
   const [menuOpen, setMenuOpen] = useState(false);
   // Tracks the section currently in view so the mobile menu can mark it.
   const [activeSection, setActiveSection] = useState("");
+  // The pill only visibly shrinks at md+ (the link row + CTA are desktop-only).
+  const [isDesktop, setIsDesktop] = useState(false);
 
   const navRef = useRef<HTMLElement | null>(null);
   const lastY = useRef(0);
@@ -252,6 +255,10 @@ export default function Nav() {
 
   // Expanded near the top, while scrolling up, or after a hover (until next scroll-down)
   const isCollapsed = collapsed && !userExpanded;
+  // On desktop the shrunk pill drops to just the logo, so the theme toggle
+  // collapses with it. On mobile it stays — the slide-out menu has no toggle,
+  // so this is the only way to switch themes there.
+  const hideToggle = isDesktop && isCollapsed;
 
   // Close mobile menu when the route changes
   useEffect(() => {
@@ -326,6 +333,15 @@ export default function Nav() {
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Track the md breakpoint so the toggle only collapses where the pill does.
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
   }, []);
 
   // Measure the header so the progress ring traces its real (changing) shape
@@ -472,9 +488,22 @@ export default function Nav() {
             </motion.a>
           </motion.div>
 
-          {/* Theme switch — sits at the right end of the pill, always visible
-              (outside the collapsible content) on both desktop and mobile. */}
-          <ThemeToggle className="ml-3" />
+          {/* Theme switch — sits at the right end of the pill. On desktop it
+              collapses away with the rest when the pill shrinks; on mobile it
+              stays put (always visible). overflow:clip lets the hover glow bleed
+              past the edge while the width animates to 0. */}
+          <motion.div
+            animate={{
+              width: hideToggle ? 0 : "auto",
+              opacity: hideToggle ? 0 : 1,
+              marginLeft: hideToggle ? 0 : 12,
+            }}
+            transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] as const }}
+            style={{ overflow: "clip", overflowClipMargin: "24px" }}
+            className="relative z-10 flex shrink-0 items-center"
+          >
+            <ThemeToggle />
+          </motion.div>
 
           {/* Hairline divider between the brand and the toggle (mobile only) */}
           <span aria-hidden className="ml-3 h-5 w-px bg-[var(--ring)] md:hidden" />

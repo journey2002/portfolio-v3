@@ -429,11 +429,11 @@ const CARD_H = 392;
 const CARD_DEPTH = 34; // visible thickness of the slab's side faces
 const EDGE = 28; // gap between the cursor and the card
 
-// A soft iridescent sheen over a dark base — a subtle prism reflection on the
+// A soft iridescent sheen over a base tone — a subtle prism reflection on the
 // card's thick side, rather than a full RGB rainbow. Brightest mid-height so it
-// reads as a glint catching the edge.
-const PRISM_EDGE =
-  "linear-gradient(180deg, rgba(150,185,255,0) 0%, rgba(150,185,255,0.5) 24%, rgba(186,150,245,0.58) 50%, rgba(120,205,235,0.46) 76%, rgba(150,185,255,0) 100%), #141419";
+// reads as a glint catching the edge. Base/inset/shadow are themed (see
+// --prism-* in globals.css) so the slab stays dark on dark but turns into a pale
+// white-card edge on light.
 
 type Side = "left" | "right";
 
@@ -556,8 +556,8 @@ function FloatingPreview({
             style={{
               width: CARD_DEPTH,
               transform: `rotateY(90deg)`,
-              background: PRISM_EDGE,
-              boxShadow: "inset 0 0 18px rgba(0,0,0,0.55)",
+              background: "var(--prism-edge)",
+              boxShadow: "var(--prism-edge-inset)",
             }}
           />
           <div
@@ -566,8 +566,8 @@ function FloatingPreview({
             style={{
               width: CARD_DEPTH,
               transform: `rotateY(-90deg)`,
-              background: PRISM_EDGE,
-              boxShadow: "inset 0 0 18px rgba(0,0,0,0.55)",
+              background: "var(--prism-edge)",
+              boxShadow: "var(--prism-edge-inset)",
             }}
           />
           <motion.div
@@ -575,7 +575,8 @@ function FloatingPreview({
             initial={{ opacity: 0.35, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="relative w-full overflow-hidden rounded-2xl border border-[var(--ring)] bg-surface shadow-[0_40px_90px_-25px_rgba(0,0,0,0.85)]"
+            style={{ boxShadow: "var(--prism-card-shadow)" }}
+            className="relative w-full overflow-hidden rounded-2xl border border-[var(--ring)] bg-surface"
           >
             <div className="relative h-[188px] overflow-hidden">
               <motion.div
