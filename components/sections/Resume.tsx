@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { motion, useInView, type Variants } from "framer-motion";
 import NumberFlow from "@number-flow/react";
 import { Balancer } from "react-wrap-balancer";
@@ -598,11 +598,11 @@ function StatsStrip() {
               <span className="text-[10px] uppercase tracking-[0.35em] text-ink-faint">
                 {stat.label}
               </span>
-              {/* min-h pins every value box to the same height regardless of
-                  whether it holds a NumberFlow counter (which renders taller
-                  than plain text) so the accent rule + note below stay aligned
-                  across all four columns. */}
-              <p className="mt-3 min-h-[1.55em] font-serif text-[3.25rem] font-bold leading-none tracking-tight text-ink-strong sm:text-[3.75rem]">
+              {/* Fixed height + centred so every value lands on the same
+                  vertical line whether it's a NumberFlow counter (which renders
+                  taller, with its digits padded down) or plain text — keeps the
+                  values, accent rules, and notes aligned across all columns. */}
+              <p className="mt-3 flex h-[1.6em] items-center font-serif text-[3.25rem] font-bold leading-none tracking-tight text-ink-strong sm:text-[3.75rem]">
                 {/* NumberFlow renders its digits in a shadow DOM, which
                     `background-clip: text` can't pierce — a gradient-clipped
                     wrapper leaves the digits transparent/invisible. `color`
@@ -761,6 +761,17 @@ function AchievementsGrid() {
 /* ------------------------------------------------------------------ */
 /*  Timeline (Experience / Education)                                  */
 /* ------------------------------------------------------------------ */
+
+/** Pull the start year + 2-digit end year out of a span like
+ *  "June 2023 — May 2024" → { start: "2023", endShort: "24" }. Feeds the
+ *  oversized "2023→24" watermark bled behind each timeline sheet. */
+function parseSpan(date: string) {
+  const years = date.match(/\d{4}/g) ?? [];
+  const start = years[0] ?? "";
+  const end = years[years.length - 1] ?? start;
+  return { start, endShort: end.slice(2) };
+}
+
 function TimelineSection({
   index,
   caption,
@@ -830,106 +841,170 @@ function TimelineSection({
           </div>
         </motion.div>
 
-        <div ref={ref} className="mt-16 flex flex-col gap-6">
+        <div ref={ref} className="relative mt-16 flex flex-col gap-14 sm:gap-12">
           {items.map((item, i) => (
-            <motion.article
+            <TimelineEntry
               key={i}
-              initial={{
-                opacity: 0,
-                y: 32,
-                x: i % 2 === 0 ? -24 : 24,
-                rotate: i % 2 === 0 ? -1.5 : 1.5,
-              }}
-              animate={
-                inView ? { opacity: 1, y: 0, x: 0, rotate: 0 } : undefined
-              }
-              transition={{
-                duration: 0.85,
-                delay: i * 0.12,
-                ease: [0.16, 1, 0.3, 1] as const,
-              }}
-              whileHover={{ y: -4 }}
-              className="group relative grid grid-cols-1 gap-6 rounded-2xl border border-hairline bg-surface/40 p-7 backdrop-blur transition-colors hover:border-indigo-accent/30 md:grid-cols-12 md:gap-10 md:p-10"
-            >
-              {/* Decorative corner ticks */}
-              <span
-                aria-hidden
-                className="absolute left-3 top-3 h-3 w-3 border-l border-t border-indigo-accent/40 transition-colors group-hover:border-indigo-accent/80"
-              />
-              <span
-                aria-hidden
-                className="absolute right-3 top-3 h-3 w-3 border-r border-t border-indigo-accent/40 transition-colors group-hover:border-indigo-accent/80"
-              />
-              <span
-                aria-hidden
-                className="absolute bottom-3 left-3 h-3 w-3 border-b border-l border-indigo-accent/40 transition-colors group-hover:border-indigo-accent/80"
-              />
-              <span
-                aria-hidden
-                className="absolute bottom-3 right-3 h-3 w-3 border-b border-r border-indigo-accent/40 transition-colors group-hover:border-indigo-accent/80"
-              />
-
-              {/* Index stamp */}
-              <span
-                aria-hidden
-                className="absolute right-6 top-6 text-[9px] uppercase tracking-[0.35em] text-ink-faint md:right-10 md:top-10"
-              >
-                0{i + 1} / 0{items.length}
-              </span>
-
-              {/* Date column */}
-              <div className="md:col-span-4">
-                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-ink-subtle">
-                  <Calendar
-                    className="h-3.5 w-3.5 text-indigo-accent"
-                    strokeWidth={1.5}
-                  />
-                  {item.date}
-                </div>
-                <div className="mt-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-ink-faint">
-                  <MapPin className="h-3.5 w-3.5" strokeWidth={1.5} />
-                  {item.location}
-                </div>
-                <div className="mt-6 h-px w-14 bg-accent-gradient" />
-              </div>
-
-              {/* Content column */}
-              <div className="md:col-span-8">
-                <div className="flex items-start gap-3">
-                  <ItemIcon
-                    className="mt-1 h-5 w-5 shrink-0 text-indigo-accent transition-transform duration-300 group-hover:rotate-3"
-                    strokeWidth={1.5}
-                  />
-                  <div>
-                    <h3 className="font-serif text-xl font-semibold leading-tight text-ink-strong sm:text-2xl">
-                      {item.headline}
-                    </h3>
-                    <p className="mt-1.5 text-sm text-ink-muted">
-                      {item.subhead}
-                    </p>
-                  </div>
-                </div>
-
-                <ul className="mt-6 space-y-3">
-                  {item.bullets.map((bullet, bi) => (
-                    <li
-                      key={bi}
-                      className="flex items-start gap-3 text-sm leading-relaxed text-ink sm:text-[15px]"
-                    >
-                      <span
-                        aria-hidden
-                        className="mt-[0.55rem] inline-block h-1 w-1 shrink-0 rotate-45 bg-accent-gradient"
-                      />
-                      <span>{bullet}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </motion.article>
+              item={item}
+              index={i}
+              total={items.length}
+              icon={ItemIcon}
+            />
           ))}
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * A single timeline record, reimagined as an archival "case-file sheet":
+ *  • a drawn-in spine + accent node threads every entry onto one timeline
+ *  • an oversized "2023→24" year watermark bleeds in behind the sheet
+ *  • résumé bullets become numbered "field notes" under a grouping rule
+ *  • the sheet rests at a hand-placed tilt and squares up on hover, with a
+ *    rotated dashed rubber-stamp of the location for a physical-dossier feel
+ */
+function TimelineEntry({
+  item,
+  index,
+  total,
+  icon: ItemIcon,
+}: {
+  item: TimelineItem;
+  index: number;
+  total: number;
+  icon: LucideIcon;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-15%" });
+  const ease = [0.16, 1, 0.3, 1] as const;
+  const { start, endShort } = parseSpan(item.date);
+  const isFirst = index === 0;
+  const isLast = index === total - 1;
+  // Hand-placed lean — alternates per entry, squares up on hover.
+  const restTilt = index % 2 === 0 ? -0.7 : 0.7;
+
+  // Spine geometry: the thread starts at the first node, runs full height
+  // through the middle entries (bridging the flex gap below via a negative
+  // bottom), and fades out past the last node so it never points at nothing.
+  const spineStyle: CSSProperties =
+    isFirst && isLast
+      ? { top: "0.75rem", height: "4rem", background: "linear-gradient(var(--hairline), transparent)" }
+      : isFirst
+        ? { top: "0.75rem", bottom: "-3.5rem", background: "var(--hairline)" }
+        : isLast
+          ? { top: 0, height: "5.5rem", background: "linear-gradient(var(--hairline) 35%, transparent)" }
+          : { top: 0, bottom: "-3.5rem", background: "var(--hairline)" };
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 38 }}
+      animate={inView ? { opacity: 1, y: 0 } : undefined}
+      transition={{ duration: 0.8, ease }}
+      className="relative pl-12 sm:pl-24"
+    >
+      {/* Timeline spine — one thread down the left gutter, drawn top→down */}
+      <motion.span
+        aria-hidden
+        initial={{ scaleY: 0 }}
+        animate={inView ? { scaleY: 1 } : undefined}
+        transition={{ duration: 0.7, delay: 0.1, ease }}
+        className="absolute left-4 w-px sm:left-9"
+        style={{ ...spineStyle, transformOrigin: "top" }}
+      />
+      {/* Node — a rotated accent square that pops onto the spine */}
+      <motion.span
+        aria-hidden
+        initial={{ scale: 0 }}
+        animate={inView ? { scale: 1 } : undefined}
+        transition={{ duration: 0.5, delay: 0.25, ease }}
+        className="absolute left-4 top-3 z-10 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[2px] bg-accent-gradient shadow-[0_0_0_4px_rgb(var(--canvas)),0_0_16px_2px_rgba(139,92,246,0.45)] sm:left-9"
+      />
+
+      {/* Date — sits level with the node */}
+      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-ink-subtle">
+        <Calendar className="h-3.5 w-3.5 text-indigo-accent" strokeWidth={1.5} />
+        {item.date}
+      </div>
+
+      {/* The sheet */}
+      <motion.article
+        initial={{ rotate: restTilt }}
+        whileHover={{ rotate: 0, y: -5 }}
+        transition={{ type: "spring", stiffness: 240, damping: 22 }}
+        className="group relative mt-4 overflow-hidden rounded-2xl border border-hairline bg-surface/40 p-7 backdrop-blur transition-colors hover:border-indigo-accent/30 md:p-9"
+      >
+        {/* Top sheen */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--sheen)] to-transparent"
+        />
+        {/* Hover wash */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+        />
+        {/* Oversized year watermark, bleeding off the top-right */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -right-3 -top-8 select-none font-serif text-[6rem] font-bold leading-none tracking-tighter text-ink-strong/[0.05] sm:text-[8.5rem]"
+        >
+          {start}
+          <span className="align-top text-[40%]">→{endShort}</span>
+        </span>
+
+        {/* Headline + role */}
+        <div className="relative flex items-start gap-4">
+          <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-hairline bg-glass">
+            <ItemIcon
+              className="h-5 w-5 text-indigo-accent transition-transform duration-300 group-hover:rotate-6"
+              strokeWidth={1.5}
+            />
+          </span>
+          <div className="min-w-0">
+            <h3 className="font-serif text-xl font-semibold leading-tight text-ink-strong sm:text-2xl">
+              {item.headline}
+            </h3>
+            <p className="mt-1.5 text-sm text-ink-muted">{item.subhead}</p>
+          </div>
+        </div>
+
+        {/* Field notes — numbered log lines under a grouping rule */}
+        <div className="relative mt-7">
+          <div className="mb-4 flex items-center gap-2 text-[9px] uppercase tracking-[0.4em] text-ink-faint">
+            <span className="h-px w-5 bg-accent-gradient" />
+            Field notes
+          </div>
+          <ul className="space-y-3.5 border-l border-hairline pl-5">
+            {item.bullets.map((bullet, bi) => (
+              <li
+                key={bi}
+                className="flex gap-3.5 text-sm leading-relaxed text-ink sm:text-[15px]"
+              >
+                <span className="mt-px shrink-0 font-mono text-[11px] tabular-nums text-indigo-accent/80">
+                  {String(bi + 1).padStart(2, "0")}
+                </span>
+                <span>{bullet}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Footer — record id + rotated location stamp */}
+        <div className="relative mt-7 flex items-end justify-between gap-4">
+          <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-ink-faint">
+            Record {String(index + 1).padStart(2, "0")} /{" "}
+            {String(total).padStart(2, "0")}
+          </span>
+          <span className="inline-flex -rotate-[7deg] items-center gap-1.5 rounded-md border border-dashed border-indigo-accent/40 px-2.5 py-1 text-[9px] uppercase tracking-[0.25em] text-indigo-accent/90 transition-transform duration-300 group-hover:-rotate-[3deg]">
+            <MapPin className="h-3 w-3" strokeWidth={1.5} />
+            {item.location}
+          </span>
+        </div>
+      </motion.article>
+    </motion.div>
   );
 }
 
