@@ -426,7 +426,7 @@ function IndexView({
 
 const CARD_W = 300;
 const CARD_H = 392;
-const CARD_DEPTH = 34; // visible thickness of the slab's side faces
+const CARD_DEPTH = 22; // visible thickness of the slab's side faces
 const EDGE = 28; // gap between the cursor and the card
 
 // A soft iridescent sheen over a base tone — a subtle prism reflection on the
@@ -556,7 +556,11 @@ function FloatingPreview({
             style={{
               width: CARD_DEPTH,
               transform: `rotateY(90deg)`,
-              background: "var(--prism-edge)",
+              // Across-depth shade: the front edge (near the card face) stays lit
+              // and the back recedes into shadow, so the slab reads as a real 3D
+              // thickness rather than a flat panel butted against the card.
+              background:
+                "linear-gradient(to right, rgba(0,0,0,0) 32%, rgba(0,0,0,0.24) 100%), var(--prism-edge)",
               boxShadow: "var(--prism-edge-inset)",
             }}
           />
@@ -566,7 +570,9 @@ function FloatingPreview({
             style={{
               width: CARD_DEPTH,
               transform: `rotateY(-90deg)`,
-              background: "var(--prism-edge)",
+              // Mirror of the left face — front edge lit, back recedes (see above).
+              background:
+                "linear-gradient(to left, rgba(0,0,0,0) 32%, rgba(0,0,0,0.24) 100%), var(--prism-edge)",
               boxShadow: "var(--prism-edge-inset)",
             }}
           />

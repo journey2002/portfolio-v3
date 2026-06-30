@@ -173,27 +173,6 @@ export default function About() {
               <span className="font-hand text-4xl leading-none text-ink-strong sm:text-5xl">
                 Worapat
               </span>
-              <svg
-                width="70"
-                height="22"
-                viewBox="0 0 70 22"
-                fill="none"
-                aria-hidden
-                className="-translate-y-1"
-              >
-                <motion.path
-                  d="M2 15 Q 8 4, 14 11 T 26 13 Q 32 5, 38 15 T 52 11 L 63 14"
-                  stroke="url(#ink-accent)"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  fill="none"
-                  initial={{ pathLength: 0 }}
-                  whileInView={{ pathLength: 1 }}
-                  viewport={DRAW_VIEWPORT}
-                  transition={{ duration: 0.9, ease: "easeInOut", delay: 0.6 }}
-                />
-                <circle cx="66" cy="14" r="1.5" fill="#c084fc" />
-              </svg>
               <span className="text-[10px] uppercase tracking-[0.3em] text-ink-subtle">
                 Bangkok · open to projects
               </span>

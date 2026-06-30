@@ -38,6 +38,7 @@ const FEATURES = [
     description:
       "Research-driven design from wireframe to pixel-perfect prototype, built to feel intuitive and effortless for the people using it.",
     accent: "from-indigo-500/30 to-transparent",
+    hint: "Toolkit",
     tools: ["Figma", "HTML & CSS", "JavaScript"],
   },
   {
@@ -46,6 +47,7 @@ const FEATURES = [
     description:
       "Character art, fan art, and visual storytelling crafted in Procreate and Photoshop — where imagination meets technique.",
     accent: "from-violet-500/30 to-transparent",
+    hint: "Medium",
     tools: ["Procreate", "Photoshop", "Illustrator"],
   },
   {
@@ -54,6 +56,7 @@ const FEATURES = [
     description:
       "Thoughtful micro-interactions and prototypes that put the user's experience first — because every click should feel right.",
     accent: "from-fuchsia-500/30 to-transparent",
+    hint: "Motion",
     tools: ["Framer", "After Effects", "JavaScript"],
   },
 ];
@@ -61,7 +64,7 @@ const FEATURES = [
 // Per-chip cascade delays for the hover-IN stagger only. Static class strings
 // (not an inline style) so Tailwind's compiler emits them AND so the delay is
 // scoped to group-hover: on the way out the base state has no delay, letting
-// every chip leave at once before the "Discipline" hint returns.
+// every chip leave at once before the resting hint returns.
 const CHIP_ENTER_DELAY = [
   "group-hover:delay-[60ms]",
   "group-hover:delay-[150ms]",
@@ -90,6 +93,8 @@ type Feature = {
   label: string;
   description: string;
   accent: string;
+  /** Resting one-word hint above the tool chips — unique per discipline. */
+  hint: string;
   tools: string[];
 };
 
@@ -467,7 +472,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
           {feature.description}
         </p>
 
-        {/* Footer zone — the discipline hint and the tool chips share ONE grid
+        {/* Footer zone — the resting hint and the tool chips share ONE grid
             cell (both pinned to row/col 1), so the cell always reserves the
             chips' full, wrapping height. At rest the space is simply held open
             beneath the hint; on hover the chips fill it. The chips can never
@@ -478,7 +483,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
               reserved zone rather than stretching across it. */}
           <span className="col-start-1 row-start-1 flex h-fit items-center gap-4 text-[10px] uppercase tracking-[0.3em] text-ink-faint transition-all duration-300 delay-300 group-hover:-translate-y-1 group-hover:opacity-0 group-hover:delay-0">
             <span className="block h-px w-6 bg-current" />
-            Discipline
+            {feature.hint}
           </span>
           {/* Tool chips that cascade up on hover — this layer defines the
               cell's height, so the description above is always clear of it. */}

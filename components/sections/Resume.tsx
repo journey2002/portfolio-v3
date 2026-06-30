@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, useInView, useScroll, type Variants } from "framer-motion";
+import { motion, useInView, type Variants } from "framer-motion";
 import NumberFlow from "@number-flow/react";
 import { Balancer } from "react-wrap-balancer";
 import {
@@ -19,7 +19,7 @@ import {
   Award,
   type LucideIcon,
 } from "lucide-react";
-import SectionLabel, { ReflectiveGlyph } from "@/components/ui/SectionLabel";
+import SectionLabel from "@/components/ui/SectionLabel";
 import SplitText from "@/components/ui/SplitText";
 
 type TimelineItem = {
@@ -176,46 +176,43 @@ const FOOTER_MARQUEE = [
   "Bangkok, Thailand",
   "UX/UI · Digital Art",
   "Class of '24",
-  "Coffee-powered",
+  "Always sketching",
   "Anime-adjacent",
   "Available for work",
 ];
 
-// Floating personality chips drifting around the hero title.
-type Chip = {
-  text: string;
-  className: string;
-  duration: number;
-  delay: number;
-  yRange: [number, number, number];
-  accent?: boolean;
+// Contents index for the hero's right column. Each row is a real `#` anchor;
+// LenisProvider intercepts the click and smooth-scrolls to the section below.
+type IndexEntry = {
+  num: string;
+  label: string;
+  href: string;
+  note: string;
 };
-const HERO_CHIPS: Chip[] = [
+const RESUME_INDEX: IndexEntry[] = [
   {
-    text: "✦ Class of '24",
-    // Sits in the upper-right corner — above the title-end glyph
-    className:
-      "right-[6%] top-[26%] rotate-6 md:right-[8%] lg:right-[10%] lg:top-[24%]",
-    duration: 5,
-    delay: 0,
-    yRange: [0, -8, 0],
+    num: "01",
+    label: "Experience",
+    href: "#experience",
+    note: "Applicad · 2023–24",
   },
   {
-    text: "★ Open to projects",
-    // Lower-left, opposite the right-column "Get in touch" CTA
-    className: "left-[6%] bottom-[28%] -rotate-3 md:left-[8%] lg:left-[10%]",
-    duration: 5.6,
-    delay: 0.4,
-    yRange: [0, 7, 0],
-    accent: true,
+    num: "02",
+    label: "Education",
+    href: "#education",
+    note: "TNI · Rosehill College",
   },
   {
-    text: "☕ Mostly coffee",
-    // Hovers just above the CTA row on the right
-    className: "right-[14%] bottom-[16%] rotate-3 hidden lg:block",
-    duration: 6.2,
-    delay: 0.9,
-    yRange: [0, -6, 0],
+    num: "03",
+    label: "Skills",
+    href: "#skills",
+    note: "20 skills · 2 categories",
+  },
+  {
+    num: "04",
+    label: "Contact",
+    href: "#contact",
+    note: "Let’s work together",
   },
 ];
 
@@ -251,17 +248,11 @@ export default function Resume() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Hero — big "Resume." title with gradient on the word, aurora glow */
+/*  Hero — dossier cover: title + a navigable contents index          */
 /* ------------------------------------------------------------------ */
 function ResumeHero() {
-  const heroRef = useRef<HTMLElement>(null);
-  const { scrollYProgress: heroProgress } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"],
-  });
   return (
     <section
-      ref={heroRef}
       id="top"
       className="relative overflow-hidden pb-12 pt-40 sm:pt-44 md:pt-48"
     >
@@ -318,25 +309,7 @@ function ResumeHero() {
         </span>
       </div>
 
-      {/* Big floating index mark on the right edge — hollow reflective stroke
-          that catches a moving sheen as the hero scrolls. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute right-6 top-1/2 hidden -translate-y-1/2 select-none flex-col items-end gap-4 sm:right-10 sm:flex"
-      >
-        <span className="block font-serif text-[9rem] font-bold leading-none opacity-50 sm:text-[12rem]">
-          <ReflectiveGlyph
-            text="CV"
-            progress={heroProgress}
-            sheenRange={[0, 0.6]}
-          />
-        </span>
-        <span className="text-[10px] uppercase tracking-[0.35em] text-ink-faint">
-          Index — Resume
-        </span>
-      </div>
-
-      <div className="relative mx-auto max-w-6xl px-6 sm:px-10">
+      <div className="relative mx-auto max-w-7xl px-6 sm:px-10">
         {/* Badge row */}
         <motion.div
           initial={{ opacity: 0, y: 18 }}
@@ -358,104 +331,162 @@ function ResumeHero() {
           </span>
         </motion.div>
 
-        {/* Title */}
-        <h1 className="mt-10 font-serif font-bold leading-[0.94] tracking-tight text-ink-strong">
-          <SplitText
-            text="My"
-            as="span"
-            className="block text-[clamp(3.5rem,11vw,9rem)]"
-            delay={0.4}
-            stagger={0.045}
-            fromY={100}
-            fromRotate={5}
-          />
-          <SplitText
-            text="Resume."
-            as="span"
-            className="block pb-2 text-[clamp(3.5rem,11vw,9rem)]"
-            charClassName="bg-accent-gradient bg-clip-text text-transparent"
-            delay={0.7}
-            stagger={0.04}
-            fromY={100}
-            fromRotate={-4}
-          />
-        </h1>
-
-        {/* Subtitle row */}
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{
-            duration: 0.9,
-            delay: 1.2,
-            ease: [0.16, 1, 0.3, 1] as const,
-          }}
-          className="mt-10 grid grid-cols-1 items-end gap-10 sm:grid-cols-12 sm:gap-6"
-        >
-          <p className="text-base text-ink-muted sm:col-span-7 sm:text-lg">
-            <Balancer>
-              A snapshot of the experience, education, and tools behind my work
-              —{" "}
-              <span className="text-ink">
-                built between Bangkok and Auckland
-              </span>{" "}
-              over the last few years.
-            </Balancer>
-          </p>
-
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-4 sm:col-span-5 sm:justify-end">
-            <a
-              href="mailto:Worapat2002@gmail.com"
-              data-cursor-hover
-              className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-[linear-gradient(135deg,rgba(99,102,241,0.95),rgba(168,85,247,0.95))] px-6 py-3 text-sm font-medium text-white shadow-[0_8px_24px_-10px_rgba(139,92,246,0.45)] transition-[box-shadow,filter] duration-300 hover:brightness-110 hover:shadow-[0_14px_40px_-10px_rgba(139,92,246,0.55)]"
-            >
-              <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/[0.18] to-transparent" />
-              Get in touch
-              <ArrowUpRight
-                className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                strokeWidth={2}
+        {/* Two columns — dossier cover: title block + navigable contents */}
+        <div className="mt-10 grid grid-cols-1 gap-y-12 lg:grid-cols-12 lg:gap-x-10">
+          {/* Left — title, blurb, CTAs */}
+          <div className="lg:col-span-7">
+            <h1 className="font-serif font-bold leading-[0.94] tracking-tight text-ink-strong">
+              <SplitText
+                text="The full"
+                as="span"
+                className="block text-[clamp(3rem,8.5vw,6.75rem)]"
+                delay={0.4}
+                stagger={0.045}
+                fromY={100}
+                fromRotate={5}
               />
-            </a>
-            <a
-              href="/"
-              data-cursor-hover
-              className="group inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink-strong"
-            >
-              <ArrowLeft
-                className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5"
-                strokeWidth={2}
+              <SplitText
+                text="file."
+                as="span"
+                className="block pb-2 text-[clamp(3rem,8.5vw,6.75rem)]"
+                charClassName="bg-accent-gradient bg-clip-text text-transparent"
+                delay={0.7}
+                stagger={0.04}
+                fromY={100}
+                fromRotate={-4}
               />
-              Back to portfolio
-            </a>
+            </h1>
+
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.9,
+                delay: 1.2,
+                ease: [0.16, 1, 0.3, 1] as const,
+              }}
+              className="mt-8 max-w-xl"
+            >
+              <p className="text-base text-ink-muted sm:text-lg">
+                <Balancer>
+                  Everything behind my work — experience, education, and the
+                  tools I use —{" "}
+                  <span className="text-ink">
+                    built between Bangkok and Auckland
+                  </span>{" "}
+                  over the last few years.
+                </Balancer>
+              </p>
+
+              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
+                <a
+                  href="mailto:Worapat2002@gmail.com"
+                  data-cursor-hover
+                  className="group relative inline-flex items-center gap-2 rounded-full border border-white/10 bg-[linear-gradient(135deg,rgba(99,102,241,0.95),rgba(168,85,247,0.95))] px-6 py-3 text-sm font-medium text-white shadow-[0_8px_24px_-10px_rgba(139,92,246,0.45)] transition-[box-shadow,filter] duration-300 hover:brightness-110 hover:shadow-[0_14px_40px_-10px_rgba(139,92,246,0.55)]"
+                >
+                  <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/[0.18] to-transparent" />
+                  Get in touch
+                  <ArrowUpRight
+                    className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                    strokeWidth={2}
+                  />
+                </a>
+                <a
+                  href="/"
+                  data-cursor-hover
+                  className="group inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink-strong"
+                >
+                  <ArrowLeft
+                    className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5"
+                    strokeWidth={2}
+                  />
+                  Back to portfolio
+                </a>
+              </div>
+            </motion.div>
           </div>
-        </motion.div>
+
+          {/* Right — navigable contents index */}
+          <ContentsIndex />
+        </div>
       </div>
 
-      {/* Floating personality chips — drift around the hero, hidden on small
-          screens so they never crowd the headline. */}
-      {HERO_CHIPS.map((chip) => (
-        <div
-          key={chip.text}
-          aria-hidden
-          // CSS float-y animation instead of an infinite framer loop — the bob
-          // runs on the compositor with the same distance/duration/delay.
-          style={
-            {
-              "--float-y": `${chip.yRange[1]}px`,
-              animationDuration: `${chip.duration}s`,
-              animationDelay: `${chip.delay}s`,
-            } as React.CSSProperties
-          }
-          className={`animate-float-y absolute hidden whitespace-nowrap rounded-full ${
-            chip.accent
-              ? "border border-indigo-accent/40 text-[color:var(--accent-soft)]"
-              : "border border-hairline text-ink-muted"
-          } bg-panel px-3.5 py-1.5 text-[10px] uppercase tracking-[0.3em] backdrop-blur md:block ${chip.className}`}
-        >
-          {chip.text}
-        </div>
-      ))}
     </section>
+  );
+}
+
+/**
+ * Hero contents index — the right column of the dossier cover. Each row is a
+ * real `#` anchor; LenisProvider intercepts the click and smooth-scrolls to the
+ * matching section below (with an offset for the floating nav). Rows stagger in
+ * after the headline finishes its reveal.
+ */
+function ContentsIndex() {
+  const ease = [0.16, 1, 0.3, 1] as const;
+  return (
+    <motion.nav
+      aria-label="Resume contents"
+      initial="hidden"
+      animate="show"
+      variants={{
+        hidden: {},
+        show: { transition: { staggerChildren: 0.09, delayChildren: 1.15 } },
+      }}
+      className="lg:col-span-5 lg:border-l lg:border-hairline lg:pl-10"
+    >
+      <motion.div
+        variants={{
+          hidden: { opacity: 0, y: 14 },
+          show: { opacity: 1, y: 0, transition: { duration: 0.6, ease } },
+        }}
+        className="flex items-center gap-3 text-[10px] uppercase tracking-[0.4em] text-ink-faint"
+      >
+        <span className="text-ink">Contents</span>
+        <span className="h-px flex-1 bg-hairline" />
+        <span>Jump to</span>
+      </motion.div>
+
+      <ul className="mt-2 border-b border-hairline">
+        {RESUME_INDEX.map((item) => (
+          <motion.li
+            key={item.href}
+            variants={{
+              hidden: { opacity: 0, y: 18 },
+              show: { opacity: 1, y: 0, transition: { duration: 0.7, ease } },
+            }}
+          >
+            <a
+              href={item.href}
+              data-cursor-hover
+              className="group relative isolate flex items-center gap-5 border-t border-hairline py-5 transition-colors"
+            >
+              {/* Accent wash on hover — a soft rounded glow inset from the row
+                  dividers and bled out past the number/arrow so nothing sits
+                  flush against its edge. */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-y-1.5 -inset-x-4 -z-10 rounded-xl bg-gradient-to-r from-indigo-500/10 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+              />
+              <span className="font-serif text-sm tabular-nums text-indigo-accent/80 transition-colors group-hover:text-indigo-accent">
+                {item.num}
+              </span>
+              <span className="flex-1">
+                <span className="block font-serif text-xl font-semibold leading-tight text-ink transition-colors group-hover:text-ink-strong sm:text-2xl">
+                  {item.label}
+                </span>
+                <span className="mt-1 block text-xs text-ink-faint transition-colors group-hover:text-ink-muted">
+                  {item.note}
+                </span>
+              </span>
+              <ArrowUpRight
+                className="h-5 w-5 shrink-0 text-ink-faint transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-indigo-accent"
+                strokeWidth={1.75}
+              />
+            </a>
+          </motion.li>
+        ))}
+      </ul>
+    </motion.nav>
   );
 }
 
@@ -487,9 +518,9 @@ function ProfileBar() {
                 <span className="text-[10px] uppercase tracking-[0.35em] text-ink-faint">
                   {item.label}
                 </span>
-                <div className="mt-3 flex items-start gap-3">
+                <div className="mt-3 flex items-center gap-3">
                   <Icon
-                    className="mt-0.5 h-4 w-4 shrink-0 text-indigo-accent"
+                    className="h-4 w-4 shrink-0 text-indigo-accent"
                     strokeWidth={1.5}
                   />
                   <span className="break-words text-sm leading-snug text-ink sm:text-base">
@@ -567,7 +598,11 @@ function StatsStrip() {
               <span className="text-[10px] uppercase tracking-[0.35em] text-ink-faint">
                 {stat.label}
               </span>
-              <p className="mt-3 font-serif text-[3.25rem] font-bold leading-none tracking-tight text-ink-strong sm:text-[3.75rem]">
+              {/* min-h pins every value box to the same height regardless of
+                  whether it holds a NumberFlow counter (which renders taller
+                  than plain text) so the accent rule + note below stay aligned
+                  across all four columns. */}
+              <p className="mt-3 min-h-[1.55em] font-serif text-[3.25rem] font-bold leading-none tracking-tight text-ink-strong sm:text-[3.75rem]">
                 {/* NumberFlow renders its digits in a shadow DOM, which
                     `background-clip: text` can't pierce — a gradient-clipped
                     wrapper leaves the digits transparent/invisible. `color`
@@ -1063,7 +1098,10 @@ function ResumeFooter() {
   const inView = useInView(ref, { once: true, margin: "-8%" });
 
   return (
-    <section className="relative overflow-hidden border-t border-hairline">
+    <section
+      id="contact"
+      className="relative overflow-hidden border-t border-hairline"
+    >
       <div
         aria-hidden
         className="bg-aurora pointer-events-none absolute -top-1/3 left-1/2 h-[60vh] w-[60vh] -translate-x-1/2 opacity-25 blur-3xl"

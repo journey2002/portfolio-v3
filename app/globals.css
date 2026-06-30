@@ -145,18 +145,19 @@
   --feature-chip: rgba(99, 102, 241, 0.1);
   --feature-border-hover: rgba(0, 0, 0, 0.16);
 
-  /* See dark note. The slab base goes pale, the sheen and inset soften, and the
-     drop shadow lightens — so the exposed edge reads as a white card's thickness
-     rather than a dark slab against the warm white. */
+  /* See dark note. The slab base is a mid-light grey — not near-white — so the
+     exposed edge reads as a card's thickness against BOTH the dark cover and the
+     white text panel, rather than a bright flat panel beside the dark cover. The
+     sheen and inset soften and the drop shadow lightens to suit the warm white. */
   --prism-edge: linear-gradient(
       180deg,
       rgba(120, 150, 235, 0) 0%,
-      rgba(120, 150, 235, 0.3) 24%,
-      rgba(150, 110, 225, 0.34) 50%,
-      rgba(90, 180, 215, 0.28) 76%,
+      rgba(120, 150, 235, 0.26) 24%,
+      rgba(150, 110, 225, 0.3) 50%,
+      rgba(90, 180, 215, 0.24) 76%,
       rgba(120, 150, 235, 0) 100%
     ),
-    #e7e8ee;
+    #cdd0d9;
   --prism-edge-inset: inset 0 0 14px rgba(15, 23, 42, 0.14);
   --prism-card-shadow: 0 40px 80px -30px rgba(30, 30, 60, 0.3);
 

@@ -1,11 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   motion,
   Reorder,
   useMotionValue,
-  useScroll,
   useSpring,
   useTransform,
 } from "framer-motion";
@@ -280,20 +279,51 @@ export default function Hero() {
 
   // Hero exits as you scroll — UI chrome fades, the frame content lifts, the
   // background scales up like a canvas being zoomed past.
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end start"],
-  });
-  // One shared exit curve for EVERY foreground layer — the framed content, the
-  // side panels, and the bottom chrome (status bar + scroll cue) — so they all
-  // dissolve in parallel at matching opacity, fully gone by 90% of the hero's
-  // scroll-out. (The bottom chrome used to fall on a faster curve; matching the
-  // rate is what makes the whole composition fade away together.)
-  const exitOpacity = useTransform(scrollYProgress, [0, 0.9], [1, 0]);
-  const contentY = useTransform(scrollYProgress, [0, 1], [0, -110]);
-  const auroraScale = useTransform(scrollYProgress, [0, 1], [1, 1.4]);
-  const auroraY = useTransform(scrollYProgress, [0, 1], [0, 160]);
-  const gridY = useTransform(scrollYProgress, [0, 1], [0, 80]);
+  //
+  // Progress (0 → 1 across the hero's scroll-out) is read LIVE from the section's
+  // own getBoundingClientRect every scroll frame, NOT from framer's `useScroll`.
+  // useScroll caches the target's measured height on mount, and here that cache
+  // reads stale (font + SplitText reflow, the resizable frame, the lazy sections
+  // below) — leaving progress short of 1 at the true bottom. The status bar lives
+  // at the section's very bottom edge, so it's the last thing to leave; any
+  // shortfall stranded it on-screen at full opacity. A live rect read can't go
+  // stale: `-top / height` is the exact scroll-out fraction on every frame.
+  const heroProgress = useMotionValue(0);
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+    let raf = 0;
+    const update = () => {
+      const rect = section.getBoundingClientRect();
+      const p = rect.height > 0 ? -rect.top / rect.height : 0;
+      heroProgress.set(Math.min(1, Math.max(0, p)));
+      raf = 0;
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [heroProgress]);
+
+  // Centred layers — the framed content + the side panels — fade in place on a
+  // gentle curve, fully gone by 90% of the hero's scroll-out.
+  const exitOpacity = useTransform(heroProgress, [0, 0.9], [1, 0]);
+  // Bottom-anchored chrome (status bar + scroll cue) sweeps the full height of the
+  // viewport as the last thing to leave, so it fades earlier — fully clear by 70%,
+  // before it reaches the upper viewport — so it can never ghost back in near the
+  // end. Close enough to the content's curve to still read as a parallel exit.
+  const chromeOpacity = useTransform(heroProgress, [0, 0.7], [1, 0]);
+  const contentY = useTransform(heroProgress, [0, 1], [0, -110]);
+  const auroraScale = useTransform(heroProgress, [0, 1], [1, 1.4]);
+  const auroraY = useTransform(heroProgress, [0, 1], [0, 160]);
+  const gridY = useTransform(heroProgress, [0, 1], [0, 80]);
 
   const marqueeHoverRef = useMarqueeSlowOnHover<HTMLDivElement>();
 
@@ -501,11 +531,11 @@ export default function Hero() {
       >
         <InspectorPanel />
       </motion.div>
-      {/* Scroll cue is bottom-anchored — it scrolls with the hero and fades on
-          the shared `exitOpacity` curve, in lockstep with the rest of the hero. */}
+      {/* Scroll cue is bottom-anchored — it sweeps up with the hero, so it rides
+          the earlier `chromeOpacity` curve to clear before it re-enters view. */}
       <motion.div
         aria-hidden
-        style={{ opacity: exitOpacity }}
+        style={{ opacity: chromeOpacity }}
         className="pointer-events-none absolute inset-0 z-20 hidden lg:block"
       >
         <ScrollCue />
@@ -564,7 +594,7 @@ export default function Hero() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.9, delay: 0.2, ease: EASE }}
           style={{ minHeight: "var(--fh)" }}
-          className="relative flex flex-col justify-center rounded-md border border-hairline bg-panel-weak px-6 py-12 backdrop-blur-[2px] sm:px-12 sm:py-16 lg:px-16 lg:py-20 xl:px-48"
+          className="relative flex flex-col justify-center rounded-md border border-hairline bg-panel-weak px-6 py-10 backdrop-blur-[2px] sm:px-12 sm:py-14 lg:px-16 xl:px-48"
         >
           {/* Top sheen on the frame edge */}
           <span
@@ -606,13 +636,14 @@ export default function Hero() {
       </motion.div>
 
       {/* ── App-style status bar ──────────────────────────────────────────── */}
-      {/* Sits at the section's bottom edge and scrolls away with the hero. Split
-          in two: the outer wrapper owns the scroll-driven opacity (the shared
-          `exitOpacity` curve), the inner owns the entrance fade + slide. On a
-          single element the controlled `style.opacity` would swallow the
-          entrance's opacity keyframe, so the bar would slide in without fading. */}
+      {/* Sits at the section's bottom edge and sweeps up with the hero. Split in
+          two: the outer wrapper owns the scroll-driven opacity (the earlier
+          `chromeOpacity` curve, so the bar clears before it re-enters view), the
+          inner owns the entrance fade + slide. On a single element the controlled
+          `style.opacity` would swallow the entrance's opacity keyframe, so the bar
+          would slide in without fading. */}
       <motion.div
-        style={{ opacity: exitOpacity }}
+        style={{ opacity: chromeOpacity }}
         className="absolute inset-x-0 bottom-0 z-20"
       >
        <motion.div
