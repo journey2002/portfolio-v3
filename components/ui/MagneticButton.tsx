@@ -55,8 +55,8 @@ export default function MagneticButton({
       whileHover: "hover" as const,
       whileTap: { scale: 0.97 },
       variants: {
-        rest: { boxShadow: "0 8px 24px -10px rgba(139,92,246,0.35)" },
-        hover: { boxShadow: "0 14px 40px -10px rgba(139,92,246,0.55)" },
+        rest: { boxShadow: "0 10px 30px -10px rgba(236,72,153,0.5)" },
+        hover: { boxShadow: "0 16px 44px -10px rgba(236,72,153,0.6)" },
       },
       transition: { type: "spring" as const, stiffness: 340, damping: 26 },
       onClick,
@@ -64,12 +64,12 @@ export default function MagneticButton({
 
     const glowEl = (
       <span
-        className={`relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-white/10 bg-[linear-gradient(135deg,rgba(99,102,241,0.95),rgba(168,85,247,0.95))] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] transition-[filter] duration-300 group-hover:brightness-110 ${className}`}
+        className={`relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-white/10 bg-[linear-gradient(135deg,#6366f1_0%,#a855f7_55%,#ec4899_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] transition-[filter] duration-300 group-hover:brightness-110 ${className}`}
       >
         {/* Subtle top sheen — keeps it from feeling flat without being noisy */}
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/[0.18] to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/[0.22] to-transparent"
         />
         <span className="relative inline-flex items-center gap-2">{children}</span>
       </span>

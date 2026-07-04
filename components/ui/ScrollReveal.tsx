@@ -58,7 +58,10 @@ export default function ScrollReveal({
   return (
     <Element
       ref={ref}
-      className={`transition-all duration-700 ease-out-expo ${
+      // Explicit property list — `transition-all` also picked up every
+      // theme-token color change, so each reveal wrapper animated (and
+      // repainted) during a theme swap for no visual difference.
+      className={`transition-[opacity,transform] duration-700 ease-out-expo ${
         visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-7"
       } ${className}`}
       style={{ transitionDelay: `${delay}ms` }}

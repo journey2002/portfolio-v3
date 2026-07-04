@@ -122,15 +122,17 @@ export default function CustomCursor() {
     };
   }, [enabled]);
 
-  // The dot + ring grow on links and fade out on canvas controls (where the
-  // glyph takes over). The glyph itself is animated declaratively in the JSX.
+  // On links the ring grows and the center dot hides — leaving just the ring
+  // so it frames small targets (e.g. nav labels) instead of sitting on top of
+  // them. On canvas controls both fade out and the glyph takes over. The glyph
+  // itself is animated declaratively in the JSX.
   useEffect(() => {
     const glyph = cursor.variant === "move" || cursor.variant === "resize";
     const link = cursor.variant === "link";
     animate(ringSize, link ? 44 : 30, FADE);
     animate(dotSize, link ? 11 : 6, FADE);
     animate(ringOpacity, glyph ? 0 : 1, FADE);
-    animate(dotOpacity, glyph ? 0 : 1, FADE);
+    animate(dotOpacity, glyph || link ? 0 : 1, FADE);
   }, [cursor.variant, ringSize, dotSize, ringOpacity, dotOpacity]);
 
   if (!enabled) return null;

@@ -13,21 +13,24 @@ import SectionLabel from "@/components/ui/SectionLabel";
 import SplitText from "@/components/ui/SplitText";
 import Globe from "@/components/ui/Globe";
 
+// TODO: replace each href with the real profile URL — these are still platform
+// homepages, which read as broken links to visitors. (GitHub is likely
+// github.com/journey2002 or github.com/worapat2002 — use the public-facing one.)
 const SOCIALS = [
   {
     icon: Github,
     label: "GitHub",
-    href: "https://github.com",
+    href: "https://github.com", // TODO: real profile URL
   },
   {
     icon: Linkedin,
     label: "LinkedIn",
-    href: "https://linkedin.com",
+    href: "https://linkedin.com", // TODO: real profile URL
   },
   {
     icon: Instagram,
     label: "Instagram",
-    href: "https://instagram.com",
+    href: "https://instagram.com", // TODO: real profile URL
   },
 ];
 
@@ -132,18 +135,20 @@ export default function Contact() {
                 strokeWidth={2}
               />
             </motion.a>
-            <motion.div
+            <motion.a
+              href="tel:+66926723004"
+              data-cursor-hover
               initial={{ opacity: 0, y: 16 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{
                 duration: 0.6,
                 delay: 0.4,
               }}
-              className="mt-4 flex items-center gap-2 text-sm text-ink-subtle"
+              className="mt-4 flex w-fit items-center gap-2 text-sm text-ink-subtle transition-colors duration-200 hover:text-ink-strong"
             >
               <Phone className="h-3.5 w-3.5" strokeWidth={1.5} />
               <span>092-672-3004</span>
-            </motion.div>
+            </motion.a>
           </div>
 
           {/* Right column: location + social tiles */}

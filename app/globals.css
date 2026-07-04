@@ -218,8 +218,27 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   /* Theme swap shouldn't snap — ease the page tone. Decorative children with
-     their own transitions are unaffected. */
+     their own transitions are unaffected. Only the FALLBACK path: browsers
+     with the View Transitions API cross-fade snapshots instead (see below and
+     ThemeProvider), which suppresses this via .theme-switching. */
   transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+/* Theme swap via the View Transitions API (ThemeProvider). While the swap is
+   being captured, every CSS transition is suspended so elements jump straight
+   to their final colors — otherwise the browser would live-animate the whole
+   page for 500ms (a full-page repaint per frame, i.e. the old toggle jank)
+   underneath the snapshot. The crossfade below restores the same 0.5s ease. */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.5s;
+  animation-timing-function: ease;
 }
 
 /* Hide native cursor on devices with a fine pointer (desktop) where the

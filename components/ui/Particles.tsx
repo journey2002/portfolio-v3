@@ -31,6 +31,23 @@ export default function Particles({
     color ??
     (theme === "light" ? "rgba(99,102,241,0.5)" : "rgba(165,180,252,0.65)");
 
+  // Parsed once per color change and read by the draw loop through a ref, so a
+  // theme toggle retints the dust IN PLACE. Keying the effect on the color (the
+  // old approach) tore the whole field down and re-seeded it mid-toggle —
+  // wasted work and a visible re-scatter of every particle.
+  const rgbaRef = useRef({ r: 165, g: 180, b: 252, a: 0.65 });
+  useEffect(() => {
+    const m = dustColor.match(/rgba\(([^,]+),([^,]+),([^,]+),([^)]+)\)/);
+    if (m) {
+      rgbaRef.current = {
+        r: parseFloat(m[1]),
+        g: parseFloat(m[2]),
+        b: parseFloat(m[3]),
+        a: parseFloat(m[4]),
+      };
+    }
+  }, [dustColor]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -99,6 +116,7 @@ export default function Particles({
 
       ctx.clearRect(0, 0, cssW, cssH);
 
+      const { r, g, b, a } = rgbaRef.current;
       for (const p of particles) {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
@@ -115,11 +133,9 @@ export default function Particles({
         const twinkle = 0.6 + Math.sin(p.aPhase) * 0.4;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = dustColor.replace(
-          /rgba\(([^,]+),([^,]+),([^,]+),([^)]+)\)/,
-          (_m, r, g, b, a) =>
-            `rgba(${r},${g},${b},${Math.min(1, parseFloat(a) * p.a * twinkle)})`
-        );
+        // Pre-parsed channels (rgbaRef) — the old per-particle regex replace
+        // allocated a fresh string + match per dot per frame.
+        ctx.fillStyle = `rgba(${r},${g},${b},${Math.min(1, a * p.a * twinkle)})`;
         ctx.fill();
       }
 
@@ -161,7 +177,7 @@ export default function Particles({
       observer.disconnect();
       window.removeEventListener("resize", handleResize);
     };
-  }, [count, dustColor]);
+  }, [count]);
 
   return (
     <canvas

@@ -92,10 +92,6 @@ const config: Config = {
           "0%": { transform: "translateY(-100%)" },
           "100%": { transform: "translateY(100%)" },
         },
-        "orbit-slow": {
-          "0%": { transform: "rotate(0deg)" },
-          "100%": { transform: "rotate(360deg)" },
-        },
         "drift-x": {
           "0%, 100%": { transform: "translateX(0)" },
           "50%": { transform: "translateX(12px)" },
@@ -108,7 +104,6 @@ const config: Config = {
         "marquee": "marquee 65s linear infinite",
         "pulse-dot": "pulse-dot 2s ease-in-out infinite",
         "scroll-line": "scroll-line 2.2s ease-in-out infinite",
-        "orbit-slow": "orbit-slow 22s linear infinite",
         "drift-x": "drift-x 7s ease-in-out infinite",
       },
       transitionTimingFunction: {

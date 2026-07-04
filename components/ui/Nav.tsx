@@ -38,6 +38,61 @@ function PlanetLogo() {
   );
 }
 
+/** Brand-gradient colour for one glyph: lerps indigo-400 → purple-400 across
+    the word so a hovered label lands as a letter-by-letter gradient. */
+function glyphColor(i: number, n: number) {
+  const t = n <= 1 ? 0 : i / (n - 1);
+  const mix = (a: number, b: number) => Math.round(a + (b - a) * t);
+  return `rgb(${mix(129, 192)}, ${mix(140, 132)}, ${mix(248, 252)})`;
+}
+
+/** Split-flap nav label: on hover each glyph rolls up while its brand-tinted
+    twin rolls in from below, staggered left→right. The two layers cross-FADE
+    as they roll so a half-rolled letter is soft rather than a hard clipped
+    glyph, and the whole label scales up a touch on hover. Pure CSS
+    transitions, so the global reduced-motion rule stills it automatically.
+    Needs a `group/link` ancestor to drive the hover. */
+function RollingLabel({ text }: { text: string }) {
+  const chars = Array.from(text);
+  const EASE = "cubic-bezier(0.34,1.3,0.4,1)";
+  return (
+    <span className="relative block overflow-hidden transition-transform duration-300 ease-[cubic-bezier(0.34,1.3,0.4,1)] group-hover/link:scale-[1.07]">
+      <span className="sr-only">{text}</span>
+      <span aria-hidden className="flex">
+        {chars.map((c, i) => {
+          const delay = `${i * 16}ms`;
+          return (
+            <span
+              key={i}
+              className="relative inline-block transition-transform duration-[420ms] group-hover/link:-translate-y-full"
+              style={{ transitionDelay: delay, transitionTimingFunction: EASE }}
+            >
+              {/* Outgoing default glyph — fades as it rolls up and out. */}
+              <span
+                className="inline-block transition-opacity duration-[420ms] group-hover/link:opacity-0"
+                style={{ transitionDelay: delay, transitionTimingFunction: EASE }}
+              >
+                {c}
+              </span>
+              {/* Incoming brand-tinted twin — fades in as it arrives. */}
+              <span
+                className="absolute left-0 top-full opacity-0 transition-opacity duration-[420ms] group-hover/link:opacity-100"
+                style={{
+                  color: glyphColor(i, chars.length),
+                  transitionDelay: delay,
+                  transitionTimingFunction: EASE,
+                }}
+              >
+                {c}
+              </span>
+            </span>
+          );
+        })}
+      </span>
+    </span>
+  );
+}
+
 /** Scroll-progress ring that sits just OUTSIDE the header outline.
     pathLength is normalised to 100 so it traces the real shape (pill or
     circle), and the whole ring fades in with progress (hidden at the top). */
@@ -224,8 +279,6 @@ export default function Nav() {
   // Once expanded by hover it stays open until the next scroll-down,
   // so leaving the header doesn't snap it shut.
   const [userExpanded, setUserExpanded] = useState(false);
-  const [hovered, setHovered] = useState<string | null>(null);
-  const [lastHovered, setLastHovered] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   // Tracks the section currently in view so the mobile menu can mark it.
   const [activeSection, setActiveSection] = useState("");
@@ -430,46 +483,19 @@ export default function Nav() {
             style={{ overflow: "clip", overflowClipMargin: "24px" }}
             className="relative z-10 hidden items-center md:flex"
           >
-            {/* Links */}
-            <ul
-              className="ml-5 hidden items-center gap-0.5 text-sm text-ink-muted md:flex"
-              onMouseLeave={() => setHovered(null)}
-            >
+            {/* Links — split-flap hover: glyphs roll up into brand-gradient
+                twins (see RollingLabel). */}
+            <ul className="ml-5 hidden items-center gap-0.5 text-sm text-ink-muted md:flex">
               {LINKS.map((link) => (
-                <li key={link.href} className="relative">
+                <li key={link.href}>
                   <motion.a
                     href={link.href}
-                    onMouseEnter={() => {
-                      setHovered(link.href);
-                      setLastHovered(link.href);
-                    }}
-                    whileHover={{ y: -1 }}
                     whileTap={{ scale: 0.94 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                    className={`relative z-10 block whitespace-nowrap rounded-full px-3.5 py-1.5 transition-colors duration-200 ${
-                      hovered === link.href ? "text-ink-strong" : "hover:text-ink-strong"
-                    }`}
+                    transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                    className="group/link relative z-10 block whitespace-nowrap rounded-full px-3.5 py-1.5"
                   >
-                    {link.label}
+                    <RollingLabel text={link.label} />
                   </motion.a>
-                  {/* Liquid-glass pill — stays mounted at the last-hovered link
-                      and fades out smoothly when nothing is hovered. */}
-                  {(hovered === link.href ||
-                    (!hovered && lastHovered === link.href)) && (
-                    <motion.span
-                      layoutId="nav-pill"
-                      initial={false}
-                      animate={{ opacity: hovered === link.href ? 1 : 0 }}
-                      transition={{
-                        opacity: {
-                          duration: hovered === link.href ? 0.2 : 0.3,
-                          ease: "easeOut",
-                        },
-                        layout: { type: "spring", stiffness: 320, damping: 34, mass: 0.9 },
-                      }}
-                      className="absolute inset-0 rounded-full bg-glass-strong ring-1 ring-inset ring-[var(--ring)] backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]"
-                    />
-                  )}
                 </li>
               ))}
             </ul>

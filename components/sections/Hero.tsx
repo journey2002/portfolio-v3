@@ -320,6 +320,11 @@ export default function Hero() {
   // before it reaches the upper viewport — so it can never ghost back in near the
   // end. Close enough to the content's curve to still read as a parallel exit.
   const chromeOpacity = useTransform(heroProgress, [0, 0.7], [1, 0]);
+  // The scroll cue is a real link; once its chrome has faded it must also stop
+  // being clickable/focusable, so visibility tracks the same curve.
+  const cueVisibility = useTransform(chromeOpacity, (o) =>
+    o < 0.02 ? "hidden" : "visible",
+  );
   const contentY = useTransform(heroProgress, [0, 1], [0, -110]);
   const auroraScale = useTransform(heroProgress, [0, 1], [1, 1.4]);
   const auroraY = useTransform(heroProgress, [0, 1], [0, 160]);
@@ -444,7 +449,7 @@ export default function Hero() {
           <MagneticButton
             href="#work"
             glow
-            className="px-7 py-3.5 text-sm font-medium text-white"
+            className="px-7 py-3.5 text-sm font-semibold text-white"
           >
             View my work
             <span className="relative inline-flex h-4 w-4 items-center justify-center">
@@ -532,10 +537,11 @@ export default function Hero() {
         <InspectorPanel />
       </motion.div>
       {/* Scroll cue is bottom-anchored — it sweeps up with the hero, so it rides
-          the earlier `chromeOpacity` curve to clear before it re-enters view. */}
+          the earlier `chromeOpacity` curve to clear before it re-enters view.
+          Not aria-hidden (it holds a real link); the wrapper blocks pointer
+          events across the viewport while the anchor re-enables its own. */}
       <motion.div
-        aria-hidden
-        style={{ opacity: chromeOpacity }}
+        style={{ opacity: chromeOpacity, visibility: cueVisibility }}
         className="pointer-events-none absolute inset-0 z-20 hidden lg:block"
       >
         <ScrollCue />
@@ -1003,7 +1009,8 @@ function ScrollCue() {
     <a
       href="#about"
       aria-label="Scroll to about"
-      className="absolute bottom-20 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.3em] text-ink-subtle"
+      data-cursor-hover
+      className="pointer-events-auto absolute bottom-20 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.3em] text-ink-subtle transition-colors duration-200 hover:text-ink-strong"
     >
       <span className="flex flex-col items-center gap-3">
         Scroll

@@ -1,8 +1,8 @@
 "use client";
 
-import createGlobe from "cobe";
+import createGlobe, { type COBEOptions, type Globe as CobeGlobe } from "cobe";
 import { useEffect, useRef, useState } from "react";
-import { useTheme } from "@/components/ui/ThemeProvider";
+import { useTheme, type Theme } from "@/components/ui/ThemeProvider";
 
 declare module "cobe" {
   interface COBEOptions {
@@ -14,6 +14,32 @@ type GlobeProps = {
   className?: string;
   /** CSS pixel size of the rendered globe. */
   size?: number;
+};
+
+// Per-theme tints, applied to the LIVE globe through cobe's update() — a
+// uniform refresh on the existing WebGL context. Rebuilding the globe on
+// toggle (the old approach) tore down and recreated the context + 12k map
+// samples mid-click, a visible hitch. Light: a pale globe on the white tile;
+// dark: the original moody indigo sphere.
+type GlobeTint = Pick<
+  COBEOptions,
+  "dark" | "diffuse" | "mapBrightness" | "baseColor" | "glowColor"
+>;
+const GLOBE_TINTS: Record<Theme, GlobeTint> = {
+  dark: {
+    dark: 1,
+    diffuse: 1.2,
+    mapBrightness: 5,
+    baseColor: [0.28, 0.28, 0.32],
+    glowColor: [0.45, 0.4, 0.85],
+  },
+  light: {
+    dark: 0,
+    diffuse: 1.6,
+    mapBrightness: 8,
+    baseColor: [0.82, 0.82, 0.88],
+    glowColor: [0.92, 0.9, 1.0],
+  },
 };
 
 /**
@@ -29,6 +55,10 @@ type GlobeProps = {
 export default function Globe({ className = "", size = 240 }: GlobeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { theme } = useTheme();
+  // The live cobe instance + the theme it was created with, so a toggle only
+  // pushes new tints into the running globe instead of recreating it.
+  const globeRef = useRef<CobeGlobe | null>(null);
+  const themeRef = useRef(theme);
   // Mount the WebGL canvas only when motion is allowed and we're not on a small
   // screen — otherwise the static marker below is the permanent treatment.
   const [enabled, setEnabled] = useState(false);
@@ -53,10 +83,7 @@ export default function Globe({ className = "", size = 240 }: GlobeProps) {
 
     let isVisible = false;
     let hasPainted = false;
-    // Light theme: a pale globe on the white tile; dark theme: the original
-    // moody indigo sphere.
-    const light = theme === "light";
-    let globe: { destroy: () => void };
+    let globe: CobeGlobe;
     try {
       globe = createGlobe(canvas, {
         devicePixelRatio: dpr,
@@ -64,13 +91,11 @@ export default function Globe({ className = "", size = 240 }: GlobeProps) {
         height: size * dpr,
         phi: 0,
         theta: 0.25,
-        dark: light ? 0 : 1,
-        diffuse: light ? 1.6 : 1.2,
         mapSamples: 12000,
-        mapBrightness: light ? 8 : 5,
-        baseColor: light ? [0.82, 0.82, 0.88] : [0.28, 0.28, 0.32],
         markerColor: [0.65, 0.55, 1.0],
-        glowColor: light ? [0.92, 0.9, 1.0] : [0.45, 0.4, 0.85],
+        // Theme tints (dark/diffuse/brightness/base/glow) — retinted in place
+        // on toggle via globe.update(), see the effect below.
+        ...GLOBE_TINTS[themeRef.current],
         markers: [
           // Bangkok
           { location: [13.7563, 100.5018], size: 0.06 },
@@ -91,6 +116,7 @@ export default function Globe({ className = "", size = 240 }: GlobeProps) {
       // No WebGL context — leave the static marker in place.
       return;
     }
+    globeRef.current = globe;
 
     // Pause rotation while the canvas is off-screen.
     const observer = new IntersectionObserver(
@@ -103,9 +129,16 @@ export default function Globe({ className = "", size = 240 }: GlobeProps) {
 
     return () => {
       observer.disconnect();
+      globeRef.current = null;
       globe.destroy();
     };
-  }, [enabled, size, theme]);
+  }, [enabled, size]);
+
+  // Theme toggle retints the running globe — no WebGL teardown/recreate.
+  useEffect(() => {
+    themeRef.current = theme;
+    globeRef.current?.update(GLOBE_TINTS[theme]);
+  }, [theme]);
 
   return (
     <div

@@ -37,16 +37,54 @@ const THEME_COLOR: Record<Theme, string> = {
   light: "#f6f5f3",
 };
 
+// Last theme handed to applyTheme. The dataset itself can lag a frame behind
+// (the swap runs inside the view-transition callback), so re-entrant calls —
+// React strict mode double-invokes the toggle's state updater in dev — are
+// deduped against the requested value, not the painted one.
+let requestedTheme: Theme | null = null;
+
 function applyTheme(theme: Theme) {
   if (typeof document === "undefined") return;
-  document.documentElement.dataset.theme = theme;
   try {
     localStorage.setItem("theme", theme);
   } catch {
     /* private mode / storage disabled — the in-memory state still works */
   }
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", THEME_COLOR[theme]);
+  const root = document.documentElement;
+  if ((requestedTheme ?? root.dataset.theme) === theme) return;
+  requestedTheme = theme;
+
+  const swap = () => {
+    root.dataset.theme = theme;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", THEME_COLOR[theme]);
+  };
+
+  // Swap through the View Transitions API where available: the browser
+  // snapshots the page before/after the change and cross-fades the two on the
+  // compositor. Without this, the swap live-animates colors on every element
+  // for 500ms (body transition + every `transition-colors` utility picking up
+  // the new CSS variables), which forces a full-page style/paint pass per
+  // frame — the source of the toggle jank. The `theme-switching` class (see
+  // globals.css) suppresses those per-element transitions during the swap so
+  // the "new" snapshot is captured already at its final colors; the crossfade
+  // supplies the same 0.5s ease the body transition used to.
+  const doc = document as Document & {
+    startViewTransition?: (cb: () => void) => { finished: Promise<void> };
+  };
+  if (
+    !doc.startViewTransition ||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  ) {
+    // Fallback: the body CSS transition eases the page tone, as before.
+    swap();
+    return;
+  }
+  root.classList.add("theme-switching");
+  doc
+    .startViewTransition(swap)
+    .finished.finally(() => root.classList.remove("theme-switching"))
+    .catch(() => {});
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

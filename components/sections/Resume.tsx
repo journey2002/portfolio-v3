@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { motion, useInView, type Variants } from "framer-motion";
+import {
+  motion,
+  useInView,
+  useReducedMotion,
+  type Variants,
+} from "framer-motion";
 import NumberFlow from "@number-flow/react";
 import { Balancer } from "react-wrap-balancer";
 import {
@@ -12,6 +17,7 @@ import {
   ArrowUpRight,
   ArrowLeft,
   Calendar,
+  Download,
   GraduationCap,
   Sparkles,
   Trophy,
@@ -19,8 +25,14 @@ import {
   Award,
   type LucideIcon,
 } from "lucide-react";
+import MagneticButton from "@/components/ui/MagneticButton";
 import SectionLabel from "@/components/ui/SectionLabel";
 import SplitText from "@/components/ui/SplitText";
+
+// The downloadable PDF, served from public/. Drop the real file at
+// public/Worapat-Settapak-Resume.pdf — until it exists this link 404s.
+// Set to null to hide both download buttons entirely.
+const RESUME_PDF: string | null = "/Worapat-Settapak-Resume.pdf";
 
 type TimelineItem = {
   date: string;
@@ -99,7 +111,7 @@ const PROFILE = [
     icon: Phone,
     label: "Phone",
     value: "092-672-3004",
-    href: "tel:0926723004",
+    href: "tel:+66926723004",
   },
   {
     icon: Mail,
@@ -181,39 +193,15 @@ const FOOTER_MARQUEE = [
   "Available for work",
 ];
 
-// Contents index for the hero's right column. Each row is a real `#` anchor;
-// LenisProvider intercepts the click and smooth-scrolls to the section below.
-type IndexEntry = {
-  num: string;
-  label: string;
-  href: string;
-  note: string;
-};
-const RESUME_INDEX: IndexEntry[] = [
-  {
-    num: "01",
-    label: "Experience",
-    href: "#experience",
-    note: "Applicad · 2023–24",
-  },
-  {
-    num: "02",
-    label: "Education",
-    href: "#education",
-    note: "TNI · Rosehill College",
-  },
-  {
-    num: "03",
-    label: "Skills",
-    href: "#skills",
-    note: "20 skills · 2 categories",
-  },
-  {
-    num: "04",
-    label: "Contact",
-    href: "#contact",
-    note: "Let’s work together",
-  },
+// Playful trait/skill chips for the hero — tilted "stickers" that spring in
+// and straighten on hover, echoing the interest chips on the About page.
+const HERO_CHIPS = [
+  "UX / UI design",
+  "digital art",
+  "3D · Blender",
+  "motion",
+  "anime-adjacent",
+  "Bangkok ⇄ Auckland",
 ];
 
 export default function Resume() {
@@ -248,13 +236,14 @@ export default function Resume() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Hero — dossier cover: title + a navigable contents index          */
+/*  Hero — playful, kinetic intro: a greeting + a headline that moves  */
 /* ------------------------------------------------------------------ */
 function ResumeHero() {
+  const reduce = useReducedMotion();
   return (
     <section
       id="top"
-      className="relative overflow-hidden pb-12 pt-40 sm:pt-44 md:pt-48"
+      className="relative overflow-hidden pb-12 pt-32 sm:pt-36 md:pt-40"
     >
       {/* Faint grid lines layered behind content for depth */}
       <div
@@ -278,10 +267,15 @@ function ResumeHero() {
         className="bg-aurora animate-aurora-shift pointer-events-none absolute left-1/2 top-[42vh] h-[120vh] w-[120vh] -translate-x-1/2 -translate-y-1/2 blur-3xl"
       />
 
-      {/* Secondary accent orbs — opposite corners, softer */}
+      {/* Accent orbs — indigo + violet, plus a pink pop up top for the
+          playful palette. */}
       <div
         aria-hidden
         className="pointer-events-none absolute left-[18%] top-[24%] h-[40vh] w-[40vh] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.22),transparent_70%)] blur-2xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute right-[15%] top-[18%] h-[34vh] w-[34vh] translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(236,72,153,0.20),transparent_70%)] blur-2xl"
       />
       <div
         aria-hidden
@@ -296,118 +290,209 @@ function ResumeHero() {
         className="noise-overlay pointer-events-none absolute inset-0"
       />
 
-      {/* Side vertical rules — match the hero on /  */}
-      <div
+      {/* Floating blob decor — soft shapes that drift, for a playful, kinetic
+          backdrop. Hidden on small screens; hold still under reduced-motion. */}
+      <motion.div
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-6 hidden flex-col items-center justify-between py-32 sm:flex sm:left-10"
-      >
-        <span className="text-[10px] uppercase tracking-[0.35em] text-ink-faint [writing-mode:vertical-rl]">
-          Curriculum vitae · 2026
-        </span>
-        <span className="text-[10px] uppercase tracking-[0.35em] text-ink-faint [writing-mode:vertical-rl]">
-          Worapat Settapak
-        </span>
-      </div>
+        animate={reduce ? undefined : { y: [0, -18, 0], rotate: [0, 8, 0] }}
+        transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+        className="pointer-events-none absolute right-[12%] top-[26%] hidden h-16 w-16 rounded-[38%_62%_63%_37%/41%_44%_56%_59%] bg-[linear-gradient(135deg,#a855f7,#ec4899)] opacity-30 blur-[2px] lg:block"
+      />
+      <motion.div
+        aria-hidden
+        animate={reduce ? undefined : { y: [0, 14, 0], rotate: [0, -10, 0] }}
+        transition={{ duration: 11, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+        className="pointer-events-none absolute bottom-[20%] left-[7%] hidden h-10 w-10 rounded-[50%_50%_40%_60%/60%_40%_60%_40%] bg-[linear-gradient(135deg,#6366f1,#a855f7)] opacity-25 blur-[1px] lg:block"
+      />
 
       <div className="relative mx-auto max-w-7xl px-6 sm:px-10">
-        {/* Badge row */}
+        {/* Index strip — the dossier's cover line: who, what, where. */}
         <motion.div
-          initial={{ opacity: 0, y: 18 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{
-            duration: 0.6,
-            ease: [0.16, 1, 0.3, 1] as const,
-            delay: 0.3,
-          }}
-          className="flex flex-wrap items-center gap-3"
+          transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] as const }}
+          className="flex items-center gap-4 text-[10px] uppercase tracking-[0.4em] text-ink-faint"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-glass px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-ink-muted backdrop-blur">
-            <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-accent-gradient" />
-            Curriculum vitae · 2026
+          <span className="whitespace-nowrap text-ink">Worapat Settapak</span>
+          <span className="h-px flex-1 bg-hairline" />
+          <span className="hidden whitespace-nowrap sm:inline">
+            Curriculum vitae
           </span>
-          <span className="hidden h-px w-12 bg-hairline sm:block" />
-          <span className="hidden text-[10px] uppercase tracking-[0.3em] text-ink-faint sm:block">
-            Worapat Settapak
-          </span>
+          <span className="hidden whitespace-nowrap md:inline">BKK ⇄ AKL</span>
         </motion.div>
 
-        {/* Two columns — dossier cover: title block + navigable contents */}
-        <div className="mt-10 grid grid-cols-1 gap-y-12 lg:grid-cols-12 lg:gap-x-10">
-          {/* Left — title, blurb, CTAs */}
-          <div className="lg:col-span-7">
-            <h1 className="font-serif font-bold leading-[0.94] tracking-tight text-ink-strong">
-              <SplitText
-                text="The full"
-                as="span"
-                className="block text-[clamp(3rem,8.5vw,6.75rem)]"
-                delay={0.4}
-                stagger={0.045}
-                fromY={100}
-                fromRotate={5}
-              />
-              <SplitText
-                text="file."
-                as="span"
-                className="block pb-2 text-[clamp(3rem,8.5vw,6.75rem)]"
-                charClassName="bg-accent-gradient bg-clip-text text-transparent"
-                delay={0.7}
-                stagger={0.04}
-                fromY={100}
-                fromRotate={-4}
-              />
-            </h1>
+        {/* Poster headline — three lines zig-zag across the full container:
+            "I make" holds the left, "things that" rides a hairline to the
+            right edge, then the huge kinetic "move." sweeps the bottom with
+            the OPEN-TO-WORK stamp slammed down at its right end. */}
+        <h1 className="mt-10 font-serif font-bold leading-[0.95] tracking-tight text-ink-strong sm:mt-12">
+          <span className="flex items-center gap-5 text-[clamp(2.5rem,7.5vw,6.25rem)] sm:gap-8">
+            <SplitText
+              text="I make"
+              as="span"
+              stagger={0.045}
+              delay={0.3}
+              fromY={90}
+            />
+            {/* Gradient pill — carries the wave over from the old greeting. */}
+            <motion.span
+              aria-hidden
+              initial={{ opacity: 0, scale: 0, rotate: -12 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 170, damping: 13, delay: 0.8 }}
+              className="relative hidden h-[0.62em] min-w-[1.8em] items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#6366f1_0%,#a855f7_55%,#ec4899_100%)] sm:inline-flex"
+            >
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/[0.25] to-transparent" />
+              <motion.span
+                animate={reduce ? undefined : { rotate: [0, 18, -6, 18, 0] }}
+                transition={{
+                  duration: 1.6,
+                  repeat: Infinity,
+                  repeatDelay: 1.8,
+                  ease: "easeInOut",
+                }}
+                className="inline-block origin-[70%_80%] text-[0.4em] leading-none"
+              >
+                👋
+              </motion.span>
+            </motion.span>
+          </span>
 
-            <motion.div
+          <span className="mt-2 flex items-center gap-5 text-[clamp(2.5rem,7.5vw,6.25rem)] sm:gap-8">
+            <motion.span
+              aria-hidden
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{ duration: 1.2, delay: 0.85, ease: [0.16, 1, 0.3, 1] as const }}
+              className="h-px flex-1 origin-left bg-hairline"
+            />
+            <SplitText
+              text="things that"
+              as="span"
+              stagger={0.035}
+              delay={0.5}
+              fromY={90}
+              fromRotate={-4}
+            />
+          </span>
+
+          <span className="mt-2 flex items-center justify-between gap-8 sm:mt-0">
+            <motion.span
+              initial={{ opacity: 0, y: 90, rotate: -3, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+              transition={{ type: "spring", stiffness: 110, damping: 13, delay: 0.75 }}
+              className="block text-[clamp(4.5rem,18vw,14rem)] leading-[0.9]"
+            >
+              <WigglyWord text="move." />
+            </motion.span>
+            <StampBadge />
+          </span>
+        </h1>
+
+        {/* Bottom deck — blurb + chips anchored left, CTAs anchored right,
+            so the row underneath the poster also uses the full width. */}
+        <div className="mt-10 grid grid-cols-12 items-end gap-x-8 gap-y-10 sm:mt-12">
+          <div className="col-span-12 md:col-span-7">
+            {/* Blurb — casual, personality-forward. */}
+            <motion.p
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.9,
-                delay: 1.2,
-                ease: [0.16, 1, 0.3, 1] as const,
-              }}
-              className="mt-8 max-w-xl"
+              transition={{ duration: 0.8, delay: 0.95, ease: [0.16, 1, 0.3, 1] as const }}
+              className="max-w-xl text-base text-ink-muted sm:text-lg"
             >
-              <p className="text-base text-ink-muted sm:text-lg">
-                <Balancer>
-                  Everything behind my work — experience, education, and the
-                  tools I use —{" "}
-                  <span className="text-ink">
-                    built between Bangkok and Auckland
-                  </span>{" "}
-                  over the last few years.
-                </Balancer>
-              </p>
+              <Balancer>
+                A UX/UI designer &amp; digital artist who sweats the 3am details.
+                Everything behind the work lives below — every project, award, and
+                redraw,{" "}
+                <span className="text-ink">made between Bangkok &amp; Auckland</span>.
+              </Balancer>
+            </motion.p>
 
-              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
-                <a
-                  href="mailto:Worapat2002@gmail.com"
-                  data-cursor-hover
-                  className="group relative inline-flex items-center gap-2 rounded-full border border-white/10 bg-[linear-gradient(135deg,rgba(99,102,241,0.95),rgba(168,85,247,0.95))] px-6 py-3 text-sm font-medium text-white shadow-[0_8px_24px_-10px_rgba(139,92,246,0.45)] transition-[box-shadow,filter] duration-300 hover:brightness-110 hover:shadow-[0_14px_40px_-10px_rgba(139,92,246,0.55)]"
+            {/* Tilted sticker chips — spring in, straighten on hover. */}
+            <motion.ul
+              initial="hidden"
+              animate="show"
+              variants={{
+                hidden: {},
+                show: { transition: { staggerChildren: 0.06, delayChildren: 1.05 } },
+              }}
+              className="mt-7 flex flex-wrap items-center gap-x-3 gap-y-3"
+            >
+              <motion.li
+                variants={{
+                  hidden: { opacity: 0, y: 10 },
+                  show: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+                }}
+                className="font-hand text-xl text-ink-subtle"
+              >
+                into:
+              </motion.li>
+              {HERO_CHIPS.map((chip, i) => (
+                <motion.li
+                  key={chip}
+                  variants={{
+                    hidden: { opacity: 0, y: 16, rotate: i % 2 ? 7 : -7, scale: 0.9 },
+                    show: {
+                      opacity: 1,
+                      y: 0,
+                      rotate: i % 2 ? 2 : -2,
+                      scale: 1,
+                      transition: { type: "spring", stiffness: 220, damping: 12 },
+                    },
+                  }}
+                  whileHover={{ rotate: 0, y: -4, scale: 1.06 }}
+                  className="cursor-default rounded-full border border-hairline bg-surface/50 px-4 py-1.5 text-sm text-ink-muted shadow-[0_2px_12px_rgba(0,0,0,0.25)] backdrop-blur transition-colors hover:border-violet-accent/50 hover:text-ink-strong"
                 >
-                  <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/[0.18] to-transparent" />
-                  Get in touch
-                  <ArrowUpRight
-                    className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                    strokeWidth={2}
-                  />
-                </a>
-                <a
-                  href="/"
-                  data-cursor-hover
-                  className="group inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink-strong"
-                >
-                  <ArrowLeft
-                    className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5"
-                    strokeWidth={2}
-                  />
-                  Back to portfolio
-                </a>
-              </div>
-            </motion.div>
+                  {chip}
+                </motion.li>
+              ))}
+            </motion.ul>
           </div>
 
-          {/* Right — navigable contents index */}
-          <ContentsIndex />
+          {/* CTAs — a chunky pink→violet button + a quiet way back. */}
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 1.3, ease: [0.16, 1, 0.3, 1] as const }}
+            className="col-span-12 flex flex-wrap items-center gap-x-6 gap-y-4 md:col-span-5 md:justify-end"
+          >
+            <MagneticButton
+              href="mailto:Worapat2002@gmail.com"
+              glow
+              className="px-7 py-3.5 text-sm font-semibold text-white"
+            >
+              Let&rsquo;s make something
+              <ArrowUpRight
+                className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                strokeWidth={2.25}
+              />
+            </MagneticButton>
+            {RESUME_PDF && (
+              <a
+                href={RESUME_PDF}
+                download
+                data-cursor-hover
+                className="group inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink-strong"
+              >
+                <Download
+                  className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-y-0.5"
+                  strokeWidth={2}
+                />
+                Download PDF
+              </a>
+            )}
+            <a
+              href="/"
+              data-cursor-hover
+              className="group inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink-strong"
+            >
+              <ArrowLeft
+                className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5"
+                strokeWidth={2}
+              />
+              Back to portfolio
+            </a>
+          </motion.div>
         </div>
       </div>
 
@@ -416,77 +501,179 @@ function ResumeHero() {
 }
 
 /**
- * Hero contents index — the right column of the dossier cover. Each row is a
- * real `#` anchor; LenisProvider intercepts the click and smooth-scrolls to the
- * matching section below (with an offset for the floating nav). Rows stagger in
- * after the headline finishes its reveal.
+ * Kinetic word — each letter keeps bobbing in a staggered wave after it enters,
+ * so the hero's punchline literally moves. The gradient runs indigo → violet →
+ * pink for a playful colour pop. Honours reduced-motion by holding still, and
+ * exposes the plain word to screen readers (the animated glyphs are aria-hidden).
  */
-function ContentsIndex() {
-  const ease = [0.16, 1, 0.3, 1] as const;
+function WigglyWord({ text }: { text: string }) {
+  const reduce = useReducedMotion();
   return (
-    <motion.nav
-      aria-label="Resume contents"
-      initial="hidden"
-      animate="show"
-      variants={{
-        hidden: {},
-        show: { transition: { staggerChildren: 0.09, delayChildren: 1.15 } },
-      }}
-      className="lg:col-span-5 lg:border-l lg:border-hairline lg:pl-10"
-    >
-      <motion.div
-        variants={{
-          hidden: { opacity: 0, y: 14 },
-          show: { opacity: 1, y: 0, transition: { duration: 0.6, ease } },
-        }}
-        className="flex items-center gap-3 text-[10px] uppercase tracking-[0.4em] text-ink-faint"
-      >
-        <span className="text-ink">Contents</span>
-        <span className="h-px flex-1 bg-hairline" />
-        <span>Jump to</span>
-      </motion.div>
+    <span className="relative inline-block whitespace-nowrap">
+      {Array.from(text).map((ch, i) => (
+        <motion.span
+          key={i}
+          aria-hidden
+          className="inline-block bg-clip-text text-transparent"
+          style={{
+            backgroundImage:
+              "linear-gradient(135deg,#6366f1 0%,#a855f7 55%,#ec4899 100%)",
+          }}
+          animate={reduce ? undefined : { y: ["0%", "-16%", "0%"] }}
+          transition={{
+            duration: 2.2,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: i * 0.14,
+          }}
+        >
+          {ch === " " ? " " : ch}
+        </motion.span>
+      ))}
+      <span className="sr-only">{text}</span>
+    </span>
+  );
+}
 
-      <ul className="mt-2 border-b border-hairline">
-        {RESUME_INDEX.map((item) => (
-          <motion.li
-            key={item.href}
-            variants={{
-              hidden: { opacity: 0, y: 18 },
-              show: { opacity: 1, y: 0, transition: { duration: 0.7, ease } },
-            }}
+/* ------------------------------------------------------------------ */
+/*  Stamp badge — "OPEN TO WORK" rubber-stamped onto the dossier        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Ink stamp parked at the right end of the giant "move." — the dossier
+ * got its verdict. Slams down with a springy overshoot once the headline
+ * lands, resting at a hand-pressed tilt. SVG turbulence roughs up the
+ * outlines and punches pinholes in the ink so it reads printed, not
+ * rendered. Links down to the contact footer like the old orbit badge.
+ */
+function StampBadge() {
+  const reduce = useReducedMotion();
+  return (
+    <motion.a
+      href="#contact"
+      aria-label="Open to work — jump to contact"
+      data-cursor-hover
+      initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 2.1, rotate: 10 }}
+      animate={{ opacity: 1, scale: 1, rotate: -7 }}
+      transition={
+        reduce
+          ? { duration: 0.5, delay: 1.15 }
+          : {
+              type: "spring",
+              stiffness: 380,
+              damping: 16,
+              delay: 1.15,
+              opacity: { duration: 0.15, delay: 1.15 },
+            }
+      }
+      whileHover={{ rotate: -3, scale: 1.04 }}
+      whileTap={{ scale: 0.94 }}
+      className="hidden w-40 shrink-0 text-pink-500/90 md:block lg:w-52"
+    >
+      <svg viewBox="0 0 230 156" aria-hidden className="h-auto w-full">
+        <defs>
+          {/* Two-stage grunge: low-freq turbulence wobbles the outlines,
+              then high-freq noise thresholded to alpha eats pinholes out
+              of the ink — the classic rubber-stamp filter recipe. */}
+          <filter id="stamp-ink" x="-8%" y="-8%" width="116%" height="116%">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.045"
+              numOctaves="3"
+              seed="7"
+              result="warp"
+            />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="warp"
+              scale="3.5"
+              result="warped"
+            />
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.5"
+              numOctaves="2"
+              seed="12"
+              result="speckle"
+            />
+            <feColorMatrix
+              in="speckle"
+              type="luminanceToAlpha"
+              result="speckleAlpha"
+            />
+            <feComponentTransfer in="speckleAlpha" result="holes">
+              <feFuncA type="linear" slope="18" intercept="-4.5" />
+            </feComponentTransfer>
+            <feComposite in="warped" in2="holes" operator="in" />
+          </filter>
+        </defs>
+
+        <g filter="url(#stamp-ink)" className="fill-current stroke-current">
+          {/* Double border, like a passport / customs stamp */}
+          <rect
+            x="7"
+            y="7"
+            width="216"
+            height="142"
+            rx="16"
+            fill="none"
+            strokeWidth="5"
+          />
+          <rect
+            x="17"
+            y="17"
+            width="196"
+            height="122"
+            rx="9"
+            fill="none"
+            strokeWidth="1.5"
+          />
+
+          <text
+            x="115"
+            y="42"
+            textAnchor="middle"
+            stroke="none"
+            className="font-sans text-[10.5px] font-semibold uppercase"
+            style={{ letterSpacing: "0.32em" }}
           >
-            <a
-              href={item.href}
-              data-cursor-hover
-              className="group relative isolate flex items-center gap-5 border-t border-hairline py-5 transition-colors"
-            >
-              {/* Accent wash on hover — a soft rounded glow inset from the row
-                  dividers and bled out past the number/arrow so nothing sits
-                  flush against its edge. */}
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-y-1.5 -inset-x-4 -z-10 rounded-xl bg-gradient-to-r from-indigo-500/10 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-              />
-              <span className="font-serif text-sm tabular-nums text-indigo-accent/80 transition-colors group-hover:text-indigo-accent">
-                {item.num}
-              </span>
-              <span className="flex-1">
-                <span className="block font-serif text-xl font-semibold leading-tight text-ink transition-colors group-hover:text-ink-strong sm:text-2xl">
-                  {item.label}
-                </span>
-                <span className="mt-1 block text-xs text-ink-faint transition-colors group-hover:text-ink-muted">
-                  {item.note}
-                </span>
-              </span>
-              <ArrowUpRight
-                className="h-5 w-5 shrink-0 text-ink-faint transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-indigo-accent"
-                strokeWidth={1.75}
-              />
-            </a>
-          </motion.li>
-        ))}
-      </ul>
-    </motion.nav>
+            UX/UI · Digital art
+          </text>
+
+          <text
+            x="115"
+            y="77"
+            textAnchor="middle"
+            stroke="none"
+            className="font-serif text-[30px] font-bold uppercase"
+            style={{ letterSpacing: "0.08em" }}
+          >
+            Open to
+          </text>
+          <text
+            x="115"
+            y="109"
+            textAnchor="middle"
+            stroke="none"
+            className="font-serif text-[30px] font-bold uppercase"
+            style={{ letterSpacing: "0.08em" }}
+          >
+            Work ↗
+          </text>
+
+          <text
+            x="115"
+            y="133"
+            textAnchor="middle"
+            stroke="none"
+            className="font-sans text-[10px] font-semibold uppercase"
+            style={{ letterSpacing: "0.3em" }}
+          >
+            ★ BKK ⇄ AKL · 2026 ★
+          </text>
+        </g>
+      </svg>
+    </motion.a>
   );
 }
 
@@ -762,16 +949,6 @@ function AchievementsGrid() {
 /*  Timeline (Experience / Education)                                  */
 /* ------------------------------------------------------------------ */
 
-/** Pull the start year + 2-digit end year out of a span like
- *  "June 2023 — May 2024" → { start: "2023", endShort: "24" }. Feeds the
- *  oversized "2023→24" watermark bled behind each timeline sheet. */
-function parseSpan(date: string) {
-  const years = date.match(/\d{4}/g) ?? [];
-  const start = years[0] ?? "";
-  const end = years[years.length - 1] ?? start;
-  return { start, endShort: end.slice(2) };
-}
-
 function TimelineSection({
   index,
   caption,
@@ -849,6 +1026,8 @@ function TimelineSection({
               index={i}
               total={items.length}
               icon={ItemIcon}
+              inView={inView}
+              delay={i * 0.12}
             />
           ))}
         </div>
@@ -859,8 +1038,7 @@ function TimelineSection({
 
 /**
  * A single timeline record, reimagined as an archival "case-file sheet":
- *  • a drawn-in spine + accent node threads every entry onto one timeline
- *  • an oversized "2023→24" year watermark bleeds in behind the sheet
+ *  • a drawn-in rail + accent node threads every entry onto one timeline
  *  • résumé bullets become numbered "field notes" under a grouping rule
  *  • the sheet rests at a hand-placed tilt and squares up on hover, with a
  *    rotated dashed rubber-stamp of the location for a physical-dossier feel
@@ -870,58 +1048,95 @@ function TimelineEntry({
   index,
   total,
   icon: ItemIcon,
+  inView,
+  delay,
 }: {
   item: TimelineItem;
   index: number;
   total: number;
   icon: LucideIcon;
+  inView: boolean;
+  delay: number;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-15%" });
   const ease = [0.16, 1, 0.3, 1] as const;
-  const { start, endShort } = parseSpan(item.date);
   const isFirst = index === 0;
   const isLast = index === total - 1;
   // Hand-placed lean — alternates per entry, squares up on hover.
   const restTilt = index % 2 === 0 ? -0.7 : 0.7;
 
-  // Spine geometry: the thread starts at the first node, runs full height
-  // through the middle entries (bridging the flex gap below via a negative
-  // bottom), and fades out past the last node so it never points at nothing.
-  const spineStyle: CSSProperties =
-    isFirst && isLast
-      ? { top: "0.75rem", height: "4rem", background: "linear-gradient(var(--hairline), transparent)" }
-      : isFirst
-        ? { top: "0.75rem", bottom: "-3.5rem", background: "var(--hairline)" }
-        : isLast
-          ? { top: 0, height: "5.5rem", background: "linear-gradient(var(--hairline) 35%, transparent)" }
-          : { top: 0, bottom: "-3.5rem", background: "var(--hairline)" };
+  // Beam: a violet gradient that blooms out of the dot and fades into a faint
+  // hairline as it travels down — it starts at the dot, spans the sheet, and
+  // (for non-last entries) bridges the flex gap to the next dot. Positioning
+  // lives on a plain wrapper; only the scaleY reveal runs on the inner motion
+  // element (Framer rebuilds `transform`, so a CSS -translate on a motion node
+  // would be dropped — that was the old dot/line misalignment).
+  const beamGradient =
+    "linear-gradient(180deg, #a855f7 0%, rgba(139,92,246,0.5) 20%, var(--hairline) 62%)";
+  const beamPos: CSSProperties = {
+    top: "0.5rem",
+    bottom: isLast ? 0 : "-3.5rem",
+  };
 
   return (
     <motion.div
-      ref={ref}
       initial={{ opacity: 0, y: 38 }}
       animate={inView ? { opacity: 1, y: 0 } : undefined}
-      transition={{ duration: 0.8, ease }}
-      className="relative pl-12 sm:pl-24"
+      transition={{ duration: 0.8, delay, ease }}
+      className="relative pl-8 sm:pl-12"
     >
-      {/* Timeline spine — one thread down the left gutter, drawn top→down */}
-      <motion.span
+      {/* Faint upward connector — links the thread down from the previous
+          entry into this dot (skipped on the first entry). */}
+      {!isFirst && (
+        <span
+          aria-hidden
+          className="absolute left-4 top-0 h-2 w-px -translate-x-1/2 bg-hairline"
+        />
+      )}
+      {/* Timeline beam — wrapper carries the centring (left-4 + -translate-x-1/2);
+          inner motion element only reveals via scaleY, growing down from the dot. */}
+      <span
         aria-hidden
-        initial={{ scaleY: 0 }}
-        animate={inView ? { scaleY: 1 } : undefined}
-        transition={{ duration: 0.7, delay: 0.1, ease }}
-        className="absolute left-4 w-px sm:left-9"
-        style={{ ...spineStyle, transformOrigin: "top" }}
-      />
-      {/* Node — a rotated accent square that pops onto the spine */}
-      <motion.span
+        className="absolute left-4 w-px -translate-x-1/2"
+        style={beamPos}
+      >
+        <motion.span
+          initial={{ scaleY: 0 }}
+          animate={inView ? { scaleY: 1 } : undefined}
+          transition={{ duration: 0.7, delay: delay + 0.1, ease }}
+          className="block h-full w-full origin-top"
+          style={{ background: beamGradient }}
+        />
+      </span>
+      {/* Connector tick — ties the dot across to the date label */}
+      <span
         aria-hidden
-        initial={{ scale: 0 }}
-        animate={inView ? { scale: 1 } : undefined}
-        transition={{ duration: 0.5, delay: 0.25, ease }}
-        className="absolute left-4 top-3 z-10 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[2px] bg-accent-gradient shadow-[0_0_0_4px_rgb(var(--canvas)),0_0_16px_2px_rgba(139,92,246,0.45)] sm:left-9"
+        className="absolute left-4 top-2 h-px w-4 -translate-y-1/2 bg-hairline sm:w-8"
       />
+      {/* Node — a "waypoint beacon": crisp gradient core, a clean canvas gap,
+          a thin orbit ring, and a slow radar ping swelling outward. Wrapper
+          carries the centring so every rail element shares the same x; the
+          inner motion element only scales in. */}
+      <span
+        aria-hidden
+        className="absolute left-4 top-2 z-10 -translate-x-1/2 -translate-y-1/2"
+      >
+        <motion.span
+          initial={{ scale: 0 }}
+          animate={inView ? { scale: 1 } : undefined}
+          transition={{ duration: 0.5, delay: delay + 0.25, ease }}
+          className="relative block h-4 w-4"
+        >
+          {/* radar ping — a ring that swells out and fades, like a live beacon */}
+          <span className="absolute inset-0 animate-ping rounded-full border border-violet-accent/40 [animation-duration:2.8s]" />
+          {/* core — inset behind a canvas-colored gap (first shadow) so the
+              orbit ring reads as a separate orbit; second shadow is the glow */}
+          <span className="absolute inset-1 rounded-full bg-accent-gradient shadow-[0_0_0_3px_rgb(var(--canvas)),0_0_14px_3px_rgba(139,92,246,0.5)]" />
+          {/* orbit ring — painted after the core so the canvas gap never clips it */}
+          <span className="absolute inset-0 rounded-full border border-violet-accent/70" />
+          {/* white-hot centre */}
+          <span className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/80" />
+        </motion.span>
+      </span>
 
       {/* Date — sits level with the node */}
       <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-ink-subtle">
@@ -946,14 +1161,6 @@ function TimelineEntry({
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
         />
-        {/* Oversized year watermark, bleeding off the top-right */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -right-3 -top-8 select-none font-serif text-[6rem] font-bold leading-none tracking-tighter text-ink-strong/[0.05] sm:text-[8.5rem]"
-        >
-          {start}
-          <span className="align-top text-[40%]">→{endShort}</span>
-        </span>
 
         {/* Headline + role */}
         <div className="relative flex items-start gap-4">
@@ -1107,12 +1314,18 @@ function SkillsBlock({
       initial={{ opacity: 0, y: 28 }}
       animate={inView ? { opacity: 1, y: 0 } : undefined}
       transition={{ duration: 0.85, delay, ease: [0.16, 1, 0.3, 1] as const }}
-      className="group relative overflow-hidden rounded-2xl border border-hairline bg-surface/40 p-7 backdrop-blur transition-colors hover:border-indigo-accent/30 sm:p-9"
+      whileHover={{ y: -4 }}
+      className="group relative overflow-hidden rounded-2xl border border-hairline bg-surface/40 p-7 backdrop-blur transition-[border-color,box-shadow] duration-300 hover:border-indigo-accent/40 hover:shadow-[0_18px_48px_-28px_rgba(99,102,241,0.45)] sm:p-9"
     >
-      {/* Soft accent wash on hover */}
-      <div
+      {/* Top sheen — thin highlight that fades in along the upper edge */}
+      <span
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-indigo-500/15 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--sheen)] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+      />
+      {/* Soft accent wash on hover — static fade-in, no cursor tracking */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-indigo-500/12 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
       />
 
       <div className="flex items-end justify-between">
@@ -1154,8 +1367,8 @@ function SkillsBlock({
                 transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
               },
             } satisfies Variants}
-            whileHover={{ y: -3 }}
-            className="cursor-default rounded-full border border-hairline bg-glass px-4 py-1.5 text-xs text-ink backdrop-blur transition-colors hover:border-indigo-accent/40 hover:text-ink-strong"
+            whileHover={{ y: -2 }}
+            className="cursor-default rounded-full border border-hairline bg-glass px-4 py-1.5 text-xs text-ink backdrop-blur transition-colors duration-200 hover:border-indigo-accent/40 hover:text-ink-strong"
           >
             {item}
           </motion.span>
@@ -1244,13 +1457,31 @@ function ResumeFooter() {
                 strokeWidth={2}
               />
             </a>
-            <div className="mt-3 flex items-center gap-2 text-sm text-ink-subtle">
+            <a
+              href="tel:+66926723004"
+              data-cursor-hover
+              className="mt-3 flex w-fit items-center gap-2 text-sm text-ink-subtle transition-colors hover:text-ink-strong"
+            >
               <Phone className="h-3.5 w-3.5" strokeWidth={1.5} />
               <span>092-672-3004</span>
-            </div>
+            </a>
           </div>
 
           <div className="flex flex-wrap items-center gap-6 md:col-span-5 md:justify-end">
+            {RESUME_PDF && (
+              <a
+                href={RESUME_PDF}
+                download
+                data-cursor-hover
+                className="group inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink-strong"
+              >
+                <Download
+                  className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-y-0.5"
+                  strokeWidth={2}
+                />
+                Download PDF
+              </a>
+            )}
             <a
               href="/#work"
               data-cursor-hover
