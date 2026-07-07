@@ -54,7 +54,7 @@ export const ACCENT_CHANNELS: Record<Accent, string> = {
 
 const DEFAULT_ACCENT: Accent = "emerald";
 
-function isAccent(v: string | null): v is Accent {
+function isAccent(v: string | null | undefined): v is Accent {
   return v === "sunset" || v === "violet" || v === "emerald";
 }
 
