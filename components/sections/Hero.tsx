@@ -25,7 +25,8 @@ import {
 import { Balancer } from "react-wrap-balancer";
 import MagneticButton from "@/components/ui/MagneticButton";
 import MouseParallax from "@/components/ui/MouseParallax";
-import Particles from "@/components/ui/Particles";
+import AccentSwitcher from "@/components/ui/AccentSwitcher";
+import { useAccent, ACCENT_PRIMARY } from "@/components/ui/AccentProvider";
 import SplitText from "@/components/ui/SplitText";
 import GridSpotlight from "@/components/ui/GridSpotlight";
 import { usePointer } from "@/components/ui/PointerProvider";
@@ -349,7 +350,7 @@ export default function Hero() {
         className="flex flex-wrap items-center gap-3"
       >
         <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-glass px-3.5 py-1.5 text-[11px] uppercase tracking-[0.18em] text-ink-muted backdrop-blur">
-          <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-accent-gradient" />
+          <span className="h-1.5 w-1.5 rounded-full bg-accent-gradient" />
           Available for work
         </span>
         <span className="hidden text-[10px] uppercase tracking-[0.28em] text-ink-faint sm:inline">
@@ -411,7 +412,11 @@ export default function Hero() {
           className="pointer-events-none absolute -inset-x-3 -inset-y-2 hidden md:block"
         >
           <span className="absolute inset-0 rounded-[2px] ring-1 ring-indigo-accent/55" />
-          {RESIZE_HANDLES.map((h) => (
+          {/* Handles only exist for a fine pointer — on touch devices the drag
+              handlers are inert (startResize bails on !enabled), so rendering
+              them would just be dead controls. The ring stays: it's the
+              design-canvas dressing, not an affordance. */}
+          {enabled && RESIZE_HANDLES.map((h) => (
             <span
               key={`${h.x}-${h.y}`}
               onPointerDown={(e) => startResize(e, h.role)}
@@ -439,9 +444,9 @@ export default function Hero() {
       >
         <p className="text-base text-ink-muted sm:col-span-6 sm:text-lg">
           <Balancer>
-            UX/UI designer &amp; digital artist crafting{" "}
-            <span className="text-ink">interfaces people love</span> —
-            from research to pixel-perfect prototype.
+            UX/UI designer and digital artist based in Bangkok. I care about
+            how things work, then build{" "}
+            <span className="text-ink">interfaces people actually reach for</span>.
           </Balancer>
         </p>
 
@@ -482,7 +487,11 @@ export default function Hero() {
     <section
       id="top"
       ref={sectionRef}
-      className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-16 sm:px-10"
+      // Mobile hugs the content: pt clears the fixed nav pill, pb leaves room
+      // for the absolute status bar. The full-viewport "design canvas" stage
+      // only starts at md — on a tall phone it just parked the card between
+      // two big voids.
+      className="relative flex items-center justify-center overflow-hidden px-6 pb-24 pt-28 sm:px-10 md:min-h-[100svh] md:py-16"
     >
       {/* ── Background: dot grid + cursor-glow, aurora, accents, dust ───────────── */}
       <motion.div style={{ y: gridY }} className="absolute inset-0">
@@ -507,19 +516,6 @@ export default function Hero() {
         </MouseParallax>
       </motion.div>
 
-      <motion.div
-        aria-hidden
-        style={{ y: auroraY }}
-        className="pointer-events-none absolute inset-0"
-      >
-        <MouseParallax strength={28} follow className="absolute inset-0">
-          <div className="absolute left-[18%] top-[22%] h-[40vh] w-[40vh] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.22),transparent_70%)] blur-2xl" />
-          <div className="absolute right-[14%] bottom-[18%] h-[36vh] w-[36vh] translate-x-1/2 translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(168,85,247,0.18),transparent_70%)] blur-2xl" />
-        </MouseParallax>
-      </motion.div>
-
-      <Particles count={48} />
-
       {/* Smoothed vignette */}
       <div className="pointer-events-none absolute inset-0 bg-[image:var(--vignette)]" />
       {/* Film grain */}
@@ -529,13 +525,15 @@ export default function Hero() {
       />
 
       {/* ── Decorative workspace chrome (non-interactive, fades on scroll) ──── */}
-      <motion.div
-        aria-hidden
-        style={{ opacity: exitOpacity }}
-        className="pointer-events-none absolute inset-0 z-20 hidden lg:block"
-      >
-        <InspectorPanel />
-      </motion.div>
+      {enabled && (
+        <motion.div
+          aria-hidden
+          style={{ opacity: exitOpacity }}
+          className="pointer-events-none absolute inset-0 z-20 hidden lg:block"
+        >
+          <InspectorPanel />
+        </motion.div>
+      )}
       {/* Scroll cue is bottom-anchored — it sweeps up with the hero, so it rides
           the earlier `chromeOpacity` curve to clear before it re-enters view.
           Not aria-hidden (it holds a real link); the wrapper blocks pointer
@@ -550,17 +548,19 @@ export default function Hero() {
       {/* ── Interactive layers panel (own wrapper so it isn't aria-hidden) ──── */}
       {/* The wrapper owns the scroll-driven opacity; the panel inside owns its
           entrance + the pointer events for dragging. */}
-      <motion.div
-        style={{ opacity: exitOpacity }}
-        className="pointer-events-none absolute inset-0 z-20 hidden lg:block"
-      >
-        <LayersPanel
-          order={layerOrder}
-          setOrder={setLayerOrder}
-          selected={selectedLayer}
-          onSelect={setSelectedLayer}
-        />
-      </motion.div>
+      {enabled && (
+        <motion.div
+          style={{ opacity: exitOpacity }}
+          className="pointer-events-none absolute inset-0 z-20 hidden lg:block"
+        >
+          <LayersPanel
+            order={layerOrder}
+            setOrder={setLayerOrder}
+            selected={selectedLayer}
+            onSelect={setSelectedLayer}
+          />
+        </motion.div>
+      )}
 
       {/* ── The artboard frame + its content (interactive) ─────────────────── */}
       {/* Width tracks the headline box via --fw (set while dragging a handle),
@@ -600,22 +600,27 @@ export default function Hero() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.9, delay: 0.2, ease: EASE }}
           style={{ minHeight: "var(--fh)" }}
-          className="relative flex flex-col justify-center rounded-md border border-hairline bg-panel-weak px-6 py-10 backdrop-blur-[2px] sm:px-12 sm:py-14 lg:px-16 xl:px-48"
+          // On phones the artboard card is dropped entirely — the border+panel
+          // just shrank the text column and added box-in-box chrome. Content
+          // sits straight on the canvas (the section provides the gutter); the
+          // framed "design file" staging starts at sm with the tab and ruler.
+          className="relative flex flex-col justify-center sm:rounded-md sm:border sm:border-hairline sm:bg-panel-weak sm:px-12 sm:py-14 sm:backdrop-blur-[2px] lg:px-16 xl:px-48"
         >
-          {/* Top sheen on the frame edge */}
+          {/* Top sheen on the frame edge — no frame on phones, no sheen */}
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[var(--sheen)] to-transparent"
+            className="pointer-events-none absolute inset-x-8 top-0 hidden h-px bg-gradient-to-r from-transparent via-[var(--sheen)] to-transparent sm:block"
           />
 
-          {/* Corner selection handles around the frame — drag to resize it */}
-          <FrameHandles onResize={startFrameResize} />
+          {/* Corner selection handles around the frame — drag to resize it.
+              Fine-pointer only: on touch the drags are inert, so no handles. */}
+          {enabled && <FrameHandles onResize={startFrameResize} />}
 
           {/* Content blocks, rendered in live `layerOrder`. Each is wrapped in a
               `layout` motion.div so dragging the matching row in the layers panel
               animates the block to its new slot. `space-y` (not per-block margins)
               keeps the gaps identical no matter the order. */}
-          <motion.div style={{ y: contentY }} className="space-y-10">
+          <motion.div style={{ y: contentY }} className="space-y-8 sm:space-y-10">
             {layerOrder.map((id) => (
               <motion.div
                 key={id}
@@ -659,36 +664,42 @@ export default function Hero() {
         className="border-t border-hairline bg-panel backdrop-blur"
        >
         <div className="flex h-10 items-center justify-between gap-4 pl-2 pr-3 sm:h-11">
-          {/* Left — tool dock + zoom */}
-          <div className="hidden items-center gap-1 sm:flex">
-            <div className="flex items-center gap-0.5">
-              {[
-                { Icon: MousePointer2, active: true },
-                { Icon: Hand },
-                { Icon: FrameIcon },
-                { Icon: PenTool },
-                { Icon: TypeIcon },
-                { Icon: MessageSquareDashed },
-              ].map(({ Icon, active }, i) => (
-                <span
-                  key={i}
-                  className={`grid h-7 w-7 place-items-center rounded-md transition-colors ${
-                    active
-                      ? "bg-indigo-accent/20 text-[color:var(--accent-soft)]"
-                      : "text-ink-faint"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
+          {/* Left — accent swatches + tool dock + zoom (sm+). On xl with a fine
+              pointer the picker lives in the Inspect panel's Fill row instead,
+              so it's hidden here to avoid two copies; every other context
+              (touch, or below xl) keeps it in the status bar. */}
+          <div className="flex shrink-0 items-center gap-2">
+            <AccentSwitcher className={enabled ? "xl:hidden" : ""} />
+            <div className="hidden items-center gap-1 sm:flex">
+              <div className="flex items-center gap-0.5">
+                {[
+                  { Icon: MousePointer2, active: true },
+                  { Icon: Hand },
+                  { Icon: FrameIcon },
+                  { Icon: PenTool },
+                  { Icon: TypeIcon },
+                  { Icon: MessageSquareDashed },
+                ].map(({ Icon, active }, i) => (
+                  <span
+                    key={i}
+                    className={`grid h-7 w-7 place-items-center rounded-md transition-colors ${
+                      active
+                        ? "bg-indigo-accent/20 text-[color:var(--accent-soft)]"
+                        : "text-ink-faint"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  </span>
+                ))}
+              </div>
+              <span className="mx-1 h-4 w-px bg-hairline" />
+              <div className="flex items-center gap-1 text-ink-subtle">
+                <Minus className="h-3 w-3" strokeWidth={2} />
+                <span className="w-10 text-center text-[11px] tabular-nums tracking-wide text-ink-muted">
+                  100%
                 </span>
-              ))}
-            </div>
-            <span className="mx-1 h-4 w-px bg-hairline" />
-            <div className="flex items-center gap-1 text-ink-subtle">
-              <Minus className="h-3 w-3" strokeWidth={2} />
-              <span className="w-10 text-center text-[11px] tabular-nums tracking-wide text-ink-muted">
-                100%
-              </span>
-              <Plus className="h-3 w-3" strokeWidth={2} />
+                <Plus className="h-3 w-3" strokeWidth={2} />
+              </div>
             </div>
           </div>
 
@@ -721,12 +732,16 @@ export default function Hero() {
 
           {/* Right — live cursor coordinates + presence */}
           <div className="flex shrink-0 items-center gap-3 text-[11px] text-ink-subtle">
-            <span className="hidden items-center gap-1.5 tabular-nums sm:flex">
-              <span className="text-ink-faint">X</span>
-              <LiveCoord axis="x" />
-              <span className="ml-1 text-ink-faint">Y</span>
-              <LiveCoord axis="y" />
-            </span>
+            {/* Cursor coordinates only make sense with a cursor — without one
+                they'd sit frozen at 000, so touch devices skip them. */}
+            {enabled && (
+              <span className="hidden items-center gap-1.5 tabular-nums sm:flex">
+                <span className="text-ink-faint">X</span>
+                <LiveCoord axis="x" />
+                <span className="ml-1 text-ink-faint">Y</span>
+                <LiveCoord axis="y" />
+              </span>
+            )}
             <span className="inline-flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-accent-gradient" />
               Worapat
@@ -941,6 +956,11 @@ function LayersPanel({
 
 /** Figma-style inspector panel reading live cursor X/Y, parked at the right. */
 function InspectorPanel() {
+  // The Fill row doubles as the site's accent picker — its swatch + hex reflect
+  // the live accent, and the swatches below switch it (see AccentSwitcher).
+  const { accent } = useAccent();
+  const fillHex = ACCENT_PRIMARY[accent].toUpperCase();
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 16 }}
@@ -967,9 +987,14 @@ function InspectorPanel() {
           <span className="h-3 w-3 rounded-[3px] bg-accent-gradient" />
           Fill
         </span>
-        <span className="tabular-nums text-ink-muted">#6366F1</span>
+        <span className="tabular-nums text-ink-muted">{fillHex}</span>
       </div>
-      <div className="mt-2 flex items-center justify-between text-[11px] text-ink-subtle">
+      {/* Interactive: the panel wrapper is pointer-events-none, so re-enable it
+          here so the swatches are actually clickable. */}
+      <div className="mt-2.5 flex justify-end" style={{ pointerEvents: "auto" }}>
+        <AccentSwitcher bare />
+      </div>
+      <div className="mt-2.5 flex items-center justify-between text-[11px] text-ink-subtle">
         <span>Opacity</span>
         <span className="tabular-nums text-ink-muted">100%</span>
       </div>

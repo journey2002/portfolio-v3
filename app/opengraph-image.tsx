@@ -19,7 +19,7 @@ export default async function Image() {
           padding: "80px",
           backgroundColor: "#080808",
           backgroundImage:
-            "radial-gradient(120% 80% at 50% 0%, rgba(99,102,241,0.45) 0%, rgba(168,85,247,0.18) 35%, transparent 70%)",
+            "radial-gradient(120% 80% at 50% 0%, rgba(16,185,129,0.45) 0%, rgba(6,182,212,0.18) 35%, transparent 70%)",
           color: "#ffffff",
           fontFamily: "system-ui, sans-serif",
         }}
@@ -40,7 +40,7 @@ export default async function Image() {
               width: 10,
               height: 10,
               borderRadius: 9999,
-              background: "linear-gradient(135deg,#6366f1,#a855f7)",
+              background: "linear-gradient(135deg,#10b981,#06b6d4)",
             }}
           />
           Portfolio · 2026
@@ -63,7 +63,7 @@ export default async function Image() {
               fontWeight: 700,
               lineHeight: 1,
               letterSpacing: "-0.02em",
-              background: "linear-gradient(135deg,#a5b4fc,#a855f7)",
+              background: "linear-gradient(135deg,#6ee7b7,#06b6d4)",
               backgroundClip: "text",
               color: "transparent",
             }}

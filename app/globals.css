@@ -84,23 +84,23 @@
     rgba(0, 0, 0, 0.5) 90%,
     rgba(0, 0, 0, 0.62) 100%
   );
-  /* Aurora wash — tuned per theme. */
+  /* Aurora wash — tuned per theme, built from the live accent channels so it
+     retints with the active accent (see the accent section below). */
   --aurora: radial-gradient(
     70% 70% at 80% 80%,
-    rgba(99, 102, 241, 0.42) 0%,
-    rgba(124, 98, 232, 0.36) 14%,
-    rgba(149, 93, 239, 0.3) 28%,
-    rgba(168, 85, 247, 0.24) 42%,
-    rgba(140, 103, 235, 0.17) 55%,
-    rgba(99, 118, 228, 0.11) 68%,
-    rgba(73, 128, 236, 0.06) 80%,
-    rgba(59, 130, 246, 0.02) 90%,
+    rgb(var(--accent-1) / 0.42) 0%,
+    rgb(var(--accent-1) / 0.34) 16%,
+    rgb(var(--accent-2) / 0.28) 32%,
+    rgb(var(--accent-3) / 0.22) 46%,
+    rgb(var(--accent-2) / 0.15) 60%,
+    rgb(var(--accent-1) / 0.08) 74%,
+    rgb(var(--accent-1) / 0.02) 90%,
     transparent 100%
   );
 
   /* Reflective section numerals (SectionLabel) */
   --glyph-ghost: rgba(255, 255, 255, 0.06);
-  --glyph-crest: #e9d5ff;
+  --glyph-crest: var(--accent-glow-2);
   --glyph-halo: rgba(8, 8, 8, 0.92);
   --glyph-halo-soft: rgba(8, 8, 8, 0.7);
 
@@ -111,9 +111,10 @@
   --wordmark-stroke: rgba(255, 255, 255, 0.08);
 
   /* Soft accent text (chrome labels / handwriting) — pale on dark so it reads
-     as a tint; goes deep on light so it keeps contrast on the warm white. */
-  --accent-soft: #c7d2fe; /* indigo-200 */
-  --accent-soft-2: #ddd6fe; /* violet-200 */
+     as a tint; goes deep on light so it keeps contrast on the warm white. The
+     glow tints ARE the pale end of the active accent, so this retints too. */
+  --accent-soft: var(--accent-glow-1);
+  --accent-soft-2: var(--accent-glow-2);
 }
 
 [data-theme="light"] {
@@ -142,7 +143,7 @@
   --feature-shade: rgba(15, 23, 42, 0.05);
   --feature-vignette: rgba(15, 23, 42, 0.05);
   --feature-sheen: rgba(0, 0, 0, 0.1);
-  --feature-chip: rgba(99, 102, 241, 0.1);
+  --feature-chip: rgb(var(--accent-1) / 0.1);
   --feature-border-hover: rgba(0, 0, 0, 0.16);
 
   /* See dark note. The slab base is a mid-light grey — not near-white — so the
@@ -174,31 +175,30 @@
   --grid-dot: rgba(0, 0, 0, 0.06);
   --noise-opacity: 0.035;
   --aurora-opacity: 0.6;
-  /* A soft cool lift toward the lower edges rather than a dark vignette. */
+  /* A soft accent lift toward the lower edges rather than a dark vignette. */
   --vignette: radial-gradient(
     130% 130% at 50% 0%,
     transparent 42%,
-    rgba(99, 102, 241, 0.04) 68%,
-    rgba(80, 70, 120, 0.06) 86%,
-    rgba(60, 55, 95, 0.08) 100%
+    rgb(var(--accent-1) / 0.05) 68%,
+    rgb(var(--accent-2) / 0.06) 86%,
+    rgb(var(--accent-2) / 0.08) 100%
   );
   /* More saturated but lower-alpha so it reads as a colored wash on white. */
   --aurora: radial-gradient(
     70% 70% at 80% 80%,
-    rgba(99, 102, 241, 0.3) 0%,
-    rgba(124, 98, 232, 0.26) 14%,
-    rgba(149, 93, 239, 0.22) 28%,
-    rgba(168, 85, 247, 0.18) 42%,
-    rgba(140, 103, 235, 0.13) 55%,
-    rgba(99, 118, 228, 0.09) 68%,
-    rgba(73, 128, 236, 0.05) 80%,
-    rgba(59, 130, 246, 0.02) 90%,
+    rgb(var(--accent-1) / 0.3) 0%,
+    rgb(var(--accent-1) / 0.25) 16%,
+    rgb(var(--accent-2) / 0.21) 32%,
+    rgb(var(--accent-3) / 0.17) 46%,
+    rgb(var(--accent-2) / 0.12) 60%,
+    rgb(var(--accent-1) / 0.06) 74%,
+    rgb(var(--accent-1) / 0.02) 90%,
     transparent 100%
   );
 
   /* Section numerals: dark ghost stroke, light halo behind the caption */
   --glyph-ghost: rgba(0, 0, 0, 0.07);
-  --glyph-crest: #7c3aed;
+  --glyph-crest: rgb(var(--accent-1));
   --glyph-halo: rgba(246, 245, 243, 0.95);
   --glyph-halo-soft: rgba(246, 245, 243, 0.75);
 
@@ -206,8 +206,61 @@
      the warm white instead of washing out to a barely-there outline. */
   --wordmark-stroke: rgba(0, 0, 0, 0.2);
 
-  --accent-soft: #4f46e5; /* indigo-600 */
-  --accent-soft-2: #7c3aed; /* violet-600 */
+  --accent-soft: rgb(var(--accent-1));
+  --accent-soft-2: rgb(var(--accent-2));
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Accent palettes. Orthogonal to dark/light: a `data-accent` attribute on
+   <html> swaps the three brand-accent hues, and everything that reads from
+   these channels (the gradient, borders/rings via the indigo/violet Tailwind
+   tokens, the aurora wash, selection, icon SVG gradients) retints together.
+
+   Channels are space-separated RGB so Tailwind's `/alpha` modifier and
+   `rgb(var(--accent-1) / a)` both work. The glow tints are the lighter 300/400
+   end used for SVG icon strokes and pale accent text. Sunset (orange) is the
+   default and lives on :root so it applies with no JS and before the no-flash
+   script runs.
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Emerald — emerald → cyan → blue (default) */
+  --accent-1: 16 185 129; /* #10b981 emerald-500 */
+  --accent-2: 6 182 212; /* #06b6d4 cyan-500 */
+  --accent-3: 59 130 246; /* #3b82f6 blue-500 */
+  --accent-glow-1: #6ee7b7; /* emerald-300 */
+  --accent-glow-2: #22d3ee; /* cyan-400 */
+
+  /* Derived once here from the channels above; overriding the channels per
+     accent (below) retints these because they resolve on the same <html>. */
+  --accent-gradient: linear-gradient(
+    135deg,
+    rgb(var(--accent-1)) 0%,
+    rgb(var(--accent-2)) 100%
+  );
+  --accent-gradient-3: linear-gradient(
+    135deg,
+    rgb(var(--accent-1)) 0%,
+    rgb(var(--accent-2)) 55%,
+    rgb(var(--accent-3)) 100%
+  );
+}
+
+[data-accent="sunset"] {
+  /* Warm option — orange → rose → pink */
+  --accent-1: 249 115 22; /* #f97316 orange-500 */
+  --accent-2: 244 63 94; /* #f43f5e rose-500 */
+  --accent-3: 236 72 153; /* #ec4899 pink-500 */
+  --accent-glow-1: #fdba74; /* orange-300 */
+  --accent-glow-2: #fb7185; /* rose-400 */
+}
+
+[data-accent="violet"] {
+  /* The original look — indigo → violet → pink */
+  --accent-1: 99 102 241; /* #6366f1 indigo-500 */
+  --accent-2: 168 85 247; /* #a855f7 violet-500 */
+  --accent-3: 236 72 153; /* #ec4899 pink-500 */
+  --accent-glow-1: #818cf8; /* indigo-400 */
+  --accent-glow-2: #c084fc; /* purple-400 */
 }
 
 /* scroll-behavior is intentionally omitted — Lenis handles all smooth scrolling */
@@ -257,7 +310,7 @@ html.theme-switching *::after {
 
 /* Text selection */
 ::selection {
-  background: rgba(99, 102, 241, 0.35);
+  background: rgb(var(--accent-1) / 0.35);
   color: rgb(var(--ink-strong));
 }
 

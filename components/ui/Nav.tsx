@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "@/components/ui/ThemeToggle";
@@ -20,8 +20,8 @@ function PlanetLogo() {
     >
       <defs>
         <linearGradient id="planet-grad" x1="2" y1="4" x2="22" y2="20">
-          <stop offset="0%" stopColor="#818cf8" />
-          <stop offset="100%" stopColor="#c084fc" />
+          <stop offset="0%" stopColor="var(--accent-glow-1)" />
+          <stop offset="100%" stopColor="var(--accent-glow-2)" />
         </linearGradient>
       </defs>
       <path
@@ -142,7 +142,7 @@ function ProgressRing({ w, h }: { w: number; h: number }) {
   const snapZone = 9;
   const tail = Math.min(12, p) * Math.min(1, (100 - p) / snapZone);
   const body = p - tail;
-  const segs = 6; // overlapping layers — enough for a smooth gradient, far cheaper
+  const segs = 14; // overlapping layers — more = finer fade; bare rects stay cheap
   const step = tail / segs;
 
   return (
@@ -155,8 +155,8 @@ function ProgressRing({ w, h }: { w: number; h: number }) {
     >
       <defs>
         <linearGradient id="nav-progress" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#6366f1" />
-          <stop offset="100%" stopColor="#a855f7" />
+          <stop offset="0%" stopColor="rgb(var(--accent-1))" />
+          <stop offset="100%" stopColor="rgb(var(--accent-2))" />
         </linearGradient>
       </defs>
       {/* Faint full track so it reads as a complete ring — themed so it stays
@@ -174,14 +174,15 @@ function ProgressRing({ w, h }: { w: number; h: number }) {
           strokeDasharray={`${body} ${100 - body}`}
         />
       )}
-      {/* Fading tail: overlapping layers that each extend to the tip. Stacked
-          translucency makes a continuous gradient — opaque near the body,
-          faint at the leading edge — with no dotted gaps. */}
+      {/* Fading tail: overlapping layers that each start at the body and reach a
+          progressively shorter distance toward the tip, so coverage is densest
+          at the body and thins to a single layer at the leading edge. Giving
+          layer i opacity 1/(segs - i) makes the stacked translucency composite
+          to an exactly LINEAR alpha ramp — ~0 at the tip, full where it meets
+          the solid body — so the head feathers off smoothly with no visible
+          bands. Still bare stroked rects (no blur/filter), cheap every tick. */}
       {tail > 0.01 &&
         Array.from({ length: segs }).map((_, i) => {
-          // Every layer starts at the body and reaches a progressively shorter
-          // end, so coverage is densest at the body (opaque) and thins toward
-          // the tip (faint) — a single, continuous fade with no mid gap.
           const len = tail - i * step;
           if (len <= 0) return null;
           return (
@@ -193,7 +194,7 @@ function ProgressRing({ w, h }: { w: number; h: number }) {
               strokeLinecap="butt"
               pathLength={100}
               strokeDasharray={`0 ${body} ${len} ${100}`}
-              style={{ opacity: 0.28 }}
+              style={{ opacity: 1 / (segs - i) }}
             />
           );
         })}
@@ -204,15 +205,16 @@ function ProgressRing({ w, h }: { w: number; h: number }) {
 /** Mobile hamburger that morphs into an X. The three brand-gradient lines
     rotate and shrink into an X via animated SVG line coordinates, and a soft
     indigo→violet glow fades in behind the button while the menu is open. */
-function MenuToggle({
-  open,
-  onClick,
-}: {
-  open: boolean;
-  onClick: () => void;
-}) {
+const MenuToggle = forwardRef<
+  HTMLButtonElement,
+  {
+    open: boolean;
+    onClick: () => void;
+  }
+>(function MenuToggle({ open, onClick }, ref) {
   return (
     <motion.button
+      ref={ref}
       type="button"
       onClick={onClick}
       whileTap={{ scale: 0.9 }}
@@ -227,13 +229,24 @@ function MenuToggle({
         initial={false}
         animate={{ opacity: open ? 0.85 : 0, scale: open ? 1.25 : 0.7 }}
         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-        className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500/45 to-violet-500/45 blur-md"
+        className="absolute inset-0 rounded-full bg-gradient-to-br from-[rgb(var(--accent-1)/0.45)] to-[rgb(var(--accent-2)/0.45)] blur-md"
       />
       <svg width="18" height="18" viewBox="0 0 18 18" className="relative">
         <defs>
-          <linearGradient id="menu-grad" x1="0" x2="18" y1="0" y2="18">
-            <stop offset="0%" stopColor="#a5b4fc" />
-            <stop offset="100%" stopColor="#d8b4fe" />
+          {/* userSpaceOnUse is required: the closed-state lines are horizontal,
+              so their bounding box has zero height — an objectBoundingBox
+              gradient isn't painted on a degenerate box and the hamburger
+              renders blank. User-space coords (the 18×18 viewBox) fix it. */}
+          <linearGradient
+            id="menu-grad"
+            gradientUnits="userSpaceOnUse"
+            x1="0"
+            x2="18"
+            y1="0"
+            y2="18"
+          >
+            <stop offset="0%" stopColor="var(--accent-glow-1)" />
+            <stop offset="100%" stopColor="var(--accent-glow-2)" />
           </linearGradient>
         </defs>
         <motion.line
@@ -271,7 +284,8 @@ function MenuToggle({
       </svg>
     </motion.button>
   );
-}
+});
+MenuToggle.displayName = "MenuToggle";
 
 export default function Nav() {
   const [scrolled, setScrolled] = useState(false);
@@ -286,8 +300,25 @@ export default function Nav() {
   const [isDesktop, setIsDesktop] = useState(false);
 
   const navRef = useRef<HTMLElement | null>(null);
+  const toggleRef = useRef<HTMLButtonElement | null>(null);
   const lastY = useRef(0);
   const [dims, setDims] = useState({ w: 0, h: 0 });
+  // Viewport-x of the hamburger's centre. The pill is content-width and
+  // centred, so the toggle isn't at a fixed offset — we measure it so the
+  // dropdown's caret + grow-origin can anchor directly under the button.
+  const [toggleCenter, setToggleCenter] = useState(0);
+
+  const measureToggle = () => {
+    const r = toggleRef.current?.getBoundingClientRect();
+    if (r) setToggleCenter(r.left + r.width / 2);
+  };
+
+  // Measure just before opening so the panel's first paint already unfolds
+  // from under the toggle (both setStates batch into one render).
+  const toggleMenu = () => {
+    if (!menuOpen) measureToggle();
+    setMenuOpen((o) => !o);
+  };
 
   // Hash anchors must be prefixed with `/` when navigating from any page
   // other than the home route, so the browser navigates back to `/` first
@@ -358,6 +389,15 @@ export default function Nav() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
+  // Keep the caret + grow-origin under the toggle if the viewport changes
+  // while the menu is open.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onResize = () => measureToggle();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, [menuOpen]);
 
   useEffect(() => {
@@ -434,7 +474,7 @@ export default function Nav() {
             style={{
               padding: 1,
               background:
-                "linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.06) 45%, rgba(99,102,241,0.14) 100%)",
+                "linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.06) 45%, rgb(var(--accent-1) / 0.14) 100%)",
               WebkitMask:
                 "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
               WebkitMaskComposite: "xor",
@@ -507,7 +547,7 @@ export default function Nav() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 20 }}
-              className="group relative ml-5 shrink-0 overflow-hidden whitespace-nowrap rounded-full bg-indigo-500 px-4 py-1.5 text-xs font-semibold text-white shadow-[0_4px_18px_-4px_rgba(99,102,241,0.7)] transition-colors duration-300 hover:bg-violet-500"
+              className="group relative ml-5 shrink-0 overflow-hidden whitespace-nowrap rounded-full bg-accent-gradient px-4 py-1.5 text-xs font-semibold text-white shadow-[0_4px_18px_-4px_rgb(var(--accent-1)/0.7)] transition-[filter,box-shadow] duration-300 hover:brightness-110"
             >
               <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/35 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
               <span className="relative">Let&apos;s talk</span>
@@ -535,7 +575,7 @@ export default function Nav() {
           <span aria-hidden className="ml-3 h-5 w-px bg-[var(--ring)] md:hidden" />
 
           {/* Mobile menu toggle */}
-          <MenuToggle open={menuOpen} onClick={() => setMenuOpen((o) => !o)} />
+          <MenuToggle ref={toggleRef} open={menuOpen} onClick={toggleMenu} />
         </motion.nav>
       </header>
 
@@ -561,16 +601,19 @@ export default function Nav() {
             <motion.div
               id="mobile-nav-panel"
               key="mobile-panel"
-              initial={{ opacity: 0, y: -16, scale: 0.96 }}
+              initial={{ opacity: 0, y: -10, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{
                 opacity: 0,
-                y: -12,
-                scale: 0.96,
-                transition: { duration: 0.2, ease: "easeIn" },
+                y: -8,
+                scale: 0.98,
+                transition: { duration: 0.18, ease: "easeIn" },
               }}
-              transition={{ type: "spring", stiffness: 340, damping: 32, mass: 0.8 }}
-              style={{ transformOrigin: "top right" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30, mass: 0.9 }}
+              // Grow from directly under the toggle (panel's left edge = 1rem =
+              // 16px), so it unfolds from the button rather than sliding out of
+              // the top-right corner.
+              style={{ transformOrigin: `${toggleCenter - 16}px top` }}
               className="fixed inset-x-4 top-[5.25rem] z-50 overflow-hidden rounded-[26px] bg-panel-strong shadow-[0_28px_70px_-14px_rgba(0,0,0,0.75)] backdrop-blur-2xl md:hidden"
             >
               {/* Gradient hairline border */}
@@ -598,8 +641,8 @@ export default function Nav() {
                 aria-hidden
                 className="pointer-events-none absolute inset-0 overflow-hidden"
               >
-                <span className="animate-drift-x absolute -top-28 left-8 h-52 w-52 rounded-full bg-indigo-500/25 blur-3xl" />
-                <span className="animate-float-card absolute -bottom-24 -right-10 h-48 w-48 rounded-full bg-violet-500/20 blur-3xl" />
+                <span className="animate-drift-x absolute -top-28 left-8 h-52 w-52 rounded-full bg-[rgb(var(--accent-1)/0.25)] blur-3xl" />
+                <span className="animate-float-card absolute -bottom-24 -right-10 h-48 w-48 rounded-full bg-[rgb(var(--accent-2)/0.2)] blur-3xl" />
               </div>
 
               {/* Content */}
@@ -660,13 +703,6 @@ export default function Nav() {
                                 : "opacity-0 group-hover/item:opacity-100"
                             }`}
                           />
-                          {/* Active marker bar */}
-                          <span
-                            aria-hidden
-                            className={`pointer-events-none absolute left-0 top-1/2 h-7 -translate-y-1/2 rounded-full bg-gradient-to-b from-indigo-400 to-violet-400 transition-all duration-300 ${
-                              active ? "w-[3px] opacity-100" : "w-0 opacity-0"
-                            }`}
-                          />
                           {/* Index number — echoes the hero's "01" numbering */}
                           <span
                             className={`relative w-5 shrink-0 text-[10px] font-medium tabular-nums tracking-[0.15em] transition-colors duration-300 ${
@@ -714,28 +750,81 @@ export default function Nav() {
                     href={ctaHref}
                     onClick={() => setMenuOpen(false)}
                     data-cursor-hover
-                    className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-2xl bg-indigo-500 px-4 py-3.5 text-sm font-semibold text-white shadow-[0_12px_34px_-10px_rgba(99,102,241,0.8)] transition-colors hover:bg-violet-500"
+                    className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-2xl bg-accent-gradient px-4 py-3.5 text-sm font-semibold text-white shadow-[0_14px_38px_-12px_rgb(var(--accent-2)/0.85)] transition-[filter,box-shadow,transform] duration-300 hover:shadow-[0_18px_46px_-12px_rgb(var(--accent-2)/0.95)] hover:brightness-[1.07] active:scale-[0.985]"
                   >
-                    <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-[var(--sheen)] to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-                    <span className="relative">Let&apos;s talk</span>
+                    {/* Top-lit gradient hairline edge — same material language as
+                        the nav pill + panel, so the CTA reads as part of the
+                        glass system rather than a flat block. */}
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 rounded-2xl"
+                      style={{
+                        padding: 1,
+                        background:
+                          "linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.12) 48%, rgba(255,255,255,0.04) 100%)",
+                        WebkitMask:
+                          "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+                        WebkitMaskComposite: "xor",
+                        maskComposite: "exclude",
+                      }}
+                    />
+                    {/* Top sheen line, echoing the pill/panel */}
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent"
+                    />
+                    {/* Shimmer sweep on hover */}
+                    <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/35 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                    <span className="relative tracking-tight">Let&apos;s talk</span>
                     <span className="relative transition-transform duration-300 group-hover:translate-x-0.5">
                       →
                     </span>
                   </a>
                 </motion.div>
-
-                {/* Signature footer */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0, transition: { duration: 0.1 } }}
-                  transition={{ delay: 0.14 + LINKS.length * 0.06, duration: 0.5 }}
-                  className="mt-3 flex items-center justify-between border-t border-[var(--ring)] px-2.5 pb-1 pt-3 text-[9.5px] font-medium uppercase tracking-[0.25em] text-ink-faint"
-                >
-                  <span>Worapat Settapak</span>
-                  <span>Bangkok · 2026</span>
-                </motion.div>
               </div>
+            </motion.div>
+
+            {/* Caret indicator — a small glass nub in the gap between the pill
+                and the panel, pointing up at the toggle so the sheet reads as
+                belonging to the button that opened it. Centred on the measured
+                toggle x; grows up from the panel edge to match the unfold.
+                x:"-50%" is framer's own transform (a Tailwind -translate would
+                be dropped by motion), so it composes with the animated scale. */}
+            <motion.div
+              key="mobile-caret"
+              aria-hidden
+              initial={{ opacity: 0, scale: 0.7, y: -5 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.7, y: -3, transition: { duration: 0.14 } }}
+              transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                left: toggleCenter,
+                top: "calc(5.25rem - 9px)",
+                x: "-50%",
+                transformOrigin: "bottom center",
+              }}
+              className="pointer-events-none fixed z-[51] md:hidden"
+            >
+              <svg width="22" height="10" viewBox="0 0 22 10" fill="none">
+                <defs>
+                  <linearGradient id="caret-edge" x1="0" y1="0" x2="22" y2="0">
+                    <stop offset="0%" stopColor="var(--accent-glow-1)" stopOpacity="0.55" />
+                    <stop offset="100%" stopColor="var(--accent-glow-2)" stopOpacity="0.4" />
+                  </linearGradient>
+                </defs>
+                {/* Fill matches the panel; overshoots the base by 1px so the
+                    flat bottom merges seamlessly into the panel's top edge. */}
+                <path d="M11 1L20.5 10H1.5L11 1Z" fill="var(--panel-strong)" />
+                {/* Only the two slanted edges carry the hairline — the base
+                    stays open so there's no seam where it meets the panel. */}
+                <path
+                  d="M1.5 9.5L11 1L20.5 9.5"
+                  stroke="url(#caret-edge)"
+                  strokeWidth="1"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </motion.div>
           </>
         )}

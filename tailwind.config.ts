@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 
 const config: Config = {
   content: [
@@ -28,12 +29,17 @@ const config: Config = {
           subtle: "rgb(var(--ink-subtle) / <alpha-value>)",
           faint: "rgb(var(--ink-faint) / <alpha-value>)",
         },
-        // Accent stays a literal brand color in both themes.
+        // Brand accent. The token names stay `indigo`/`violet` (so every
+        // existing *-indigo-accent / *-violet-accent utility keeps working),
+        // but the values now resolve against the live --accent-1/2 channels,
+        // which the `data-accent` attribute swaps (see app/globals.css). This
+        // is why switching the accent palette retints borders, rings, icon
+        // fills, and text across the whole site with no per-component edits.
         indigo: {
-          accent: "#6366f1",
+          accent: "rgb(var(--accent-1) / <alpha-value>)",
         },
         violet: {
-          accent: "#a855f7",
+          accent: "rgb(var(--accent-2) / <alpha-value>)",
         },
         // Alpha-baked decorative tokens (theme-swapped full colors).
         hairline: "var(--hairline)",
@@ -50,13 +56,20 @@ const config: Config = {
         },
       },
       fontFamily: {
-        serif: ["var(--font-space-grotesk)", "system-ui", "sans-serif"],
+        // Display face for headings (a clean grotesque, not a true serif — the
+        // `serif` key name is kept so existing font-serif utilities keep working).
+        serif: ["var(--font-display)", "system-ui", "sans-serif"],
+        // Space Grotesk, used only for the giant section numerals (SectionLabel).
+        numeral: ["var(--font-space-grotesk)", "system-ui", "sans-serif"],
         sans: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
         hand: ["var(--font-caveat)", "ui-rounded", "cursive"],
       },
       backgroundImage: {
-        "accent-gradient":
-          "linear-gradient(135deg, #6366f1 0%, #a855f7 100%)",
+        // Themed accent gradients — the values live in app/globals.css and
+        // swap with `data-accent`. Two-stop is the primary brand gradient;
+        // three-stop adds the far warm/cool stop for badges and CTAs.
+        "accent-gradient": "var(--accent-gradient)",
+        "accent-gradient-3": "var(--accent-gradient-3)",
         // Aurora wash gradient is themed in globals.css (--aurora): the dark
         // theme keeps the original many-stop gradient; the light theme uses a
         // more saturated, lower-alpha variant so it reads on white.
@@ -111,7 +124,16 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // Pointer-capability variants, orthogonal to the width breakpoints:
+    // `mouse:` = a real hovering cursor (desktop), `touch:` = touch-first
+    // devices of ANY size (phones, iPads — including 1024px+ tablets where
+    // width-based md:/xl: gates would wrongly show hover-only affordances).
+    plugin(({ addVariant }) => {
+      addVariant("mouse", "@media (hover: hover) and (pointer: fine)");
+      addVariant("touch", "@media (hover: none), (pointer: coarse)");
+    }),
+  ],
 };
 
 export default config;

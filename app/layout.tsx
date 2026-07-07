@@ -1,16 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Space_Grotesk, DM_Sans, Caveat } from "next/font/google";
+import { Schibsted_Grotesk, Space_Grotesk, DM_Sans, Caveat } from "next/font/google";
 import dynamic from "next/dynamic";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import LenisProvider from "@/components/ui/LenisProvider";
 import { PointerProvider } from "@/components/ui/PointerProvider";
 import { ThemeProvider } from "@/components/ui/ThemeProvider";
+import { AccentProvider } from "@/components/ui/AccentProvider";
 import "./globals.css";
 
 // Runs synchronously during HTML parse — before first paint — so a stored light
-// preference applies with no dark flash. Default (and fallback) is dark.
-const NO_FLASH_THEME = `(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark')t='dark';document.documentElement.dataset.theme=t;var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='light'?'#f6f5f3':'#080808');}catch(e){document.documentElement.dataset.theme='dark';}})();`;
+// preference and accent choice both apply with no flash. Defaults: dark theme,
+// emerald accent.
+const NO_FLASH_THEME = `(function(){try{var d=document.documentElement;var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark')t='dark';d.dataset.theme=t;var a=localStorage.getItem('accent');if(a!=='violet'&&a!=='emerald'&&a!=='sunset')a='emerald';d.dataset.accent=a;var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='light'?'#f6f5f3':'#080808');}catch(e){var d=document.documentElement;d.dataset.theme='dark';d.dataset.accent='emerald';}})();`;
 
 // Decorative client-only chrome — loaded after first paint so they don't
 // gate hydration or block LCP.
@@ -21,9 +23,22 @@ const PageIntro = dynamic(() => import("@/components/ui/PageIntro"), {
   ssr: false,
 });
 
-const spaceGrotesk = Space_Grotesk({
+// Display face for headings — a clean, confident grotesque with just enough
+// character to not read as a default. Deliberately NOT one of the AI-default
+// header fonts (Inter / Geist / Space Grotesk / Instrument Serif).
+const display = Schibsted_Grotesk({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+// Space Grotesk is retained only for the giant section numerals (SectionLabel),
+// whose characterful digits read better as big hollow outlines than the display
+// face's plainer numerals. Headings use --font-display (Schibsted).
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["500", "700"],
   variable: "--font-space-grotesk",
   display: "swap",
 });
@@ -54,7 +69,7 @@ export const metadata: Metadata = {
     template: "%s — Worapat Settapak",
   },
   description:
-    "Portfolio of Worapat Settapak — a UX/UI designer and digital artist crafting meaningful interfaces and digital experiences.",
+    "Portfolio of Worapat Settapak, a UX/UI designer and digital artist based in Bangkok. UX/UI, illustration, and interaction design.",
   keywords: [
     "Worapat Settapak",
     "UX/UI Designer",
@@ -115,18 +130,20 @@ export default function RootLayout({
       // client tree differs from the server's. This is expected — suppress the
       // one-level attribute mismatch warning for <html> only.
       suppressHydrationWarning
-      className={`${spaceGrotesk.variable} ${dmSans.variable} ${caveat.variable}`}
+      className={`${display.variable} ${spaceGrotesk.variable} ${dmSans.variable} ${caveat.variable}`}
     >
       <body className="font-sans bg-night text-ink-strong antialiased">
         <script dangerouslySetInnerHTML={{ __html: NO_FLASH_THEME }} />
         <ThemeProvider>
-          <LenisProvider>
-            <PointerProvider>
-              <CustomCursor />
-              <PageIntro />
-              {children}
-            </PointerProvider>
-          </LenisProvider>
+          <AccentProvider>
+            <LenisProvider>
+              <PointerProvider>
+                <CustomCursor />
+                <PageIntro />
+                {children}
+              </PointerProvider>
+            </LenisProvider>
+          </AccentProvider>
         </ThemeProvider>
         <SpeedInsights />
         <Analytics />

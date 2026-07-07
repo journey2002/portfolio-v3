@@ -271,15 +271,15 @@ function ResumeHero() {
           playful palette. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute left-[18%] top-[24%] h-[40vh] w-[40vh] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.22),transparent_70%)] blur-2xl"
+        className="pointer-events-none absolute left-[18%] top-[24%] h-[40vh] w-[40vh] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(var(--accent-1)/0.22),transparent_70%)] blur-2xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute right-[15%] top-[18%] h-[34vh] w-[34vh] translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(236,72,153,0.20),transparent_70%)] blur-2xl"
+        className="pointer-events-none absolute right-[15%] top-[18%] h-[34vh] w-[34vh] translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(var(--accent-3)/0.20),transparent_70%)] blur-2xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute bottom-[16%] right-[14%] h-[36vh] w-[36vh] translate-x-1/2 translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(168,85,247,0.18),transparent_70%)] blur-2xl"
+        className="pointer-events-none absolute bottom-[16%] right-[14%] h-[36vh] w-[36vh] translate-x-1/2 translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(var(--accent-2)/0.18),transparent_70%)] blur-2xl"
       />
 
       {/* Smoothed vignette — 5 stops so the fade-to-dark has no visible edge */}
@@ -296,13 +296,13 @@ function ResumeHero() {
         aria-hidden
         animate={reduce ? undefined : { y: [0, -18, 0], rotate: [0, 8, 0] }}
         transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
-        className="pointer-events-none absolute right-[12%] top-[26%] hidden h-16 w-16 rounded-[38%_62%_63%_37%/41%_44%_56%_59%] bg-[linear-gradient(135deg,#a855f7,#ec4899)] opacity-30 blur-[2px] lg:block"
+        className="pointer-events-none absolute right-[12%] top-[26%] hidden h-16 w-16 rounded-[38%_62%_63%_37%/41%_44%_56%_59%] bg-[linear-gradient(135deg,rgb(var(--accent-2)),rgb(var(--accent-3)))] opacity-30 blur-[2px] lg:block"
       />
       <motion.div
         aria-hidden
         animate={reduce ? undefined : { y: [0, 14, 0], rotate: [0, -10, 0] }}
         transition={{ duration: 11, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-        className="pointer-events-none absolute bottom-[20%] left-[7%] hidden h-10 w-10 rounded-[50%_50%_40%_60%/60%_40%_60%_40%] bg-[linear-gradient(135deg,#6366f1,#a855f7)] opacity-25 blur-[1px] lg:block"
+        className="pointer-events-none absolute bottom-[20%] left-[7%] hidden h-10 w-10 rounded-[50%_50%_40%_60%/60%_40%_60%_40%] bg-[linear-gradient(135deg,rgb(var(--accent-1)),rgb(var(--accent-2)))] opacity-25 blur-[1px] lg:block"
       />
 
       <div className="relative mx-auto max-w-7xl px-6 sm:px-10">
@@ -340,7 +340,7 @@ function ResumeHero() {
               initial={{ opacity: 0, scale: 0, rotate: -12 }}
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 170, damping: 13, delay: 0.8 }}
-              className="relative hidden h-[0.62em] min-w-[1.8em] items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#6366f1_0%,#a855f7_55%,#ec4899_100%)] sm:inline-flex"
+              className="relative hidden h-[0.62em] min-w-[1.8em] items-center justify-center overflow-hidden rounded-full bg-accent-gradient-3 sm:inline-flex"
             >
               <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/[0.25] to-transparent" />
               <motion.span
@@ -516,8 +516,7 @@ function WigglyWord({ text }: { text: string }) {
           aria-hidden
           className="inline-block bg-clip-text text-transparent"
           style={{
-            backgroundImage:
-              "linear-gradient(135deg,#6366f1 0%,#a855f7 55%,#ec4899 100%)",
+            backgroundImage: "var(--accent-gradient-3)",
           }}
           animate={reduce ? undefined : { y: ["0%", "-16%", "0%"] }}
           transition={{
@@ -916,7 +915,7 @@ function AchievementsGrid() {
                 {/* Accent wash on hover */}
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute inset-0 -z-10 rounded-xl bg-gradient-to-br from-indigo-500/15 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                  className="pointer-events-none absolute inset-0 -z-10 rounded-xl bg-gradient-to-br from-[rgb(var(--accent-1)/0.15)] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
                 />
 
                 <span className="text-[9px] uppercase tracking-[0.4em] text-ink-faint">
@@ -1071,7 +1070,7 @@ function TimelineEntry({
   // element (Framer rebuilds `transform`, so a CSS -translate on a motion node
   // would be dropped — that was the old dot/line misalignment).
   const beamGradient =
-    "linear-gradient(180deg, #a855f7 0%, rgba(139,92,246,0.5) 20%, var(--hairline) 62%)";
+    "linear-gradient(180deg, rgb(var(--accent-2)) 0%, rgb(var(--accent-2) / 0.5) 20%, var(--hairline) 62%)";
   const beamPos: CSSProperties = {
     top: "0.5rem",
     bottom: isLast ? 0 : "-3.5rem",
@@ -1130,7 +1129,7 @@ function TimelineEntry({
           <span className="absolute inset-0 animate-ping rounded-full border border-violet-accent/40 [animation-duration:2.8s]" />
           {/* core — inset behind a canvas-colored gap (first shadow) so the
               orbit ring reads as a separate orbit; second shadow is the glow */}
-          <span className="absolute inset-1 rounded-full bg-accent-gradient shadow-[0_0_0_3px_rgb(var(--canvas)),0_0_14px_3px_rgba(139,92,246,0.5)]" />
+          <span className="absolute inset-1 rounded-full bg-accent-gradient shadow-[0_0_0_3px_rgb(var(--canvas)),0_0_14px_3px_rgb(var(--accent-2)/0.5)]" />
           {/* orbit ring — painted after the core so the canvas gap never clips it */}
           <span className="absolute inset-0 rounded-full border border-violet-accent/70" />
           {/* white-hot centre */}
@@ -1159,7 +1158,7 @@ function TimelineEntry({
         {/* Hover wash */}
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+          className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-[rgb(var(--accent-1)/0.1)] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
         />
 
         {/* Headline + role */}
@@ -1315,7 +1314,7 @@ function SkillsBlock({
       animate={inView ? { opacity: 1, y: 0 } : undefined}
       transition={{ duration: 0.85, delay, ease: [0.16, 1, 0.3, 1] as const }}
       whileHover={{ y: -4 }}
-      className="group relative overflow-hidden rounded-2xl border border-hairline bg-surface/40 p-7 backdrop-blur transition-[border-color,box-shadow] duration-300 hover:border-indigo-accent/40 hover:shadow-[0_18px_48px_-28px_rgba(99,102,241,0.45)] sm:p-9"
+      className="group relative overflow-hidden rounded-2xl border border-hairline bg-surface/40 p-7 backdrop-blur transition-[border-color,box-shadow] duration-300 hover:border-indigo-accent/40 hover:shadow-[0_18px_48px_-28px_rgb(var(--accent-1)/0.45)] sm:p-9"
     >
       {/* Top sheen — thin highlight that fades in along the upper edge */}
       <span
@@ -1325,7 +1324,7 @@ function SkillsBlock({
       {/* Soft accent wash on hover — static fade-in, no cursor tracking */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-indigo-500/12 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+        className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-[rgb(var(--accent-1)/0.12)] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
       />
 
       <div className="flex items-end justify-between">

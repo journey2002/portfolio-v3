@@ -86,7 +86,7 @@ export default function Contact() {
         {/* Heading */}
         <h2 className="mt-8 font-serif text-5xl font-bold leading-[1.02] text-ink-strong sm:text-7xl md:text-8xl">
           <SplitText
-            text="Let's create"
+            text="Let's make"
             as="span"
             className="block"
             immediate={false}
@@ -94,7 +94,7 @@ export default function Contact() {
             fromY={70}
           />
           <SplitText
-            text="something amazing."
+            text="something good."
             as="span"
             className="block"
             charClassName="bg-accent-gradient bg-clip-text text-transparent"
@@ -106,9 +106,11 @@ export default function Contact() {
           />
         </h2>
 
-        {/* Two-column layout — email/phone left, social tile grid right */}
-        <div className="mt-16 grid grid-cols-1 gap-10 md:grid-cols-12">
-          <div className="md:col-span-7">
+        {/* Two-column layout — email/phone left, social tile grid right. The
+            split waits for lg: at md the right column is ~260px, which pinched
+            the social tiles to 80px and clipped their labels. */}
+        <div className="mt-16 grid grid-cols-1 gap-10 lg:grid-cols-12">
+          <div className="lg:col-span-7">
             <motion.p
               initial={{ opacity: 0, y: 16 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
@@ -152,7 +154,7 @@ export default function Contact() {
           </div>
 
           {/* Right column: location + social tiles */}
-          <div className="flex flex-col gap-3 md:col-span-5">
+          <div className="flex flex-col gap-3 lg:col-span-5">
             {/* Location tile — rotating globe + Bangkok marker */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -215,15 +217,17 @@ export default function Contact() {
                   } satisfies Variants}
                   whileHover={{ y: -6 }}
                   transition={{ type: "spring", stiffness: 320, damping: 22 }}
-                  className="group relative flex aspect-square flex-col justify-between rounded-2xl border border-hairline bg-surface/40 p-5 text-ink-muted backdrop-blur transition-colors duration-300 hover:border-indigo-accent/40 hover:text-ink-strong"
+                  className="group relative flex aspect-square flex-col justify-between rounded-2xl border border-hairline bg-surface/40 p-4 text-ink-muted backdrop-blur transition-colors duration-300 hover:border-indigo-accent/40 hover:text-ink-strong sm:p-5"
                 >
                   <social.icon className="h-6 w-6" strokeWidth={1.5} />
                   <div className="flex items-end justify-between">
-                    <span className="text-[10px] uppercase tracking-[0.3em]">
+                    {/* Compact type below sm — a ~100px tile can't carry 10px
+                        glyphs at 0.3em tracking ("INSTAGRAM" clipped). */}
+                    <span className="text-[9px] uppercase tracking-[0.14em] sm:text-[10px] sm:tracking-[0.3em]">
                       {social.label}
                     </span>
                     <ArrowUpRight
-                      className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                      className="hidden h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 sm:block"
                       strokeWidth={1.5}
                     />
                   </div>

@@ -64,7 +64,7 @@ export default function MagneticButton({
 
     const glowEl = (
       <span
-        className={`relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-white/10 bg-[linear-gradient(135deg,#6366f1_0%,#a855f7_55%,#ec4899_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] transition-[filter] duration-300 group-hover:brightness-110 ${className}`}
+        className={`relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-white/10 bg-accent-gradient-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] transition-[filter] duration-300 group-hover:brightness-110 ${className}`}
       >
         {/* Subtle top sheen — keeps it from feeling flat without being noisy */}
         <span

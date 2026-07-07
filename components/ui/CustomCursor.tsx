@@ -164,7 +164,7 @@ export default function CustomCursor() {
           height: ringSize,
           opacity: ringOpacity,
         }}
-        className="pointer-events-none fixed left-0 top-0 z-[9998] rounded-full border border-indigo-accent/60 shadow-[0_0_16px_3px_rgba(99,102,241,0.35)]"
+        className="pointer-events-none fixed left-0 top-0 z-[9998] rounded-full border border-indigo-accent/60 shadow-[0_0_16px_3px_rgb(var(--accent-1)/0.35)]"
       />
       {/* Canvas-control indicator — a custom move/resize glyph that stands in for
           the OS cursor on the hero's draggable handles. Rides the RAW pointer so
@@ -188,7 +188,7 @@ export default function CustomCursor() {
             marginTop: -15,
             transformOrigin: "center",
             stroke: "var(--accent-soft)",
-            filter: "drop-shadow(0 0 5px rgba(99,102,241,0.55))",
+            filter: "drop-shadow(0 0 5px rgb(var(--accent-1) / 0.55))",
           }}
           initial={false}
           animate={{

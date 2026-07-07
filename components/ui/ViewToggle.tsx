@@ -12,6 +12,7 @@ import {
 import { LayoutGrid, List } from "lucide-react";
 import { memo, useEffect } from "react";
 import { useTheme } from "@/components/ui/ThemeProvider";
+import { useAccent, ACCENT_CHANNELS } from "@/components/ui/AccentProvider";
 
 export type WorkView = "index" | "gallery";
 
@@ -34,6 +35,10 @@ function ViewToggleBase({
 }) {
   const isGallery = view === "gallery";
   const { theme } = useTheme();
+  // Accent channels as "r, g, b" so framer can interpolate the on-state track
+  // and knob-glow rgba() (a CSS var it can't parse — same reason as offTrack).
+  const { accent } = useAccent();
+  const ch = ACCENT_CHANNELS[accent];
   // The "off" (index) track reads as a neutral groove in EACH theme: a dark
   // slate on the dark UI, a light slate on the warm-white page. A fixed dark
   // grey here looked like a leftover dark-theme element once the page went
@@ -123,7 +128,7 @@ function ViewToggleBase({
       <motion.span
         className="relative h-5 w-9 rounded-full"
         animate={{
-          backgroundColor: isGallery ? "rgba(99,102,241,0.45)" : offTrack,
+          backgroundColor: isGallery ? `rgba(${ch}, 0.45)` : offTrack,
         }}
         transition={{ duration: 0.3 }}
       >
@@ -132,8 +137,8 @@ function ViewToggleBase({
           style={{ x, scaleX, scaleY }}
           animate={{
             boxShadow: isGallery
-              ? "0 0 12px 2px rgba(99,102,241,0.65)"
-              : "0 0 0px 0px rgba(99,102,241,0)",
+              ? `0 0 12px 2px rgba(${ch}, 0.65)`
+              : `0 0 0px 0px rgba(${ch}, 0)`,
           }}
           transition={{ duration: 0.3 }}
           className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-accent-gradient"

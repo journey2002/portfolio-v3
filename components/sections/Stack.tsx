@@ -18,6 +18,7 @@ import SectionLabel from "@/components/ui/SectionLabel";
 import SplitText from "@/components/ui/SplitText";
 import { useMarqueeSlowOnHover } from "@/components/ui/useMarqueeSlowOnHover";
 import { useTheme } from "@/components/ui/ThemeProvider";
+import { usePointer } from "@/components/ui/PointerProvider";
 
 const TICKER = [
   "Figma",
@@ -36,8 +37,8 @@ const FEATURES = [
     icon: Layers,
     label: "UX/UI Design",
     description:
-      "Research-driven design from wireframe to pixel-perfect prototype, built to feel intuitive and effortless for the people using it.",
-    accent: "from-indigo-500/30 to-transparent",
+      "Research, wireframes, and prototypes. I sweat the small stuff so the finished thing feels obvious to the people using it.",
+    accent: "from-[rgb(var(--accent-1)/0.3)] to-transparent",
     hint: "Toolkit",
     tools: ["Figma", "HTML & CSS", "JavaScript"],
   },
@@ -45,8 +46,8 @@ const FEATURES = [
     icon: PenTool,
     label: "Digital Illustration",
     description:
-      "Character art, fan art, and visual storytelling crafted in Procreate and Photoshop — where imagination meets technique.",
-    accent: "from-violet-500/30 to-transparent",
+      "Character art, fan art, and visual storytelling in Procreate and Photoshop, from first rough sketch to final render.",
+    accent: "from-[rgb(var(--accent-2)/0.3)] to-transparent",
     hint: "Medium",
     tools: ["Procreate", "Photoshop", "Illustrator"],
   },
@@ -54,8 +55,8 @@ const FEATURES = [
     icon: MousePointer2,
     label: "Interaction Design",
     description:
-      "Thoughtful micro-interactions and prototypes that put the user's experience first — because every click should feel right.",
-    accent: "from-fuchsia-500/30 to-transparent",
+      "Micro-interactions and motion prototypes that make an interface feel responsive, physical, and alive under your cursor.",
+    accent: "from-[rgb(var(--accent-3)/0.3)] to-transparent",
     hint: "Motion",
     tools: ["Framer", "After Effects", "JavaScript"],
   },
@@ -116,6 +117,11 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   // and any stale frame self-corrects on the next pointer move — hover-only).
   const { theme } = useTheme();
   const isLight = theme === "light";
+
+  // Tilt is a hover effect — on touch, the pointermove a tap fires would just
+  // jolt the card, so the handlers no-op without a fine pointer.
+  const pointer = usePointer();
+  const tiltEnabled = !!pointer?.enabled;
 
   // Pointer position within the card, normalised to -0.5..0.5.
   const px = useMotionValue(0);
@@ -266,7 +272,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
 
   function handleMove(e: React.PointerEvent<HTMLDivElement>) {
     const el = ref.current;
-    if (!el) return;
+    if (!el || !tiltEnabled) return;
     const r = el.getBoundingClientRect();
     const nx = (e.clientX - r.left) / r.width;
     const ny = (e.clientY - r.top) / r.height;
@@ -481,7 +487,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
         <div className="mt-2 grid [transform-style:preserve-3d]">
           {/* Resting hint — kept to its own height so it sits at the top of the
               reserved zone rather than stretching across it. */}
-          <span className="col-start-1 row-start-1 flex h-fit items-center gap-4 text-[10px] uppercase tracking-[0.3em] text-ink-faint transition-all duration-300 delay-300 group-hover:-translate-y-1 group-hover:opacity-0 group-hover:delay-0">
+          <span className="col-start-1 row-start-1 flex h-fit items-center gap-4 text-[10px] uppercase tracking-[0.3em] text-ink-faint transition-all duration-300 delay-300 group-hover:-translate-y-1 group-hover:opacity-0 group-hover:delay-0 touch:hidden">
             <span className="block h-px w-6 bg-current" />
             {feature.hint}
           </span>
@@ -491,7 +497,9 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
             {feature.tools.map((tool, t) => (
               <span
                 key={tool}
-                className={`inline-flex translate-y-3 items-center gap-2 rounded-full border border-indigo-accent/30 bg-[var(--feature-chip)] px-3 py-1 text-[11px] font-medium tracking-wide text-ink opacity-0 transition-all duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-hover:duration-700 group-hover:[transform:translateY(0)_translateZ(30px)] ${CHIP_ENTER_DELAY[t] ?? ""}`}
+                // touch: shows the chips at rest — hover never fires there, and
+                // the tool names are real content, not a flourish.
+                className={`inline-flex translate-y-3 items-center gap-2 rounded-full border border-indigo-accent/30 bg-[var(--feature-chip)] px-3 py-1 text-[11px] font-medium tracking-wide text-ink opacity-0 transition-all duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-hover:duration-700 group-hover:[transform:translateY(0)_translateZ(30px)] touch:translate-y-0 touch:opacity-100 ${CHIP_ENTER_DELAY[t] ?? ""}`}
               >
                 <span className="h-1 w-1 rotate-45 bg-accent-gradient" />
                 {tool}
@@ -644,7 +652,7 @@ export default function Stack() {
         variants={featureVariants}
         initial="hidden"
         animate={gridInView ? "show" : "hidden"}
-        className="relative mx-auto mt-20 grid max-w-7xl grid-cols-1 gap-6 px-6 sm:px-10 md:grid-cols-3"
+        className="relative mx-auto mt-20 grid max-w-7xl grid-cols-1 gap-6 px-6 sm:px-10 lg:grid-cols-3"
       >
         {FEATURES.map((feature, i) => (
           <FeatureCard key={feature.label} feature={feature} index={i} />

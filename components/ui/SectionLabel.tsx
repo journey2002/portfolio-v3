@@ -9,6 +9,7 @@ import {
   type MotionValue,
 } from "framer-motion";
 import { useRef } from "react";
+import { useAccent, ACCENT_PRIMARY } from "@/components/ui/AccentProvider";
 
 // Static diagonal band used as the sheen mask — only its position animates.
 const SHEEN_BAND =
@@ -64,17 +65,21 @@ export function ReflectiveGlyph({
   const floodTopStatic = useMotionValue(0);
   const floodTop = revealRange ? floodTopDynamic : floodTopStatic;
 
-  // Stroke cools from a subtle white into indigo over the first ~2/3 of the
-  // reveal; a static glyph just sits at indigo.
+  // Stroke cools from a subtle white into the accent over the first ~2/3 of the
+  // reveal; a static glyph just sits at the accent. The endpoint is a hex (not a
+  // CSS var) because framer interpolates colours numerically — ACCENT_PRIMARY
+  // mirrors --accent-1 per palette so it retints when the accent changes.
+  const { accent } = useAccent();
+  const accentHex = ACCENT_PRIMARY[accent];
   const colorEnd = range[0] + (range[1] - range[0]) * 0.65;
   const floodStrokeDynamic = useTransform(
     floodProgress,
     [range[0], colorEnd],
-    ["rgba(255,255,255,0.55)", "#6366f1"]
+    ["rgba(255,255,255,0.55)", accentHex]
   );
   const floodStroke: MotionValue<string> | string = revealRange
     ? floodStrokeDynamic
-    : "#6366f1";
+    : accentHex;
 
   const floodClip = useMotionTemplate`inset(${floodTop}% 0% 0% 0%)`;
   // Crest: a ~3%-tall band sitting exactly at the waterline; collapses to
@@ -231,7 +236,7 @@ export default function SectionLabel({
           right); lowering it pulls them toward the center. */}
       <motion.span
         style={{ y: numeralY, opacity: numeralOpacity }}
-        className={`absolute top-0 block select-none font-serif font-bold ${
+        className={`absolute top-0 block select-none font-numeral font-bold ${
           align === "left" ? "-left-[0.04em]" : "-right-[0.04em]"
         } ${numeralSize}`}
       >

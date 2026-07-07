@@ -12,8 +12,6 @@ type GridSpotlightProps = {
   gridSize?: number;
   /** Color of the glowing grid dots. */
   color?: string;
-  /** Soft accent halo behind the lit grid dots. */
-  halo?: string;
 };
 
 /**
@@ -28,18 +26,15 @@ export default function GridSpotlight({
   size = 620,
   gridSize = 80,
   color,
-  halo,
 }: GridSpotlightProps) {
   const ref = useRef<HTMLDivElement>(null);
   const pointer = usePointer();
   const { theme } = useTheme();
-  // Deeper, denser purple on light so the lit dots read on the warm white.
+  // Accent-tinted lit dots. Denser on light so they read on the warm white;
+  // retint with the active accent (channels resolve at paint).
   const dotColor =
     color ??
-    (theme === "light" ? "rgba(124, 58, 237, 0.45)" : "rgba(196, 161, 255, 0.55)");
-  const haloColor =
-    halo ??
-    (theme === "light" ? "rgba(124, 58, 237, 0.12)" : "rgba(168, 85, 247, 0.18)");
+    (theme === "light" ? "rgb(var(--accent-1) / 0.45)" : "rgb(var(--accent-1) / 0.5)");
 
   useEffect(() => {
     const el = ref.current;
@@ -81,10 +76,7 @@ export default function GridSpotlight({
       aria-hidden
       style={
         {
-          backgroundImage: [
-            `radial-gradient(circle, ${dotColor} 1.2px, transparent 1.7px)`,
-            `radial-gradient(${Math.round(size * 0.7)}px circle at var(--gs-x, 50%) var(--gs-y, 50%), ${haloColor}, transparent 70%)`,
-          ].join(", "),
+          backgroundImage: `radial-gradient(circle, ${dotColor} 1.2px, transparent 1.7px)`,
           backgroundSize: `${gridSize}px ${gridSize}px, 100% 100%`,
           maskImage: mask,
           WebkitMaskImage: mask,

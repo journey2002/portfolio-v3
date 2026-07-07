@@ -44,8 +44,8 @@ export default function About() {
       <svg aria-hidden width="0" height="0" className="absolute">
         <defs>
           <linearGradient id="ink-accent" x1="0" y1="0" x2="1" y2="0.4">
-            <stop offset="0%" stopColor="#818cf8" />
-            <stop offset="100%" stopColor="#c084fc" />
+            <stop offset="0%" stopColor="var(--accent-glow-1)" />
+            <stop offset="100%" stopColor="var(--accent-glow-2)" />
           </linearGradient>
         </defs>
       </svg>
@@ -111,10 +111,11 @@ export default function About() {
         {/* ── Hand-annotated note + taped portrait ─────────────────────────── */}
         <div
           ref={ref}
-          className="grid grid-cols-1 gap-y-16 pb-10 pt-20 md:grid-cols-12 md:gap-x-10 md:gap-y-0"
+          className="grid grid-cols-1 gap-y-16 pb-10 pt-20 lg:grid-cols-12 lg:gap-x-10 lg:gap-y-0"
         >
-          {/* The note (main) */}
-          <div className="md:col-span-7 md:pr-6">
+          {/* The note (main). The split waits for lg — at md the facts card
+              would be ~260px wide and its key/value rows overflow. */}
+          <div className="lg:col-span-7 lg:pr-6">
             {/* Handwritten kicker — tilted, like a margin scribble */}
             <motion.p
               variants={fadeUp}
@@ -135,8 +136,8 @@ export default function About() {
               className="mt-5 text-2xl leading-snug text-ink sm:text-3xl sm:leading-snug"
             >
               Hi, I&apos;m{" "}
-              <span className="font-medium text-ink-strong">Worapat</span> — a UX/UI
-              designer &amp; digital artist from Bangkok who turns{" "}
+              <span className="font-medium text-ink-strong">Worapat</span>, a UX/UI
+              designer and digital artist from Bangkok who turns{" "}
               <InkMark variant="circle" delay={0.7}>
                 half-formed ideas
               </InkMark>{" "}
@@ -157,8 +158,8 @@ export default function About() {
               Proud Thai-Nichi grad. Most days I&apos;m somewhere between{" "}
               <InkMark variant="highlight" delay={1.3}>
                 Figma, Procreate &amp; Blender
-              </InkMark>{" "}
-              — researching, sketching, and chasing that moment a messy concept
+              </InkMark>
+              , researching, sketching, and chasing the moment a messy concept
               finally clicks into place.
             </motion.p>
 
@@ -212,7 +213,7 @@ export default function About() {
                   whileHover={{
                     rotate: 0,
                     y: -3,
-                    borderColor: "rgba(168,85,247,0.5)",
+                    borderColor: "rgb(var(--accent-2) / 0.5)",
                     color: "rgb(var(--ink-strong))",
                   }}
                   className="cursor-default rounded-[10px] border border-hairline bg-surface/40 px-3.5 py-1.5 text-xs text-ink-muted shadow-[0_2px_12px_rgba(0,0,0,0.3)] backdrop-blur"
@@ -224,13 +225,13 @@ export default function About() {
           </div>
 
           {/* The facts — a compact info card, vertically centred next to the note */}
-          <div className="md:col-span-5 md:flex md:items-center">
+          <div className="lg:col-span-5 lg:flex lg:items-center">
             <motion.div
               variants={fadeUp}
               custom={0.3}
               initial="hidden"
               animate={inView ? "show" : "hidden"}
-              className="relative w-full max-w-sm md:ml-auto"
+              className="relative w-full max-w-sm lg:ml-auto"
             >
               <div className="rounded-2xl border border-hairline bg-surface/40 p-7 backdrop-blur shadow-[0_30px_70px_-40px_rgba(0,0,0,0.85)]">
                 {/* Header — handwritten label with a hand-drawn underline */}

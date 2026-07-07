@@ -669,10 +669,11 @@ const GALLERY_TEMPLATES = [
 function GalleryView({ show }: { show: boolean }) {
   const [hovered, setHovered] = useState<number | null>(null);
   // The expanding template only applies once the bento is actually side-by-side
-  // (sm+). On a single-column stack there's nothing to redistribute.
+  // (md+ — at 640-767px the 6-col template pinched the side tiles to ~90px
+  // columns). On a single-column stack there's nothing to redistribute.
   const [isWide, setIsWide] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 640px)");
+    const mq = window.matchMedia("(min-width: 768px)");
     const update = () => setIsWide(mq.matches);
     update(); // sync the real value on mount (avoids a missed-change race)
     mq.addEventListener("change", update);
@@ -721,7 +722,7 @@ function GalleryView({ show }: { show: boolean }) {
             <div
               data-cursor-hover
               style={{ opacity: dim ? 0.5 : 1 }}
-              className="relative h-full min-h-[300px] overflow-hidden rounded-2xl border border-hairline transition-[border-color,opacity] duration-500 ease-out-expo group-hover:border-white/25 sm:min-h-0"
+              className="relative h-full min-h-[300px] overflow-hidden rounded-2xl border border-hairline transition-[border-color,opacity] duration-500 ease-out-expo group-hover:border-white/25 md:min-h-0"
             >
               {/* Cover slowly drifts in scale as the tile grows */}
               <div className="absolute inset-0 transition-transform duration-[1200ms] ease-out-expo group-hover:scale-[1.07]">

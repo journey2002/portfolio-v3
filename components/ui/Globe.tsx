@@ -149,11 +149,11 @@ export default function Globe({ className = "", size = 240 }: GlobeProps) {
       {/* Static glow + marker: the base layer, and the permanent fallback when
           the WebGL globe never paints. Fades out once cobe takes over. */}
       <div
-        className={`absolute inset-0 rounded-full border border-hairline bg-[radial-gradient(closest-side,rgba(99,102,241,0.22),rgba(168,85,247,0.06)_60%,transparent_75%)] transition-opacity duration-500 ${
+        className={`absolute inset-0 rounded-full border border-hairline bg-[radial-gradient(closest-side,rgb(var(--accent-1)/0.22),rgb(var(--accent-2)/0.06)_60%,transparent_75%)] transition-opacity duration-500 ${
           painted ? "opacity-0" : "opacity-100"
         }`}
       >
-        <span className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-300 shadow-[0_0_10px_2px_rgba(139,92,246,0.55)]" />
+        <span className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent-glow-1)] shadow-[0_0_10px_2px_rgb(var(--accent-2)/0.55)]" />
       </div>
       {enabled && (
         <canvas
