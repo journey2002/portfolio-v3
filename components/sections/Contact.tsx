@@ -238,22 +238,36 @@ export default function Contact() {
         </div>
       </div>
 
-      {/* Giant horizontal wordmark — parallax sweeps across the bottom */}
+      {/* Giant horizontal wordmark — parallax sweeps across the bottom.
+          Rendered as SVG stroked text (not CSS -webkit-text-stroke): at this
+          size the CSS stroke has no antialiasing, so its 1px outline stair-steps
+          and breaks into blocky, disconnected segments — a jagged "lego" edge.
+          An SVG stroke is vector-antialiased, so the outline stays one smooth,
+          continuous line. viewBox (1143×108) matches the text's aspect at font
+          100, so `h-[30vw] w-auto` reproduces the previous 28vw glyph size and
+          the % parallax still sweeps over the same distance. `non-scaling-stroke`
+          keeps the hairline a true device pixel regardless of the viewBox scale. */}
       <div className="pointer-events-none relative -mt-10 overflow-hidden pb-10 sm:-mt-20 sm:pb-16">
-        <motion.div
+        <motion.svg
           style={{ x: wordmarkX }}
           aria-hidden
-          className="select-none whitespace-nowrap font-serif text-[28vw] font-bold leading-[0.85] tracking-tight"
+          viewBox="0 0 439 108"
+          className="block h-[30vw] w-auto max-w-none select-none overflow-visible"
         >
-          <span
-            style={{
-              WebkitTextStroke: "1px var(--wordmark-stroke)",
-              color: "transparent",
-            }}
+          <text
+            x="0"
+            y="100"
+            xmlSpace="preserve"
+            fontSize="100"
+            letterSpacing="-2.5"
+            fill="none"
+            vectorEffect="non-scaling-stroke"
+            className="font-numeral font-bold"
+            style={{ stroke: "var(--wordmark-stroke)", strokeWidth: 1.25 }}
           >
-            WORAPAT&nbsp;·&nbsp;SETTAPAK&nbsp;·&nbsp;
-          </span>
-        </motion.div>
+            WORAPAT
+          </text>
+        </motion.svg>
       </div>
 
       {/* Footer bar */}
