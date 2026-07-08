@@ -9,16 +9,25 @@ import {
   type MotionValue,
 } from "framer-motion";
 import { useRef } from "react";
-import { useAccent, ACCENT_PRIMARY } from "@/components/ui/AccentProvider";
+import {
+  useAccent,
+  ACCENT_PRIMARY,
+  ACCENT_CHANNELS,
+} from "@/components/ui/AccentProvider";
 
 // Static diagonal band used as the sheen mask — only its position animates.
+// A narrow hot core so the glint stays a passing streak (a wide core whites
+// out the whole glyph at mid-pass), with shoulders that still taper gently to
+// zero: the bloom must dissolve inside the falloff, never meet a hard
+// boundary, or the trimmed glow prints the band's straight edges onto the
+// backdrop as a visible stripe.
 const SHEEN_BAND =
-  "linear-gradient(115deg, transparent 43%, #000 50%, transparent 57%)";
+  "linear-gradient(115deg, transparent 36%, rgba(0,0,0,0.15) 44%, #000 49%, #000 51%, rgba(0,0,0,0.15) 56%, transparent 64%)";
 
 type ReflectiveGlyphProps = {
   /** Glyph(s) to render — a numeral like "02" or a short mark like "CV". */
   text: string;
-  /** Scroll progress (0→1) that drives the color shift and sheen. */
+  /** Scroll progress (0→1) that drives the color shift and light-pass. */
   progress: MotionValue<number>;
   /**
    * Progress window over which the stroke floods up from empty → full. Omit to
@@ -32,17 +41,24 @@ type ReflectiveGlyphProps = {
    * rather than across its whole height). Defaults to `progress`.
    */
   revealProgress?: MotionValue<number>;
-  /** Progress window over which the reflective sheen sweeps across. */
+  /**
+   * Progress window over which the light-pass sweeps across. Paired with a
+   * travel span that barely overshoots the glyph, so nearly all of the window
+   * is spent visibly crossing it — stretching the window slows the pass.
+   */
   sheenRange?: [number, number];
 };
 
 /**
- * A huge hollow glyph whose *stroke* lights up and catches a moving reflection
- * as `progress` advances. Four pixel-aligned layers share the same text/size:
- *   1. ghost  — a faint always-on outline (the empty vessel)
- *   2. flood  — a colored stroke revealed bottom-up, fading white → indigo
- *   3. crest  — a near-white band tracing the rising waterline
- *   4. sheen  — a screen-blended diagonal glint that sweeps across
+ * A huge hollow glyph whose stroke lights up bottom-up and then catches a hot
+ * specular light-pass. Four pixel-aligned layers share the same text/size:
+ *   1. ghost  — a faint always-on outline (the unlit tube)
+ *   2. flood  — the lit stroke revealed bottom-up (white → accent), a clean
+ *               line with no glow of its own
+ *   3. crest  — a near-white scan line tracing the rising waterline
+ *   4. sheen  — a wide screen-blended light streak with a white-hot bloom
+ *               (the only glowing layer), swept across *after* the tube is
+ *               fully lit
  *
  * Reveal + crest are clip-path driven (compositor-friendly); the sheen animates
  * mask-position. Inherits font-size/weight from its parent. Decorative.
@@ -52,17 +68,22 @@ export function ReflectiveGlyph({
   progress,
   revealRange,
   revealProgress,
-  sheenRange = [0.05, 0.55],
+  sheenRange = [0.03, 0.55],
 }: ReflectiveGlyphProps) {
   // The flood can track a different progress than the sheen (e.g. the section's
   // entry into view rather than its full scroll-through).
   const floodProgress = revealProgress ?? progress;
 
-  // With a reveal window the waterline retreats 100% → 0% across it; without
-  // one the glyph stays full and only the sheen moves.
+  // With a reveal window the waterline retreats 102% → -18% across it; without
+  // one the glyph stays full and only the sheen moves. The overshoot past
+  // [100, 0] matters: inset(0%) still clips to the exact text box, which
+  // shears the sheen's drop-shadow bloom off at the box edges (a visible
+  // straight cut beside the first/last digit). Ending at -18% — mirrored on
+  // the other three sides in the clip template below — leaves the bloom room
+  // to fade out on its own.
   const range = revealRange ?? [0, 1];
-  const floodTopDynamic = useTransform(floodProgress, range, [100, 0]);
-  const floodTopStatic = useMotionValue(0);
+  const floodTopDynamic = useTransform(floodProgress, range, [102, -18]);
+  const floodTopStatic = useMotionValue(-18);
   const floodTop = revealRange ? floodTopDynamic : floodTopStatic;
 
   // Stroke cools from a subtle white into the accent over the first ~2/3 of the
@@ -71,6 +92,11 @@ export function ReflectiveGlyph({
   // mirrors --accent-1 per palette so it retints when the accent changes.
   const { accent } = useAccent();
   const accentHex = ACCENT_PRIMARY[accent];
+  // Bloom for the passing glint only — the resting stroke stays a clean line.
+  // drop-shadow() renders from the stroke's alpha, so the glow hugs the tube
+  // lines instead of filling the glyph the way text-shadow would.
+  const ch = ACCENT_CHANNELS[accent];
+  const sheenGlow = `drop-shadow(0 0 5px rgba(255,255,255,0.7)) drop-shadow(0 0 12px rgba(${ch},0.35))`;
   const colorEnd = range[0] + (range[1] - range[0]) * 0.65;
   const floodStrokeDynamic = useTransform(
     floodProgress,
@@ -81,17 +107,25 @@ export function ReflectiveGlyph({
     ? floodStrokeDynamic
     : accentHex;
 
-  const floodClip = useMotionTemplate`inset(${floodTop}% 0% 0% 0%)`;
+  const floodClip = useMotionTemplate`inset(${floodTop}% -18% -18% -18%)`;
   // Crest: a ~3%-tall band sitting exactly at the waterline; collapses to
-  // nothing while empty.
-  const crestBottom = useTransform(floodTop, (v) => Math.max(0, 97 - v));
-  const crestClip = useMotionTemplate`inset(${floodTop}% 0% ${crestBottom}% 0%)`;
+  // nothing while empty. Its top is the waterline clamped back into [0, 100]
+  // so the flood's overshoot doesn't move it: it still appears as the flood
+  // crosses into the box and parks at the cap once the reveal tops off.
+  const crestTop = useTransform(floodTop, (v) => Math.min(100, Math.max(0, v)));
+  const crestBottom = useTransform(crestTop, (v) => Math.max(0, 97 - v));
+  const crestClip = useMotionTemplate`inset(${crestTop}% 0% ${crestBottom}% 0%)`;
 
-  // Reflective sheen — only the mask position animates; the band shape is static
-  // and the highlight is gated to the revealed area via the same waterline clip.
+  // Light-pass — only the mask position animates; the band shape is static and
+  // the highlight is gated to the revealed area via the same waterline clip.
+  // Runs on the full scroll-through so it starts moving as soon as the section
+  // does; the early reveal (see SectionLabel) has the tube lit before the hot
+  // core of the band crosses it. Travel (130% → -30%) just clears the glyph on
+  // each side — pairing that short span with the long sheenRange window is
+  // what makes the pass move slowly instead of flashing through.
   const sheenPos = useTransform(progress, sheenRange, [
-    "160% 160%",
-    "-60% -60%",
+    "130% 130%",
+    "-30% -30%",
   ]);
 
   return (
@@ -107,7 +141,7 @@ export function ReflectiveGlyph({
         {text}
       </span>
 
-      {/* Colored stroke — lights up bottom-up, fading white → indigo. */}
+      {/* Lit stroke — floods bottom-up, fading white → accent. */}
       <motion.span
         className="absolute inset-0 block"
         style={{
@@ -137,18 +171,19 @@ export function ReflectiveGlyph({
         {text}
       </motion.span>
 
-      {/* Reflective sheen — a diagonal glint sweeping across, screen-blended so
-          it reads as a moving specular highlight. */}
+      {/* Light-pass — a wide specular streak with a white-hot core that sweeps
+          across the lit tube, screen-blended and bloomed so it reads as a
+          reflection travelling over glass. */}
       <motion.span
         className="absolute inset-0 block"
         style={{
           clipPath: floodClip,
           WebkitClipPath: floodClip,
-          WebkitTextStrokeWidth: "3px",
-          WebkitTextStrokeColor: "rgba(255,255,255,0.92)",
+          WebkitTextStrokeWidth: "3.5px",
+          WebkitTextStrokeColor: "rgba(255,255,255,0.95)",
           color: "transparent",
-          opacity: 0.8,
           mixBlendMode: "screen",
+          filter: sheenGlow,
           maskImage: SHEEN_BAND,
           WebkitMaskImage: SHEEN_BAND,
           maskSize: "250% 250%",
@@ -240,11 +275,14 @@ export default function SectionLabel({
           align === "left" ? "-left-[0.04em]" : "-right-[0.04em]"
         } ${numeralSize}`}
       >
+        {/* Reveal tops off early (0.68 of the entry) so the tube is already
+            fully lit when the light-pass's hot core crosses it low on the
+            screen — the glint reads over a lit stroke, not an empty ghost. */}
         <ReflectiveGlyph
           text={index}
           progress={scrollYProgress}
           revealProgress={entryProgress}
-          revealRange={[0.12, 0.96]}
+          revealRange={[0.1, 0.68]}
         />
       </motion.span>
 
