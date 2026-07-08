@@ -991,8 +991,8 @@ function InspectorPanel() {
       </div>
       {/* Interactive: the panel wrapper is pointer-events-none, so re-enable it
           here so the swatches are actually clickable. */}
-      <div className="mt-2.5 flex justify-end" style={{ pointerEvents: "auto" }}>
-        <AccentSwitcher bare />
+      <div className="mt-2.5" style={{ pointerEvents: "auto" }}>
+        <AccentSwitcher variant="strip" />
       </div>
       <div className="mt-2.5 flex items-center justify-between text-[11px] text-ink-subtle">
         <span>Opacity</span>
