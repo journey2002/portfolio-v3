@@ -10,7 +10,11 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { usePointer } from "@/components/ui/PointerProvider";
 
-const SPRING = { stiffness: 150, damping: 20, mass: 0.5 };
+// Tight follow: at 150/20 the ring trailed far enough behind to visibly
+// orbit the pointer on direction changes — over the hero's dot field that
+// read as a "black hole" circling the cursor. Stiffer + lighter keeps a
+// hint of trail without the swing-around.
+const SPRING = { stiffness: 260, damping: 26, mass: 0.4 };
 const FADE = { duration: 0.2, ease: "easeOut" } as const;
 
 type Variant = "default" | "link" | "move" | "resize";
@@ -154,7 +158,9 @@ export default function CustomCursor() {
         }}
         className="pointer-events-none fixed left-0 top-0 z-[9999] rounded-full bg-white mix-blend-difference"
       />
-      {/* Ring — spring trail with its indigo glow restored. */}
+      {/* Ring — spring trail with its accent glow. A soft 16px/3px accent
+          bloom that reads clearly as the cursor's own light; the DotGrid
+          canvas draws its dots brightly enough to stay visible through it. */}
       <motion.div
         aria-hidden
         style={{

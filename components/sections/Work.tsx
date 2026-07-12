@@ -21,6 +21,7 @@ import SplitText from "@/components/ui/SplitText";
 import ProjectCover from "@/components/ui/ProjectCover";
 import ViewToggle, { type WorkView } from "@/components/ui/ViewToggle";
 import { usePointer } from "@/components/ui/PointerProvider";
+import ClientWork from "@/components/sections/Clients";
 
 type Project = {
   title: string;
@@ -142,9 +143,24 @@ export default function Work() {
       ref={sectionRef}
       className="relative overflow-hidden py-32 md:py-44"
     >
-      <SectionLabel index="02" caption="Selected work" align="left" />
+      <SectionLabel index="02" caption="Work" align="left" />
 
-      <div className="relative mx-auto max-w-7xl px-6 sm:px-10">
+      {/* Movement I — client work: the live, shipped websites lead the section. */}
+      <ClientWork />
+
+      {/* Break into the second movement — same section, a different register:
+          paid-and-shipped gives way to the off-the-clock personal work. */}
+      <div
+        aria-hidden
+        className="relative mx-auto mt-28 flex max-w-7xl items-center gap-4 px-6 sm:px-10 md:mt-36"
+      >
+        <span className="h-px flex-1 bg-hairline" />
+        <span className="h-1.5 w-1.5 rotate-45 bg-accent-gradient" />
+        <span className="h-px flex-1 bg-hairline" />
+      </div>
+
+      {/* Movement II — off the clock: my own design, drawing & hobby work. */}
+      <div className="relative mx-auto mt-14 max-w-7xl px-6 sm:px-10">
         <motion.div
           ref={headingRef}
           initial={{ opacity: 0, y: 20 }}
@@ -154,7 +170,7 @@ export default function Work() {
         >
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-ink-subtle">
-              <span className="text-ink">[02]</span> &nbsp; Selected work
+              <span className="text-ink">[ II ]</span> &nbsp; Off the clock
             </p>
             <h2 className="mt-6 font-serif text-4xl font-bold leading-tight text-ink-strong sm:text-5xl md:text-6xl">
               <SplitText
@@ -229,7 +245,7 @@ export default function Work() {
               ? enabled
                 ? "↳ Hover a project to preview"
                 : "↳ Tap a project to expand"
-              : "↳ Selected work"}
+              : "↳ Off the clock"}
           </span>
           <span>05 / 05</span>
         </motion.div>

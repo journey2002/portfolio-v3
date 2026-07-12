@@ -4,6 +4,8 @@ import SectionMenu from "@/components/ui/SectionMenu";
 import Hero from "@/components/sections/Hero";
 
 // Below-the-fold sections are lazy-loaded to keep the initial bundle lean.
+// Work now owns both movements — the client sites and the off-the-clock
+// personal work — so it pulls Clients in itself rather than page.tsx.
 const About = dynamic(() => import("@/components/sections/About"));
 const Work = dynamic(() => import("@/components/sections/Work"));
 const Stack = dynamic(() => import("@/components/sections/Stack"));

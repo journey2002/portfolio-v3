@@ -115,6 +115,14 @@
      glow tints ARE the pale end of the active accent, so this retints too. */
   --accent-soft: var(--accent-glow-1);
   --accent-soft-2: var(--accent-glow-2);
+
+  /* Primary button (MagneticButton `glow`) drop-shadow halo. Built from the mid
+     accent hue (--accent-2), so it retints with the active accent instead of a
+     fixed pink and stays inside the button's own gradient (emerald→cyan halo,
+     sunset→rose, violet→purple). Nested var() resolves at use time, so swapping
+     data-accent re-tints this automatically. Hover variant lifts + intensifies. */
+  --btn-glow: 0 10px 30px -10px rgb(var(--accent-2) / 0.5);
+  --btn-glow-hover: 0 16px 44px -10px rgb(var(--accent-2) / 0.6);
 }
 
 [data-theme="light"] {
@@ -294,6 +302,40 @@ html.theme-switching *::after {
   animation-timing-function: ease;
 }
 
+/* Primary button glow halo (MagneticButton `glow`). Two shadow layers on
+   pseudo-elements — a rest halo and a larger hover halo, both tinted from
+   var(--btn-glow*) so they retint the instant the accent swaps. Only OPACITY
+   is transitioned (rest fades out as hover fades in); the box-shadow itself is
+   never transitioned. That's deliberate: a CSS transition on a box-shadow whose
+   colour comes from a custom property is swallowed by Chromium when that
+   property changes (the shadow keeps the old accent colour until an unrelated
+   repaint), so the accent had to move OFF the transitioned property to retint
+   reliably on every path — including the reduced-motion / no-View-Transition
+   accent swap, which mutates the var under a live transition. */
+.btn-glow-halo::before,
+.btn-glow-halo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.btn-glow-halo::before {
+  box-shadow: var(--btn-glow);
+  opacity: 1;
+}
+.btn-glow-halo::after {
+  box-shadow: var(--btn-glow-hover);
+  opacity: 0;
+}
+.btn-glow-halo:hover::before {
+  opacity: 0;
+}
+.btn-glow-halo:hover::after {
+  opacity: 1;
+}
+
 /* Hide native cursor on devices with a fine pointer (desktop) where the
    custom cursor takes over. Touch devices keep their default behavior. */
 @media (hover: hover) and (pointer: fine) {
@@ -340,10 +382,11 @@ body {
   background-size: 80px 80px;
 }
 
-/* Figma-style canvas dot grid — a faint dot at the centre of each 80px cell.
-   Replaces the ruled grid in the hero so the background reads like a design
-   tool's pasteboard rather than generic graph paper; GridSpotlight lights a
-   matching dot layer under the cursor. */
+/* Figma-style canvas dot grid — a faint dot at the centre of each 80px cell,
+   so a background reads like a design tool's pasteboard rather than generic
+   graph paper. In the hero this is DotGrid's static fallback (touch/reduced
+   motion); with a fine pointer DotGrid redraws the same grid on a canvas and
+   adds the cursor glow + repel. */
 .grid-dots {
   background-image: radial-gradient(
     circle,

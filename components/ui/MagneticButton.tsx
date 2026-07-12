@@ -51,20 +51,26 @@ export default function MagneticButton({
       style: { x, y },
       onMouseMove: handleMove,
       onMouseLeave: handleLeave,
-      initial: "rest" as const,
-      whileHover: "hover" as const,
       whileTap: { scale: 0.97 },
-      variants: {
-        rest: { boxShadow: "0 10px 30px -10px rgba(236,72,153,0.5)" },
-        hover: { boxShadow: "0 16px 44px -10px rgba(236,72,153,0.6)" },
-      },
       transition: { type: "spring" as const, stiffness: 340, damping: 26 },
       onClick,
     };
 
+    // Themed drop-shadow halo via the `.btn-glow-halo` class (globals.css): two
+    // pseudo-element shadow layers tinted from --btn-glow / -hover (the accent's
+    // mid hue), crossfaded on hover by opacity. The tint lives entirely in CSS so
+    // it retints the instant the accent swaps — no JS. Driving it through framer's
+    // `animate`, or a transitioned var-composed box-shadow, both proved unreliable:
+    // the shadow kept a stale accent colour when the accent changed at rest.
+    // `overflow-hidden` alone doesn't reliably clip the gradient to the pill:
+    // the parent's `will-change: transform` promotes this to its own GPU layer,
+    // and Chromium's rounded-rect overflow clip leaves a few stray pixels of the
+    // background bleeding out at the caps' 3-/9-o'clock extremes — small nubs on
+    // the button's left/right edges. A `clip-path` pill is rasterised accurately
+    // on the composited layer, so it trims those nubs (rest and mid-magnetic).
     const glowEl = (
       <span
-        className={`relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-white/10 bg-accent-gradient-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] transition-[filter] duration-300 group-hover:brightness-110 ${className}`}
+        className={`relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-white/10 bg-accent-gradient-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] transition-[filter] duration-300 [clip-path:inset(0_round_9999px)] group-hover:brightness-110 ${className}`}
       >
         {/* Subtle top sheen — keeps it from feeling flat without being noisy */}
         <span
@@ -80,7 +86,7 @@ export default function MagneticButton({
         <motion.a
           href={href}
           {...glowMotionProps}
-          className="group relative inline-flex rounded-full will-change-transform"
+          className="btn-glow-halo group relative inline-flex rounded-full will-change-transform"
         >
           {glowEl}
         </motion.a>
@@ -90,7 +96,7 @@ export default function MagneticButton({
       <motion.button
         type="button"
         {...glowMotionProps}
-        className="group relative inline-flex rounded-full will-change-transform"
+        className="btn-glow-halo group relative inline-flex rounded-full will-change-transform"
       >
         {glowEl}
       </motion.button>

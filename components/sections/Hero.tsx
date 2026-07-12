@@ -28,7 +28,7 @@ import MouseParallax from "@/components/ui/MouseParallax";
 import AccentSwitcher from "@/components/ui/AccentSwitcher";
 import { useAccent, ACCENT_PRIMARY } from "@/components/ui/AccentProvider";
 import SplitText from "@/components/ui/SplitText";
-import GridSpotlight from "@/components/ui/GridSpotlight";
+import DotGrid from "@/components/ui/DotGrid";
 import { usePointer } from "@/components/ui/PointerProvider";
 import { useMarqueeSlowOnHover } from "@/components/ui/useMarqueeSlowOnHover";
 
@@ -493,11 +493,10 @@ export default function Hero() {
       // two big voids.
       className="relative flex items-center justify-center overflow-hidden px-6 pb-24 pt-28 sm:px-10 md:min-h-[100svh] md:py-16"
     >
-      {/* ── Background: dot grid + cursor-glow, aurora, accents, dust ───────────── */}
+      {/* ── Background: dot grid (cursor glow + repel), aurora, accents, dust ──── */}
       <motion.div style={{ y: gridY }} className="absolute inset-0">
         <MouseParallax strength={16} className="absolute inset-0">
-          <div className="grid-dots pointer-events-none absolute -inset-16" />
-          <GridSpotlight className="-inset-16" size={620} gridSize={80} />
+          <DotGrid className="-inset-16" size={620} gridSize={80} />
         </MouseParallax>
       </motion.div>
 
