@@ -45,7 +45,7 @@ const spaceGrotesk = Space_Grotesk({
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
   variable: "--font-dm-sans",
   display: "swap",
 });
@@ -54,7 +54,7 @@ const dmSans = DM_Sans({
 // the otherwise-precise UI gains a human, hand-annotated layer.
 const caveat = Caveat({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400"],
   variable: "--font-caveat",
   display: "swap",
 });
