@@ -10,7 +10,6 @@ import {
   useSpring,
   useMotionValue,
   useMotionTemplate,
-  useMotionValueEvent,
   type Variants,
 } from "framer-motion";
 import { Layers, PenTool, MousePointer2, type LucideIcon } from "lucide-react";
@@ -529,12 +528,6 @@ export default function Stack() {
   // Convert velocity to a small skew (px/s → deg).
   const skew = useTransform(smoothVelocity, [-2000, 0, 2000], [-12, 0, 12], {
     clamp: true,
-  });
-  // Direction multiplier — flipped briefly while scrolling fast in reverse.
-  const directionRef = useRef(1);
-  useMotionValueEvent(smoothVelocity, "change", (v) => {
-    if (v < -50) directionRef.current = -1;
-    else if (v > 50) directionRef.current = 1;
   });
 
   // Section-level parallax for the marquee strip — it slides slightly faster
