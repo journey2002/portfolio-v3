@@ -245,6 +245,12 @@ export default function DotGrid({
       presence += ((moved ? 1 : 0) - presence) * (1 - Math.exp(-dt * 0.006));
 
       ctx.clearRect(0, 0, cssW, cssH);
+      // Dots with no glow/wave contribution (the vast majority every frame)
+      // share one fixed radius + fillStyle, so they're batched into a single
+      // Path2D and filled with one call instead of a beginPath/arc/fill triad
+      // per dot — same pixels, far fewer draw calls. Glowing dots vary in
+      // color and radius per-dot, so they keep their individual fill below.
+      const restPath = new Path2D();
       for (let gx = half; gx < cssW; gx += gridSize) {
         for (let gy = half; gy < cssH; gy += gridSize) {
           const dx = gx - sx;
@@ -312,7 +318,6 @@ export default function DotGrid({
             }
           }
 
-          ctx.beginPath();
           const cursorGlow = d < glowR ? presence * (1 - d / glowR) : 0;
           const glowT = Math.min(1, cursorGlow + waveGlow * WAVE_GLOW);
           if (glowT > 0.004) {
@@ -322,15 +327,21 @@ export default function DotGrid({
             const cg = base.g + (glow.g - base.g) * glowT;
             const cb = base.b + (glow.b - base.b) * glowT;
             const ca = base.a + (glow.a - base.a) * glowT;
+            ctx.beginPath();
             ctx.fillStyle = `rgba(${cr | 0},${cg | 0},${cb | 0},${ca.toFixed(3)})`;
             ctx.arc(px, py, baseR + 0.55 * glowT + 0.35 * waveT, 0, TWO_PI);
+            ctx.fill();
           } else {
-            ctx.fillStyle = baseStyle;
-            ctx.arc(px, py, baseR, 0, TWO_PI);
+            // moveTo before arc() opens a fresh subpath per dot — required so
+            // each circle fills independently instead of implicitly connecting
+            // to the previous one's endpoint.
+            restPath.moveTo(px + baseR, py);
+            restPath.arc(px, py, baseR, 0, TWO_PI);
           }
-          ctx.fill();
         }
       }
+      ctx.fillStyle = baseStyle;
+      ctx.fill(restPath);
       rafId = requestAnimationFrame(draw);
     };
 
