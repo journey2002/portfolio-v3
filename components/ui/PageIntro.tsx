@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Brief on-load overlay. Shows the initials WS and a tiny counter that ticks
@@ -14,8 +14,11 @@ import { useEffect, useState } from "react";
  */
 export default function PageIntro() {
   const [done, setDone] = useState(false);
-  const [count, setCount] = useState(0);
   const [skip, setSkip] = useState(false);
+  // Ticks via direct textContent writes (see tick() below) rather than
+  // setState — the count changes ~72 times in 1.2s, right when the main
+  // thread is busiest during initial load.
+  const countRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -37,7 +40,12 @@ export default function PageIntro() {
     let rafId: number;
     const tick = (t: number) => {
       const p = Math.min(1, (t - start) / duration);
-      setCount(Math.round(p * 100));
+      if (countRef.current) {
+        countRef.current.textContent = String(Math.round(p * 100)).padStart(
+          3,
+          "0"
+        );
+      }
       if (p < 1) rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);
@@ -125,12 +133,13 @@ export default function PageIntro() {
 
               {/* Counter */}
               <motion.span
+                ref={countRef}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.25 }}
                 className="absolute -right-12 top-0 font-serif text-xs tabular-nums tracking-widest text-ink-subtle sm:-right-16"
               >
-                {String(count).padStart(3, "0")}
+                000
               </motion.span>
             </div>
           </motion.div>
