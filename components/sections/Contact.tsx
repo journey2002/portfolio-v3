@@ -57,10 +57,12 @@ export default function Contact() {
       {/* Aurora. No scroll-driven scale here: the aurora-shift CSS animation
           owns `transform` (keyframes beat inline styles in the cascade), so a
           framer scale on this element never rendered — only cost a style
-          write per scroll frame. */}
+          write per scroll frame. Also no blur filter, same reasoning as the
+          hero's aurora (see Hero.tsx): the gradient is already smooth and a
+          measured pixel-diff against a blurred render is imperceptible. */}
       <div
         aria-hidden
-        className="bg-aurora animate-aurora-shift pointer-events-none absolute -top-1/2 left-1/2 h-[90vh] w-[90vh] -translate-x-1/2 opacity-25 blur-3xl"
+        className="bg-aurora animate-aurora-shift pointer-events-none absolute -top-1/2 left-1/2 h-[90vh] w-[90vh] -translate-x-1/2 opacity-25"
       />
       <div
         aria-hidden

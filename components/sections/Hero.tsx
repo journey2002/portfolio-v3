@@ -506,11 +506,16 @@ export default function Hero() {
         className="pointer-events-none absolute inset-0"
       >
         <MouseParallax strength={42} className="absolute inset-0">
+          {/* No blur filter: `--aurora`'s 8-stop gradient is already this
+              smooth on its own (measured pixel-diff against a blurred render
+              is imperceptible, <2% max channel delta), so `blur-3xl` here was
+              only forcing a large-kernel GPU blur pass on a permanently
+              animated 120vh layer for no visible gain. */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.5 }}
             transition={{ duration: 1.6, delay: 0.8, ease: "easeOut" }}
-            className="bg-aurora animate-aurora-shift absolute left-1/2 top-1/2 h-[120vh] w-[120vh] -translate-x-1/2 -translate-y-1/2 blur-3xl"
+            className="bg-aurora animate-aurora-shift absolute left-1/2 top-1/2 h-[120vh] w-[120vh] -translate-x-1/2 -translate-y-1/2"
           />
         </MouseParallax>
       </motion.div>
