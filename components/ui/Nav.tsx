@@ -95,18 +95,51 @@ function RollingLabel({ text }: { text: string }) {
 
 /** Scroll-progress ring that sits just OUTSIDE the header outline.
     pathLength is normalised to 100 so it traces the real shape (pill or
-    circle), and the whole ring fades in with progress (hidden at the top). */
+    circle), and the whole ring fades in with progress (hidden at the top).
+    Progress is written straight to the DOM from the scroll handler (opacity +
+    stroke-dasharray attributes) instead of through React state, so a Lenis
+    scroll no longer re-renders this component (and reconciles ~16 rects) on
+    every animation frame — the visuals are pixel-identical, just imperative. */
 function ProgressRing({ w, h }: { w: number; h: number }) {
-  // Progress changes on every scroll frame, so it lives HERE rather than in
-  // Nav: only this small SVG re-renders at scroll speed instead of the whole
-  // header tree (logo, link row, CTA, toggle — all motion components).
-  const [progress, setProgress] = useState(0);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const bodyRef = useRef<SVGRectElement>(null);
+  const tailRefs = useRef<(SVGRectElement | null)[]>([]);
+  const segs = 14; // overlapping layers — more = finer fade; bare rects stay cheap
 
   useEffect(() => {
     let scheduled = false;
     const update = () => {
       const max = document.documentElement.scrollHeight - window.innerHeight;
-      setProgress(max > 0 ? Math.min(1, window.scrollY / max) : 0);
+      const progress = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+
+      const p = Math.max(0, Math.min(100, progress * 100));
+      const vis = Math.min(1, progress * 30); // invisible at the very top, fades in fast
+
+      // Soft "comet tail": the leading edge fades out instead of ending in a
+      // solid cap. The fade shrinks to zero over the final `snapZone` units so
+      // the arc closes solidly onto the start point when complete.
+      const snapZone = 9;
+      const tail = Math.min(12, p) * Math.min(1, (100 - p) / snapZone);
+      const body = p - tail;
+      const step = tail / segs;
+      const showTail = tail > 0.01;
+
+      if (svgRef.current) svgRef.current.style.opacity = String(vis);
+      // stroke-dasharray "0 100" draws a zero-length dash — invisible, same
+      // pixels as the old conditional (un)mount without touching the DOM tree.
+      bodyRef.current?.setAttribute(
+        "stroke-dasharray",
+        `${body} ${100 - body}`
+      );
+      for (let i = 0; i < segs; i++) {
+        const rect = tailRefs.current[i];
+        if (!rect) continue;
+        const len = showTail ? tail - i * step : 0;
+        rect.setAttribute(
+          "stroke-dasharray",
+          len > 0 ? `0 ${body} ${len} 100` : "0 100"
+        );
+      }
       scheduled = false;
     };
     const onScroll = () => {
@@ -117,7 +150,7 @@ function ProgressRing({ w, h }: { w: number; h: number }) {
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [segs]);
 
   if (w <= 0 || h <= 0) return null;
   const gap = 5; // distance outside the header edge
@@ -133,25 +166,15 @@ function ProgressRing({ w, h }: { w: number; h: number }) {
     rx,
     fill: "none" as const,
   };
-  const p = Math.max(0, Math.min(100, progress * 100));
-  const vis = Math.min(1, progress * 30); // invisible at the very top, fades in fast
-
-  // Soft "comet tail": the leading edge fades out instead of ending in a
-  // solid cap. The fade shrinks to zero over the final `snapZone` units so the
-  // arc closes solidly onto the start point when complete.
-  const snapZone = 9;
-  const tail = Math.min(12, p) * Math.min(1, (100 - p) / snapZone);
-  const body = p - tail;
-  const segs = 14; // overlapping layers — more = finer fade; bare rects stay cheap
-  const step = tail / segs;
 
   return (
     <svg
+      ref={svgRef}
       width={W}
       height={H}
       aria-hidden
       className="pointer-events-none absolute overflow-visible"
-      style={{ left: -gap, top: -gap, opacity: vis, transition: "opacity 0.3s ease" }}
+      style={{ left: -gap, top: -gap, opacity: 0, transition: "opacity 0.3s ease" }}
     >
       <defs>
         <linearGradient id="nav-progress" x1="0" y1="0" x2="1" y2="1">
@@ -164,16 +187,15 @@ function ProgressRing({ w, h }: { w: number; h: number }) {
       <rect {...common} stroke="var(--hairline)" strokeWidth={sw} />
       {/* Progress arc body (full opacity). drop-shadow filter removed — it
           forced a costly filter pass on every scroll tick. */}
-      {body > 0 && (
-        <rect
-          {...common}
-          stroke="url(#nav-progress)"
-          strokeWidth={sw}
-          strokeLinecap="round"
-          pathLength={100}
-          strokeDasharray={`${body} ${100 - body}`}
-        />
-      )}
+      <rect
+        ref={bodyRef}
+        {...common}
+        stroke="url(#nav-progress)"
+        strokeWidth={sw}
+        strokeLinecap="round"
+        pathLength={100}
+        strokeDasharray="0 100"
+      />
       {/* Fading tail: overlapping layers that each start at the body and reach a
           progressively shorter distance toward the tip, so coverage is densest
           at the body and thins to a single layer at the leading edge. Giving
@@ -181,23 +203,21 @@ function ProgressRing({ w, h }: { w: number; h: number }) {
           to an exactly LINEAR alpha ramp — ~0 at the tip, full where it meets
           the solid body — so the head feathers off smoothly with no visible
           bands. Still bare stroked rects (no blur/filter), cheap every tick. */}
-      {tail > 0.01 &&
-        Array.from({ length: segs }).map((_, i) => {
-          const len = tail - i * step;
-          if (len <= 0) return null;
-          return (
-            <rect
-              key={i}
-              {...common}
-              stroke="url(#nav-progress)"
-              strokeWidth={sw}
-              strokeLinecap="butt"
-              pathLength={100}
-              strokeDasharray={`0 ${body} ${len} ${100}`}
-              style={{ opacity: 1 / (segs - i) }}
-            />
-          );
-        })}
+      {Array.from({ length: segs }).map((_, i) => (
+        <rect
+          key={i}
+          ref={(el) => {
+            tailRefs.current[i] = el;
+          }}
+          {...common}
+          stroke="url(#nav-progress)"
+          strokeWidth={sw}
+          strokeLinecap="butt"
+          pathLength={100}
+          strokeDasharray="0 100"
+          style={{ opacity: 1 / (segs - i) }}
+        />
+      ))}
     </svg>
   );
 }
