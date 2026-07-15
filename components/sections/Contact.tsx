@@ -81,19 +81,6 @@ export default function Contact() {
     >
       <SectionLabel index="04" caption="Contact" align="left" />
 
-      {/* Aurora — deliberately static. Don't re-add animate-aurora-shift: its
-          keyframes own `transform` outright (animations beat the cascade), so
-          they discard this element's -translate-x-1/2 — the glow sat with its
-          left edge on the centerline — and, hard-clipped by the footer's
-          overflow at border-t, the scale pulse read as the glow resizing
-          rather than ambient drift. Static, the centering utility applies
-          again. No blur filter, same reasoning as the hero's aurora (see
-          Hero.tsx): the gradient is already smooth and a measured pixel-diff
-          against a blurred render is imperceptible. */}
-      <div
-        aria-hidden
-        className="bg-aurora pointer-events-none absolute -top-1/2 left-1/2 h-[90vh] w-[90vh] -translate-x-1/2 opacity-25"
-      />
       <div
         aria-hidden
         className="noise-overlay pointer-events-none absolute inset-0"
