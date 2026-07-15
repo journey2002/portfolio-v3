@@ -183,16 +183,6 @@ const ACHIEVEMENTS: Achievement[] = [
   },
 ];
 
-// Marquee strip in the footer — light personality phrases that match the home page tone.
-const FOOTER_MARQUEE = [
-  "Bangkok, Thailand",
-  "UX/UI · Digital Art",
-  "Class of '24",
-  "Always sketching",
-  "Anime-adjacent",
-  "Available for work",
-];
-
 // Playful trait/skill chips for the hero — tilted "stickers" that spring in
 // and straighten on hover, echoing the interest chips on the About page.
 const HERO_CHIPS = [
@@ -324,7 +314,7 @@ function ResumeHero() {
         {/* Poster headline — three lines zig-zag across the full container:
             "I make" holds the left, "things that" rides a hairline to the
             right edge, then the huge kinetic "move." sweeps the bottom with
-            the OPEN-TO-WORK stamp slammed down at its right end. */}
+            a hand-inked "open to work" note scrawled in the right margin. */}
         <h1 className="mt-10 font-serif font-bold leading-[0.95] tracking-tight text-ink-strong sm:mt-12">
           <span className="flex items-center gap-5 text-[clamp(2.5rem,7.5vw,6.25rem)] sm:gap-8">
             <SplitText
@@ -385,7 +375,7 @@ function ResumeHero() {
             >
               <WigglyWord text="move." />
             </motion.span>
-            <StampBadge />
+            <HandNote />
           </span>
         </h1>
 
@@ -535,142 +525,89 @@ function WigglyWord({ text }: { text: string }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Stamp badge — "OPEN TO WORK" rubber-stamped onto the dossier        */
+/*  Hand note — "open to work" scrawled in the margin next to "move."   */
 /* ------------------------------------------------------------------ */
 
 /**
- * Ink stamp parked at the right end of the giant "move." — the dossier
- * got its verdict. Slams down with a springy overshoot once the headline
- * lands, resting at a hand-pressed tilt. SVG turbulence roughs up the
- * outlines and punches pinholes in the ink so it reads printed, not
- * rendered. Links down to the contact footer like the old orbit badge.
+ * Hand-inked margin note parked at the right end of the giant "move." —
+ * a designer's annotation, not a prop. The Caveat scrawl settles in once
+ * the headline lands, then a loose ink arrow draws itself toward the
+ * word it's commenting on. Ink rides the accent gradient (same recipe as
+ * the About marginalia) so it retints with the accent switcher. Links
+ * down to the contact footer like the stamp it replaced.
  */
-function StampBadge() {
+function HandNote() {
   const reduce = useReducedMotion();
   return (
     <motion.a
       href="#contact"
       aria-label="Open to work — jump to contact"
       data-cursor-hover
-      initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 2.1, rotate: 10 }}
-      animate={{ opacity: 1, scale: 1, rotate: -7 }}
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16, rotate: -8 }}
+      animate={{ opacity: 1, y: 0, rotate: -4 }}
       transition={
         reduce
-          ? { duration: 0.5, delay: 1.15 }
+          ? { duration: 0.5, delay: 1.1 }
           : {
               type: "spring",
-              stiffness: 380,
-              damping: 16,
-              delay: 1.15,
-              opacity: { duration: 0.15, delay: 1.15 },
+              stiffness: 160,
+              damping: 15,
+              delay: 1.1,
+              opacity: { duration: 0.35, delay: 1.1 },
             }
       }
-      whileHover={{ rotate: -3, scale: 1.04 }}
-      whileTap={{ scale: 0.94 }}
-      className="hidden w-40 shrink-0 text-pink-500/90 md:block lg:w-52"
+      whileHover={{ rotate: -1, scale: 1.05 }}
+      whileTap={{ scale: 0.96 }}
+      className="hidden shrink-0 md:block"
     >
-      <svg viewBox="0 0 230 156" aria-hidden className="h-auto w-full">
+      <span className="block whitespace-nowrap pr-2 text-right font-hand text-3xl leading-none text-[color:var(--accent-soft)] lg:text-4xl">
+        open to work
+      </span>
+      {/* Ink arrow — hooks out from under the note and curves down-left
+          toward the period of "move.", drawn stroke-first like the About
+          marginalia. Gradient def is local: /resume never mounts About,
+          so its #ink-accent isn't in this document. */}
+      <svg
+        aria-hidden
+        viewBox="0 0 150 84"
+        fill="none"
+        className="mt-1 h-16 w-28 overflow-visible lg:h-[4.5rem] lg:w-32"
+      >
         <defs>
-          {/* Two-stage grunge: low-freq turbulence wobbles the outlines,
-              then high-freq noise thresholded to alpha eats pinholes out
-              of the ink — the classic rubber-stamp filter recipe. */}
-          <filter id="stamp-ink" x="-8%" y="-8%" width="116%" height="116%">
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.045"
-              numOctaves="3"
-              seed="7"
-              result="warp"
-            />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="warp"
-              scale="3.5"
-              result="warped"
-            />
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.5"
-              numOctaves="2"
-              seed="12"
-              result="speckle"
-            />
-            <feColorMatrix
-              in="speckle"
-              type="luminanceToAlpha"
-              result="speckleAlpha"
-            />
-            <feComponentTransfer in="speckleAlpha" result="holes">
-              <feFuncA type="linear" slope="18" intercept="-4.5" />
-            </feComponentTransfer>
-            <feComposite in="warped" in2="holes" operator="in" />
-          </filter>
+          <linearGradient id="note-ink" x1="0" y1="0" x2="1" y2="0.4">
+            <stop offset="0%" stopColor="var(--accent-glow-1)" />
+            <stop offset="100%" stopColor="var(--accent-glow-2)" />
+          </linearGradient>
         </defs>
-
-        <g filter="url(#stamp-ink)" className="fill-current stroke-current">
-          {/* Double border, like a passport / customs stamp */}
-          <rect
-            x="7"
-            y="7"
-            width="216"
-            height="142"
-            rx="16"
-            fill="none"
-            strokeWidth="5"
-          />
-          <rect
-            x="17"
-            y="17"
-            width="196"
-            height="122"
-            rx="9"
-            fill="none"
-            strokeWidth="1.5"
-          />
-
-          <text
-            x="115"
-            y="42"
-            textAnchor="middle"
-            stroke="none"
-            className="font-sans text-[10.5px] font-semibold uppercase"
-            style={{ letterSpacing: "0.32em" }}
-          >
-            UX/UI · Digital art
-          </text>
-
-          <text
-            x="115"
-            y="77"
-            textAnchor="middle"
-            stroke="none"
-            className="font-serif text-[30px] font-bold uppercase"
-            style={{ letterSpacing: "0.08em" }}
-          >
-            Open to
-          </text>
-          <text
-            x="115"
-            y="109"
-            textAnchor="middle"
-            stroke="none"
-            className="font-serif text-[30px] font-bold uppercase"
-            style={{ letterSpacing: "0.08em" }}
-          >
-            Work ↗
-          </text>
-
-          <text
-            x="115"
-            y="133"
-            textAnchor="middle"
-            stroke="none"
-            className="font-sans text-[10px] font-semibold uppercase"
-            style={{ letterSpacing: "0.3em" }}
-          >
-            ★ BKK ⇄ AKL · 2026 ★
-          </text>
-        </g>
+        <motion.path
+          d="M132 8 C 126 36, 100 40, 72 46 C 50 50, 36 54, 22 64"
+          stroke="url(#note-ink)"
+          strokeWidth="3"
+          strokeLinecap="round"
+          initial={{ pathLength: reduce ? 1 : 0, opacity: reduce ? 1 : 0 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{
+            duration: 0.7,
+            ease: "easeInOut",
+            delay: 1.35,
+            opacity: { duration: 0.01, delay: 1.35 },
+          }}
+        />
+        <motion.path
+          d="M39 62 L 22 64 L 30 49"
+          stroke="url(#note-ink)"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ pathLength: reduce ? 1 : 0, opacity: reduce ? 1 : 0 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{
+            duration: 0.3,
+            ease: "easeOut",
+            delay: 2.05,
+            opacity: { duration: 0.01, delay: 2.05 },
+          }}
+        />
       </svg>
     </motion.a>
   );
@@ -788,7 +725,7 @@ function StatsStrip() {
                   vertical line whether it's a NumberFlow counter (which renders
                   taller, with its digits padded down) or plain text — keeps the
                   values, accent rules, and notes aligned across all columns. */}
-              <p className="mt-3 flex h-[1.6em] items-center font-serif text-[3.25rem] font-bold leading-none tracking-tight text-ink-strong sm:text-[3.75rem]">
+              <p className="mt-3 flex h-[1.6em] items-center font-numeral text-[3.25rem] font-bold leading-none tracking-tight text-ink-strong sm:text-[3.75rem]">
                 {/* NumberFlow renders its digits in a shadow DOM, which
                     `background-clip: text` can't pierce — a gradient-clipped
                     wrapper leaves the digits transparent/invisible. `color`
@@ -918,7 +855,7 @@ function AchievementsGrid() {
                   className="pointer-events-none absolute inset-0 -z-10 rounded-xl bg-gradient-to-br from-[rgb(var(--accent-1)/0.15)] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
                 />
 
-                <span className="text-[9px] uppercase tracking-[0.4em] text-ink-faint">
+                <span className="font-numeral text-[9px] uppercase tracking-[0.4em] text-ink-faint">
                   0{i + 1}
                 </span>
                 <Icon
@@ -1336,7 +1273,7 @@ function SkillsBlock({
             {title}
           </h3>
         </div>
-        <span className="text-[10px] uppercase tracking-[0.3em] text-ink-faint">
+        <span className="font-numeral text-[10px] uppercase tracking-[0.3em] text-ink-faint">
           0{items.length}
         </span>
       </div>
@@ -1391,10 +1328,6 @@ function ResumeFooter() {
     >
       <div
         aria-hidden
-        className="bg-aurora pointer-events-none absolute -top-1/3 left-1/2 h-[60vh] w-[60vh] -translate-x-1/2 opacity-25 blur-3xl"
-      />
-      <div
-        aria-hidden
         className="noise-overlay pointer-events-none absolute inset-0"
       />
 
@@ -1439,7 +1372,7 @@ function ResumeFooter() {
           initial={{ opacity: 0, y: 18 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] as const }}
-          className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-12 md:items-end"
+          className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-12 md:items-start"
         >
           <div className="md:col-span-7">
             <p className="text-[10px] uppercase tracking-[0.35em] text-ink-faint">
@@ -1448,11 +1381,11 @@ function ResumeFooter() {
             <a
               href="mailto:Worapat2002@gmail.com"
               data-cursor-hover
-              className="group mt-3 inline-flex items-baseline gap-3 text-2xl text-ink transition-colors hover:text-ink-strong sm:text-3xl"
+              className="group mt-3 inline-flex items-baseline gap-3 text-3xl text-ink transition-colors hover:text-ink-strong sm:text-4xl"
             >
               <span className="underline-wipe">Worapat2002@gmail.com</span>
               <ArrowUpRight
-                className="h-5 w-5 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                className="h-6 w-6 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
                 strokeWidth={2}
               />
             </a>
@@ -1466,13 +1399,25 @@ function ResumeFooter() {
             </a>
           </div>
 
-          <div className="flex flex-wrap items-center gap-6 md:col-span-5 md:justify-end">
+          <div className="hidden md:col-span-5 md:flex md:justify-end md:pr-6">
+            <FooterScrawl inView={inView} />
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Footer bar — copyright on the left, utility links on the right */}
+      <div className="relative border-t border-hairline">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 px-6 py-6 text-sm text-ink-subtle sm:flex-row sm:px-10">
+          <p>
+            © {new Date().getFullYear()} Worapat Settapak. All rights reserved.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
             {RESUME_PDF && (
               <a
                 href={RESUME_PDF}
                 download
                 data-cursor-hover
-                className="group inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink-strong"
+                className="group inline-flex items-center gap-1.5 text-ink-muted transition-colors hover:text-ink-strong"
               >
                 <Download
                   className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-y-0.5"
@@ -1484,7 +1429,7 @@ function ResumeFooter() {
             <a
               href="/#work"
               data-cursor-hover
-              className="group inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink-strong"
+              className="group inline-flex items-center gap-1.5 text-ink-muted transition-colors hover:text-ink-strong"
             >
               See my work
               <ArrowUpRight
@@ -1495,7 +1440,7 @@ function ResumeFooter() {
             <a
               href="/"
               data-cursor-hover
-              className="group inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink-strong"
+              className="group inline-flex items-center gap-1.5 text-ink-muted transition-colors hover:text-ink-strong"
             >
               <ArrowLeft
                 className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5"
@@ -1504,57 +1449,93 @@ function ResumeFooter() {
               Back to portfolio
             </a>
           </div>
-        </motion.div>
-      </div>
-
-      {/* Personality marquee — light-touch ticker before the copyright bar */}
-      <div className="group relative overflow-hidden border-t border-hairline bg-panel-weak backdrop-blur">
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-32 bg-gradient-to-r from-night via-night/80 to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-32 bg-gradient-to-l from-night via-night/80 to-transparent" />
-        <div className="relative flex py-3">
-          <div className="animate-marquee flex shrink-0 items-center gap-10 pr-10 group-hover:[animation-play-state:paused]">
-            {FOOTER_MARQUEE.concat(FOOTER_MARQUEE).map((tag, i) => (
-              <span
-                key={`${tag}-${i}`}
-                className="flex shrink-0 items-center gap-10 text-[11px] uppercase tracking-[0.35em] text-ink-subtle"
-              >
-                {tag}
-                <span className="h-1 w-1 rotate-45 bg-accent-gradient" />
-              </span>
-            ))}
-          </div>
-          <div
-            aria-hidden
-            className="animate-marquee flex shrink-0 items-center gap-10 pr-10 group-hover:[animation-play-state:paused]"
-          >
-            {FOOTER_MARQUEE.concat(FOOTER_MARQUEE).map((tag, i) => (
-              <span
-                key={`dup-${tag}-${i}`}
-                className="flex shrink-0 items-center gap-10 text-[11px] uppercase tracking-[0.35em] text-ink-subtle"
-              >
-                {tag}
-                <span className="h-1 w-1 rotate-45 bg-accent-gradient" />
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Footer bar */}
-      <div className="relative border-t border-hairline">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-6 py-6 text-sm text-ink-subtle sm:flex-row sm:px-10">
-          <p>
-            © {new Date().getFullYear()} Worapat Settapak. All rights reserved.
-          </p>
-          <p className="inline-flex items-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
-            </span>
-            Available for freelance
-          </p>
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * Hand-inked scrawl on the right of the contact row — the same marginalia
+ * voice as the hero's "open to work" note, so the page closes on the motif
+ * it opened with. The ink arrow draws itself down-left toward the email
+ * once the footer scrolls into view. Gradient def gets its own id: the
+ * hero's #note-ink lives in this same document.
+ */
+function FooterScrawl({ inView }: { inView: boolean }) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.a
+      href="mailto:Worapat2002@gmail.com"
+      aria-label="Say hi — email me"
+      data-cursor-hover
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 14, rotate: 8 }}
+      animate={inView ? { opacity: 1, y: 0, rotate: 2 } : undefined}
+      transition={
+        reduce
+          ? { duration: 0.5, delay: 0.45 }
+          : {
+              type: "spring",
+              stiffness: 160,
+              damping: 15,
+              delay: 0.45,
+              opacity: { duration: 0.35, delay: 0.45 },
+            }
+      }
+      whileHover={{ rotate: 0, scale: 1.05 }}
+      whileTap={{ scale: 0.96 }}
+      className="block shrink-0"
+    >
+      <span className="block whitespace-nowrap text-right font-hand text-3xl leading-none text-[color:var(--accent-soft)] lg:text-4xl">
+        go on, say hi
+      </span>
+      <span className="mt-2 block whitespace-nowrap text-right font-hand text-lg leading-none text-ink-subtle lg:text-xl">
+        I reply fast — promise
+      </span>
+      {/* Ink arrow — hooks out from under the scrawl and curves down-left
+          toward the email address, drawn stroke-first like the hero note. */}
+      <svg
+        aria-hidden
+        viewBox="0 0 150 84"
+        fill="none"
+        className="mt-1 h-16 w-28 overflow-visible lg:h-[4.5rem] lg:w-32"
+      >
+        <defs>
+          <linearGradient id="footer-note-ink" x1="0" y1="0" x2="1" y2="0.4">
+            <stop offset="0%" stopColor="var(--accent-glow-1)" />
+            <stop offset="100%" stopColor="var(--accent-glow-2)" />
+          </linearGradient>
+        </defs>
+        <motion.path
+          d="M132 8 C 126 36, 100 40, 72 46 C 50 50, 36 54, 22 64"
+          stroke="url(#footer-note-ink)"
+          strokeWidth="3"
+          strokeLinecap="round"
+          initial={{ pathLength: reduce ? 1 : 0, opacity: reduce ? 1 : 0 }}
+          animate={inView ? { pathLength: 1, opacity: 1 } : undefined}
+          transition={{
+            duration: 0.7,
+            ease: "easeInOut",
+            delay: 0.75,
+            opacity: { duration: 0.01, delay: 0.75 },
+          }}
+        />
+        <motion.path
+          d="M39 62 L 22 64 L 30 49"
+          stroke="url(#footer-note-ink)"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ pathLength: reduce ? 1 : 0, opacity: reduce ? 1 : 0 }}
+          animate={inView ? { pathLength: 1, opacity: 1 } : undefined}
+          transition={{
+            duration: 0.3,
+            ease: "easeOut",
+            delay: 1.45,
+            opacity: { duration: 0.01, delay: 1.45 },
+          }}
+        />
+      </svg>
+    </motion.a>
   );
 }

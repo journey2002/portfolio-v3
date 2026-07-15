@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   motion,
   useInView,
@@ -34,6 +34,33 @@ const SOCIALS = [
   },
 ];
 
+const bangkokTime = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Bangkok",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/* Live Bangkok clock for the footer bar. Isolated in its own component so the
+   per-minute tick re-renders just this span, not the whole (heavy) section.
+   SSR bakes in the build-time value, hence suppressHydrationWarning + an
+   immediate tick on mount; timeouts align to the minute boundary so it never
+   shows a stale minute. */
+function BangkokClock() {
+  const [time, setTime] = useState(() => bangkokTime.format(new Date()));
+
+  useEffect(() => {
+    let id: number;
+    const tick = () => {
+      setTime(bangkokTime.format(new Date()));
+      id = window.setTimeout(tick, 60_000 - (Date.now() % 60_000) + 50);
+    };
+    tick();
+    return () => window.clearTimeout(id);
+  }, []);
+
+  return <span suppressHydrationWarning>{time}</span>;
+}
+
 export default function Contact() {
   const sectionRef = useRef<HTMLElement>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -54,15 +81,18 @@ export default function Contact() {
     >
       <SectionLabel index="04" caption="Contact" align="left" />
 
-      {/* Aurora. No scroll-driven scale here: the aurora-shift CSS animation
-          owns `transform` (keyframes beat inline styles in the cascade), so a
-          framer scale on this element never rendered — only cost a style
-          write per scroll frame. Also no blur filter, same reasoning as the
-          hero's aurora (see Hero.tsx): the gradient is already smooth and a
-          measured pixel-diff against a blurred render is imperceptible. */}
+      {/* Aurora — deliberately static. Don't re-add animate-aurora-shift: its
+          keyframes own `transform` outright (animations beat the cascade), so
+          they discard this element's -translate-x-1/2 — the glow sat with its
+          left edge on the centerline — and, hard-clipped by the footer's
+          overflow at border-t, the scale pulse read as the glow resizing
+          rather than ambient drift. Static, the centering utility applies
+          again. No blur filter, same reasoning as the hero's aurora (see
+          Hero.tsx): the gradient is already smooth and a measured pixel-diff
+          against a blurred render is imperceptible. */}
       <div
         aria-hidden
-        className="bg-aurora animate-aurora-shift pointer-events-none absolute -top-1/2 left-1/2 h-[90vh] w-[90vh] -translate-x-1/2 opacity-25"
+        className="bg-aurora pointer-events-none absolute -top-1/2 left-1/2 h-[90vh] w-[90vh] -translate-x-1/2 opacity-25"
       />
       <div
         aria-hidden
@@ -283,7 +313,9 @@ export default function Contact() {
               <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
             </span>
-            Available for freelance
+            <span>
+              Bangkok · <BangkokClock /> ICT
+            </span>
           </p>
         </div>
       </div>

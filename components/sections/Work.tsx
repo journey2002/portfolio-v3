@@ -247,7 +247,7 @@ export default function Work() {
                 : "↳ Tap a project to expand"
               : "↳ Off the clock"}
           </span>
-          <span>05 / 05</span>
+          <span className="font-numeral">05 / 05</span>
         </motion.div>
       </div>
 
@@ -316,7 +316,7 @@ function IndexView({
               className="group relative flex cursor-pointer items-center gap-4 py-6 sm:gap-6 sm:py-8"
             >
               {/* Index numeral */}
-              <span className="w-7 shrink-0 text-xs tabular-nums tracking-[0.3em] text-ink-faint sm:w-12">
+              <span className="w-7 shrink-0 font-numeral text-xs tabular-nums tracking-[0.3em] text-ink-faint sm:w-12">
                 {String(i + 1).padStart(2, "0")}
               </span>
 

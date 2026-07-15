@@ -41,7 +41,7 @@ export default function ProjectCover({
       <div className="grid-lines absolute inset-0 opacity-50" />
 
       {/* Ghost numeral bleeding off the bottom-right corner. */}
-      <span className="pointer-events-none absolute -bottom-8 -right-2 select-none font-serif text-[9rem] font-bold leading-none text-white/[0.07]">
+      <span className="pointer-events-none absolute -bottom-8 -right-2 select-none font-numeral text-[9rem] font-bold leading-none text-white/[0.07]">
         {String(index + 1).padStart(2, "0")}
       </span>
 

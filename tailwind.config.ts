@@ -59,9 +59,14 @@ const config: Config = {
         // Display face for headings (a clean grotesque, not a true serif — the
         // `serif` key name is kept so existing font-serif utilities keep working).
         serif: ["var(--font-display)", "system-ui", "sans-serif"],
-        // Space Grotesk, used only for the giant section numerals (SectionLabel).
+        // Space Grotesk — the numeral face. Any STANDALONE numeral (giant
+        // section numerals, the footer wordmark, list index columns, counters,
+        // stat digits) uses this; digits inside a sentence stay in the
+        // surrounding text's face.
         numeral: ["var(--font-space-grotesk)", "system-ui", "sans-serif"],
         sans: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
+        // Monospace, used for live domains/URLs so they read as real addresses.
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
         hand: ["var(--font-caveat)", "ui-rounded", "cursive"],
       },
       backgroundImage: {

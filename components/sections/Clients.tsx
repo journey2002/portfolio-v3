@@ -459,7 +459,7 @@ function LedgerRow({
           <span className="w-7 shrink-0 font-numeral text-xs tabular-nums tracking-[0.3em] text-ink-faint sm:w-10">
             {String(number).padStart(2, "0")}
           </span>
-          <span className="min-w-0 truncate font-numeral text-base tracking-tight text-ink transition-colors duration-300 group-hover:text-indigo-accent sm:text-lg">
+          <span className="min-w-0 truncate font-mono text-base tracking-tight text-ink transition-colors duration-300 group-hover:text-indigo-accent sm:text-lg">
             {site.domain}
           </span>
           <span className="hidden shrink-0 text-sm text-ink-subtle lg:block">
