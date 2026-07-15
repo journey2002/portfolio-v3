@@ -4,6 +4,7 @@ import { forwardRef, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import { useIntro } from "@/components/ui/IntroProvider";
 
 /** Planet mark (planet-svgrepo-com), recoloured to the brand gradient. */
 function PlanetLogo() {
@@ -38,12 +39,12 @@ function PlanetLogo() {
   );
 }
 
-/** Brand-gradient colour for one glyph: lerps indigo-400 → purple-400 across
-    the word so a hovered label lands as a letter-by-letter gradient. */
+/** Brand-gradient colour for one glyph: lerps --accent-glow-1 → --accent-glow-2
+    across the word so a hovered label lands as a letter-by-letter gradient that
+    retints with the active accent palette. */
 function glyphColor(i: number, n: number) {
   const t = n <= 1 ? 0 : i / (n - 1);
-  const mix = (a: number, b: number) => Math.round(a + (b - a) * t);
-  return `rgb(${mix(129, 192)}, ${mix(140, 132)}, ${mix(248, 252)})`;
+  return `color-mix(in srgb, var(--accent-glow-2) ${Math.round(t * 100)}%, var(--accent-glow-1))`;
 }
 
 /** Split-flap nav label: on hover each glyph rolls up while its brand-tinted
@@ -308,6 +309,9 @@ const MenuToggle = forwardRef<
 MenuToggle.displayName = "MenuToggle";
 
 export default function Nav() {
+  // The pill drops in only once the page intro starts its reveal (true from
+  // mount when the intro is skipped) — see IntroProvider.
+  const { introDone } = useIntro();
   const [scrolled, setScrolled] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   // Once expanded by hover it stays open until the next scroll-down,
@@ -478,7 +482,7 @@ export default function Nav() {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ref={navRef as any}
           initial={{ opacity: 0, y: -24 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={introDone ? { opacity: 1, y: 0 } : { opacity: 0, y: -24 }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] as const }}
           onMouseEnter={() => setUserExpanded(true)}
           className={`group/nav pointer-events-auto relative flex h-14 items-center rounded-full px-3.5 backdrop-blur-xl transition-[background,box-shadow] duration-300 ${
@@ -643,7 +647,7 @@ export default function Nav() {
                 style={{
                   padding: 1,
                   background:
-                    "linear-gradient(160deg, rgba(129,140,248,0.5) 0%, rgba(255,255,255,0.06) 38%, rgba(192,132,252,0.3) 100%)",
+                    "linear-gradient(160deg, color-mix(in srgb, var(--accent-glow-1) 50%, transparent) 0%, rgba(255,255,255,0.06) 38%, color-mix(in srgb, var(--accent-glow-2) 30%, transparent) 100%)",
                   WebkitMask:
                     "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
                   WebkitMaskComposite: "xor",
@@ -727,8 +731,8 @@ export default function Nav() {
                           <span
                             className={`relative w-5 shrink-0 text-[10px] font-medium tabular-nums tracking-[0.15em] transition-colors duration-300 ${
                               active
-                                ? "text-indigo-300"
-                                : "text-ink-faint group-hover/item:text-indigo-300"
+                                ? "text-[color:var(--accent-glow-1)]"
+                                : "text-ink-faint group-hover/item:text-[color:var(--accent-glow-1)]"
                             }`}
                           >
                             0{i + 1}

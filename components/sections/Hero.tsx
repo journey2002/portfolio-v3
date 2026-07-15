@@ -14,6 +14,7 @@ import {
   Frame as FrameIcon,
   GripVertical,
   Hand,
+  Image as ImageIcon,
   Lock,
   MessageSquareDashed,
   Minus,
@@ -29,6 +30,7 @@ import AccentSwitcher from "@/components/ui/AccentSwitcher";
 import { useAccent, ACCENT_PRIMARY } from "@/components/ui/AccentProvider";
 import SplitText from "@/components/ui/SplitText";
 import DotGrid from "@/components/ui/DotGrid";
+import { useIntro } from "@/components/ui/IntroProvider";
 import { usePointer } from "@/components/ui/PointerProvider";
 import { useMarqueeSlowOnHover } from "@/components/ui/useMarqueeSlowOnHover";
 
@@ -110,6 +112,83 @@ const RESIZE_ANGLE: Record<string, number> = {
   "nesw-resize": -45,
 };
 
+// Floating artwork "reference" cards pinned around the canvas — the digital-art
+// half of the folio staged as assets on the design surface. Each renders a vivid
+// PLACEHOLDER for now; drop a real file path into `src` to swap it in (object-cover
+// keeps the 3:4 crop, no other change needed). Positions are anchored to the
+// ARTBOARD, not the viewport: `calc(50% - 33rem - width)` parks each card ~1rem
+// off the 64rem frame's edge on any monitor (viewport-percentage corners drifted
+// to the far screen edges on wide displays), and the `max(…)` floor stops them
+// sliding offscreen below ~1400px. Each carries its own parallax depth + float
+// phase. Colours are deliberately NOT the site accent — the art is meant to
+// be its own burst of colour against the mono canvas, so it stays vivid
+// whatever accent the visitor picks.
+type GalleryItem = {
+  id: string;
+  /** Real artwork path later (e.g. "/art/idol.png"); undefined → colour placeholder. */
+  src?: string;
+  /** Filename-style chip — reads as a pinned asset in the design tool. */
+  label: string;
+  /** Placeholder duotone: gradient start → end, plus a soft top-light bloom. */
+  from: string;
+  to: string;
+  glow: string;
+  /** Absolute position + responsive width (rotation is applied separately). */
+  className: string;
+  rotate: number;
+  /** Mouse-parallax travel — larger = nearer/faster, for depth layering. */
+  strength: number;
+  /** Entrance + float-phase offset (s). */
+  delay: number;
+};
+
+const GALLERY: GalleryItem[] = [
+  {
+    id: "idol",
+    label: "idol_01.png",
+    from: "#38bdf8",
+    to: "#4f46e5",
+    glow: "rgba(255,255,255,0.55)",
+    className: "left-[max(1rem,calc(50%_-_43rem))] top-[15%] w-32 xl:w-40",
+    rotate: -9,
+    strength: 30,
+    delay: 0.5,
+  },
+  {
+    id: "donut",
+    label: "donut.glb",
+    from: "#fbcfe8",
+    to: "#fb7185",
+    glow: "rgba(255,255,255,0.6)",
+    className: "left-[max(2.5rem,calc(50%_-_40rem))] bottom-[13%] w-24 xl:w-28",
+    rotate: 8,
+    strength: 48,
+    delay: 0.78,
+  },
+  {
+    id: "muse",
+    label: "muse_02.png",
+    from: "#e879f9",
+    to: "#7c3aed",
+    glow: "rgba(255,255,255,0.5)",
+    className: "right-[max(1rem,calc(50%_-_42rem))] top-[12%] w-28 xl:w-36",
+    rotate: 7,
+    strength: 34,
+    delay: 0.62,
+  },
+  {
+    id: "chair",
+    label: "chair.glb",
+    from: "#fcd34d",
+    to: "#6b7280",
+    glow: "rgba(255,255,255,0.45)",
+    className: "right-[max(2rem,calc(50%_-_42rem))] bottom-[15%] w-28 xl:w-36",
+    rotate: -7,
+    strength: 22,
+    delay: 0.9,
+  },
+];
+
 /**
  * Hero, staged as a live design canvas instead of a conventional headline block.
  *
@@ -124,6 +203,13 @@ export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
   const pointer = usePointer();
   const enabled = !!pointer?.enabled;
+
+  // Every entrance below animates only once `introDone` flips — on a first
+  // visit that's the moment the intro's selection box starts opening, so the
+  // hero rises while the overlay is still parting instead of playing unseen
+  // behind it. When the intro is skipped it's true from mount (unchanged
+  // behavior). Elements mirror their `initial` pose until released.
+  const { introDone } = useIntro();
 
   // The headline is a resizable "text box". Its handles behave like a design
   // tool's: edge handles change the BOX (width → wrap reflow, or vertical leading)
@@ -345,7 +431,7 @@ export default function Hero() {
     presence: (
       <motion.div
         initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
+        animate={introDone ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
         transition={{ duration: 0.7, delay: 0.5, ease: EASE }}
         className="flex flex-wrap items-center gap-3"
       >
@@ -377,6 +463,7 @@ export default function Hero() {
           <SplitText
             text="Designing"
             as="span"
+            active={introDone}
             delay={0.55}
             stagger={0.035}
             fromY={90}
@@ -388,6 +475,7 @@ export default function Hero() {
               as="span"
               className="pb-2"
               charClassName="bg-accent-gradient bg-clip-text text-transparent"
+              active={introDone}
               delay={0.9}
               stagger={0.03}
               fromY={90}
@@ -397,7 +485,7 @@ export default function Hero() {
             <motion.span
               aria-hidden
               initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              animate={introDone ? { opacity: 1 } : { opacity: 0 }}
               transition={{ delay: 1.5 }}
               className="animate-caret-blink mb-[0.3em] ml-1 h-[0.72em] w-[3px] rounded-full bg-accent-gradient sm:w-1"
             />
@@ -407,7 +495,9 @@ export default function Hero() {
         {/* Selection bounding box + draggable resize handles (desktop) */}
         <motion.div
           initial={{ opacity: 0, scale: 1.02 }}
-          animate={{ opacity: 1, scale: 1 }}
+          animate={
+            introDone ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 1.02 }
+          }
           transition={{ duration: 0.6, delay: 1.25, ease: EASE }}
           className="pointer-events-none absolute -inset-x-3 -inset-y-2 hidden md:block"
         >
@@ -438,7 +528,7 @@ export default function Hero() {
     actions: (
       <motion.div
         initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}
+        animate={introDone ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }}
         transition={{ duration: 0.9, delay: 1.45, ease: EASE }}
         className="grid grid-cols-1 items-end gap-8 sm:grid-cols-12 sm:gap-6"
       >
@@ -513,7 +603,7 @@ export default function Hero() {
               animated 120vh layer for no visible gain. */}
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.5 }}
+            animate={introDone ? { opacity: 0.5 } : { opacity: 0 }}
             transition={{ duration: 1.6, delay: 0.8, ease: "easeOut" }}
             className="bg-aurora animate-aurora-shift absolute left-1/2 top-1/2 h-[120vh] w-[120vh] -translate-x-1/2 -translate-y-1/2"
           />
@@ -527,6 +617,21 @@ export default function Hero() {
         aria-hidden
         className="noise-overlay pointer-events-none absolute inset-0"
       />
+
+      {/* ── Floating artwork cards — the digital-art half of the folio, pinned
+             as reference assets around the canvas. Vivid placeholders now; swap
+             real images into GALLERY[].src later. Non-interactive, sits below the
+             frame (no z → default, under the z-10 artboard) and fades out with the
+             frame on scroll. Hidden below md so it never crowds the phone layout. */}
+      <motion.div
+        aria-hidden
+        style={{ opacity: exitOpacity }}
+        className="pointer-events-none absolute inset-0 hidden md:block"
+      >
+        {GALLERY.map((item) => (
+          <GalleryCard key={item.id} item={item} />
+        ))}
+      </motion.div>
 
       {/* ── Decorative workspace chrome (non-interactive, fades on scroll) ──── */}
       {enabled && (
@@ -583,7 +688,7 @@ export default function Hero() {
         <div className="absolute -top-6 left-0 right-0 hidden items-center sm:flex">
           <motion.span
             initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
+            animate={introDone ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
             transition={{ duration: 0.6, delay: 0.3, ease: EASE }}
             className="inline-flex items-center gap-2 text-[11px] font-medium tracking-wide text-[color:var(--accent-soft)]"
           >
@@ -601,7 +706,9 @@ export default function Hero() {
         <motion.div
           ref={frameBodyRef}
           initial={{ opacity: 0, scale: 0.985 }}
-          animate={{ opacity: 1, scale: 1 }}
+          animate={
+            introDone ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.985 }
+          }
           transition={{ duration: 0.9, delay: 0.2, ease: EASE }}
           style={{ minHeight: "var(--fh)" }}
           // On phones the artboard card is dropped entirely — the border+panel
@@ -640,7 +747,7 @@ export default function Hero() {
         {/* Dimension caption under the frame */}
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={introDone ? { opacity: 1 } : { opacity: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
           className="mt-6 hidden items-center justify-center gap-2 text-[10px] uppercase tracking-[0.3em] text-ink-faint sm:flex"
         >
@@ -663,7 +770,7 @@ export default function Hero() {
       >
        <motion.div
         initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        animate={introDone ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
         transition={{ duration: 0.8, delay: 1.6, ease: EASE }}
         className="border-t border-hairline bg-panel backdrop-blur"
        >
@@ -761,6 +868,90 @@ export default function Hero() {
 /* ── Sub-components ────────────────────────────────────────────────────────── */
 
 /**
+ * A single pinned artwork card. Layering is deliberate so nothing fights:
+ *   • outer plain div  → absolute position + static rotation (a CSS `rotate`, kept
+ *     off any motion element because framer would overwrite a Tailwind transform).
+ *   • MouseParallax    → cursor-driven translate (its own depth via `strength`).
+ *   • entrance motion  → fade / scale / lift in on load.
+ *   • inner card       → the perpetual `float-card` bob, phase-offset per card.
+ * The art itself is a real <img> once `src` is set, else the colour placeholder.
+ */
+function GalleryCard({ item }: { item: GalleryItem }) {
+  const { introDone } = useIntro();
+  return (
+    <div
+      className={`absolute ${item.className}`}
+      style={{ rotate: `${item.rotate}deg` }}
+    >
+      <MouseParallax strength={item.strength}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.88, y: 26 }}
+          animate={
+            introDone
+              ? { opacity: 1, scale: 1, y: 0 }
+              : { opacity: 0, scale: 0.88, y: 26 }
+          }
+          transition={{ duration: 1, delay: item.delay, ease: EASE }}
+        >
+          <div
+            className="animate-float-card overflow-hidden rounded-2xl border border-white/[0.12] shadow-[0_28px_55px_-24px_rgba(0,0,0,0.75)]"
+            style={{ animationDelay: `${item.delay}s`, aspectRatio: "3 / 4" }}
+          >
+            {item.src ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={item.src}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <PlaceholderArt from={item.from} to={item.to} glow={item.glow} label={item.label} />
+            )}
+          </div>
+        </motion.div>
+      </MouseParallax>
+    </div>
+  );
+}
+
+/**
+ * Colour placeholder for a gallery card until a real image is dropped in. A vivid
+ * duotone with a soft top-light bloom, the shared structural grid, a centred image
+ * glyph and a filename chip — so it reads unmistakably as a slot waiting for art,
+ * in the same surface vocabulary as ProjectCover and the canvas background.
+ */
+function PlaceholderArt({
+  from,
+  to,
+  glow,
+  label,
+}: Pick<GalleryItem, "from" | "to" | "glow" | "label">) {
+  return (
+    <div
+      aria-hidden
+      className="relative h-full w-full"
+      style={{ backgroundImage: `linear-gradient(150deg, ${from} 0%, ${to} 100%)` }}
+    >
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `radial-gradient(115% 75% at 28% 12%, ${glow}, transparent 58%)`,
+        }}
+      />
+      <div className="grid-lines absolute inset-0 opacity-30" />
+      <div className="absolute inset-0 grid place-items-center text-white/80">
+        <ImageIcon className="h-6 w-6" strokeWidth={1.5} />
+      </div>
+      <span className="absolute bottom-2 left-2 rounded-[4px] bg-black/35 px-1.5 py-0.5 text-[9px] font-medium tracking-wide text-white/85 backdrop-blur-sm">
+        {label}
+      </span>
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent" />
+      <div className="noise-overlay absolute inset-0" />
+    </div>
+  );
+}
+
+/**
  * One half of the marquee — the tag set repeated `MARQUEE_REPEAT` times so a
  * single half is wide enough to span the container. Two identical halves sit in
  * the animated track; when it slides -50% the second half lands exactly where the
@@ -790,6 +981,7 @@ function MarqueeHalf(props: { "aria-hidden"?: boolean }) {
 
 /** Horizontal ruler with tick marks, mounted above the frame. */
 function Ruler() {
+  const { introDone } = useIntro();
   const pointer = usePointer();
   const fallback = useMotionValue(0);
   // Horizontal-only pan: the ticks glide left/right with the cursor's X
@@ -808,7 +1000,7 @@ function Ruler() {
     <motion.div
       aria-hidden
       initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
+      animate={introDone ? { opacity: 1 } : { opacity: 0 }}
       transition={{ duration: 0.8, delay: 0.4 }}
       className="absolute -top-[3.2rem] left-0 right-0 hidden h-3 overflow-hidden sm:block"
       style={{
@@ -885,10 +1077,11 @@ function LayersPanel({
   selected: LayerId;
   onSelect: (id: LayerId) => void;
 }) {
+  const { introDone } = useIntro();
   return (
     <motion.div
       initial={{ opacity: 0, x: -16 }}
-      animate={{ opacity: 1, x: 0 }}
+      animate={introDone ? { opacity: 1, x: 0 } : { opacity: 0, x: -16 }}
       transition={{ duration: 0.7, delay: 0.7, ease: EASE }}
       className="pointer-events-auto absolute left-6 top-1/2 hidden w-44 -translate-y-1/2 select-none rounded-lg border border-hairline bg-panel p-2.5 backdrop-blur xl:block"
     >
@@ -960,6 +1153,7 @@ function LayersPanel({
 
 /** Figma-style inspector panel reading live cursor X/Y, parked at the right. */
 function InspectorPanel() {
+  const { introDone } = useIntro();
   // The Fill row doubles as the site's accent picker — its swatch + hex reflect
   // the live accent, and the swatches below switch it (see AccentSwitcher).
   const { accent } = useAccent();
@@ -968,7 +1162,7 @@ function InspectorPanel() {
   return (
     <motion.div
       initial={{ opacity: 0, x: 16 }}
-      animate={{ opacity: 1, x: 0 }}
+      animate={introDone ? { opacity: 1, x: 0 } : { opacity: 0, x: 16 }}
       transition={{ duration: 0.7, delay: 0.8, ease: EASE }}
       className="absolute right-6 top-1/2 hidden w-44 -translate-y-1/2 select-none rounded-lg border border-hairline bg-panel p-3 backdrop-blur xl:block"
     >

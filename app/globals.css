@@ -374,6 +374,13 @@ body {
   overflow-x: clip;
 }
 
+/* On-load intro overlay (PageIntro): the inline script in app/layout.tsx
+   stamps data-intro on <html> before first paint, so repeat visits and
+   reduced-motion visitors never see even one frame of the overlay. */
+[data-intro="done"] #page-intro {
+  display: none;
+}
+
 /* Faint grid lines layered behind content for depth */
 .grid-lines {
   background-image:

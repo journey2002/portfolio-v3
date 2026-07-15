@@ -14,6 +14,9 @@ type SplitTextProps = {
   stagger?: number;
   /** Animate once when mounted (true) or wait for inView (false). */
   immediate?: boolean;
+  /** With `immediate`, false holds the hidden pose; flipping to true plays
+      the entrance. Lets the page intro release the hero's headline reveal. */
+  active?: boolean;
   /** How far each character translates from. */
   fromY?: number;
   /** Optional rotation applied at rest, eased to 0. Adds a touch of life. */
@@ -61,6 +64,7 @@ export default function SplitText({
   delay = 0,
   stagger = 0.025,
   immediate = true,
+  active = true,
   fromY = 64,
   fromRotate = 6,
   highlightWords = [],
@@ -80,7 +84,7 @@ export default function SplitText({
     <MotionTag
       variants={container(stagger, delay)}
       initial="hidden"
-      animate={immediate ? "show" : undefined}
+      animate={immediate ? (active ? "show" : "hidden") : undefined}
       whileInView={immediate ? undefined : "show"}
       viewport={immediate ? undefined : { once: true, margin: "-15%" }}
       // Default to inline-block so SplitText can be used inline within a
@@ -100,7 +104,15 @@ export default function SplitText({
               <span
                 key={ci}
                 className="relative inline-block overflow-hidden align-baseline"
-                style={{ paddingBottom: "0.08em" }}
+                // The reveal mask (overflow-hidden) clips each glyph to its own
+                // frame. With only a hairline of bottom room, descenders (g, y,
+                // p) get sheared off at the baseline. Extend the clip box down
+                // with paddingBottom, then cancel that exact height with a
+                // negative marginBottom so the frame's margin box — and thus the
+                // baseline and line spacing — stay unchanged. Net effect: only
+                // the descender clearance grows (below-baseline extension held
+                // at the original 0.08em: 0.26 − 0.18).
+                style={{ paddingBottom: "0.26em", marginBottom: "-0.18em" }}
               >
                 {/* No hardcoded will-change here: framer manages it during the
                     entrance, and a permanent hint would pin every glyph in its
