@@ -21,6 +21,7 @@ import {
   MousePointer2,
   PenTool,
   Plus,
+  RotateCcw,
   Type as TypeIcon,
 } from "lucide-react";
 import { Balancer } from "react-wrap-balancer";
@@ -44,6 +45,14 @@ const SCALE_MAX = 1.5;
 // centred artboard (≈64rem, set on --fw below); dragging a corner expands it out
 // to this max, which still leaves gutters for the layers + inspector panels.
 const FRAME_MAX_W = 1376;
+
+// Narrowest the frame can be dragged (px). Below ~56rem two things fall apart:
+// the content column collapses (the actions grid wraps word-by-word once the
+// xl padding eats the width), and the frame edge retreats past the artwork
+// cards tucked under it — chair's right edge sits 28rem from centre, so a
+// narrower frame slices the cards mid-body with the glass seam and leaves the
+// corner handles floating on top of them.
+const FRAME_MIN_W = 896;
 
 const MARQUEE_TAGS = [
   "UX/UI Designer",
@@ -229,24 +238,26 @@ const GALLERY: GalleryItem[] = [
     from: "#fcd34d",
     to: "#6b7280",
     glow: "rgba(255,255,255,0.45)",
-    // Peeks out past the frame's bottom-right corner, mirroring muse up top
-    // (same 35.5rem right anchor → the two share a right edge). This is the
-    // resting spot whenever the Inspector panel is absent — i.e. touch / no fine
-    // pointer, OR below xl. Top-anchored (50% + offset) so it stays glued to the
-    // vertically-centred frame's underside at any viewport height.
-    className: "right-[max(-2rem,calc(50%_-_35.5rem))] top-[calc(50%_+_8rem)] w-28 xl:w-36",
-    // Applied by GalleryCard ONLY when the panels are actually rendered
-    // (enabled && xl): pull the anchor back to hug the frame edge so the card
-    // never tucks behind the Inspector. Width alone (a plain `xl:`) was wrong —
-    // it hid the peek from no-fine-pointer sessions, which show no panel at all.
-    panelClassName: "xl:right-[max(2rem,calc(50%_-_28rem))]",
+    // The exact mirror of donut, so the two read as a matched bottom pair:
+    // same size, same 9.5rem drop below centre, same anchor magnitude flipped to
+    // the right edge. Earlier this was a BIGGER card (w-36) held higher (8rem)
+    // with a panel-only pull-back to dodge the Inspector — but the bulk kept it
+    // veiled inside the frame on hover (the "mostly inside" bug). donut proves
+    // the smaller/lower geometry fans cleanly out on either side: at rest it
+    // tucks under the frame edge (and, like donut under the Layers panel, partly
+    // behind the Inspector at narrow widths — the intended "reference tucked
+    // under a panel" look); no width-specific pull-back needed.
+    className: "right-[max(-1.5rem,calc(50%_-_34.5rem))] top-[calc(50%_+_9.5rem)] w-24 xl:w-28",
     rotate: -7,
     strength: 24,
     delay: 0.9,
-    // Emerges DOWN out of the frame's bottom edge. The Inspector panel walls off
-    // the right gutter and the status bar caps the bottom, so travel is mostly
-    // vertical and stops short of the bar (the old y:64 pushed it into the bar).
-    pop: { x: 8, y: 40, rotate: -8 },
+    // Fans to the open bottom-RIGHT corner — donut's bottom-left vector flipped.
+    // The mostly-diagonal drop clears the frame's right edge AND drops the card
+    // BELOW the Inspector's lower corner (the smaller card now fits under it,
+    // where the old w-36 couldn't), its tail tucking behind the bottom status
+    // bar exactly as donut's does — an intentional edge tuck, not the awkward
+    // mid-canvas hide the old near-vertical vector produced.
+    pop: { x: 70, y: 94, rotate: -9 },
     popDelay: 0.33,
     chipClass: "bottom-2 right-2",
   },
@@ -322,9 +333,16 @@ export default function Hero() {
     const startDY = e.clientY - cy || 1;
     const startDist = Math.hypot(e.clientX - cx, e.clientY - cy) || 1;
     const maxFW = Math.min(window.innerWidth - 48, FRAME_MAX_W); // cap to artboard max
+    // Frame floor while it follows the box. `startFW` guards small viewports:
+    // if the frame already sits below FRAME_MIN_W there, clamping to the bigger
+    // number would snap it wider the moment a handle is grabbed.
+    const minFW = Math.min(maxFW, startFW, FRAME_MIN_W);
 
     // Grow the box width and carry the frame along by the same delta (constant
-    // gutter), clamped to the viewport and floored at the longest word.
+    // gutter), clamped to the viewport and floored at the longest word. The box
+    // may keep shrinking below the frame's floor — the frame just stops
+    // following, so the text stays freely scalable without dragging the
+    // artboard into the card-slicing zone (see FRAME_MIN_W).
     const applyWidth = (bw: number, floor: number) => {
       let fw = bw + gutter;
       if (fw > maxFW) {
@@ -335,6 +353,7 @@ export default function Hero() {
         bw = floor;
         fw = bw + gutter;
       }
+      fw = Math.min(maxFW, Math.max(fw, minFW));
       box.style.setProperty("--bw", `${bw.toFixed(1)}px`);
       frame?.style.setProperty("--fw", `${fw.toFixed(1)}px`);
     };
@@ -390,10 +409,20 @@ export default function Hero() {
     const startW = rect.width;
     const startH = rect.height;
 
-    // Floors: the frame can't go narrower than the headline (+ breathing room)
-    // nor shorter than its natural content height (measured with --fh removed).
-    const minW =
-      (headlineRef.current?.getBoundingClientRect().width ?? 264) + 96;
+    // Floors: the frame can't go narrower than FRAME_MIN_W — or the headline
+    // (+ breathing room) if that box has been scaled up past it — nor shorter
+    // than its natural content height (measured with --fh removed). On
+    // viewports too small for the floor, the current width IS the floor, so
+    // grabbing a corner never snaps the frame wider than it already is.
+    const maxW = Math.min(window.innerWidth - 48, FRAME_MAX_W);
+    const minW = Math.min(
+      maxW,
+      startW,
+      Math.max(
+        FRAME_MIN_W,
+        (headlineRef.current?.getBoundingClientRect().width ?? 264) + 96,
+      ),
+    );
     const prevMinH = body.style.minHeight;
     body.style.minHeight = "0px";
     const minH = body.getBoundingClientRect().height;
@@ -401,8 +430,10 @@ export default function Hero() {
 
     const startDX = e.clientX - cx || 1;
     const startDY = e.clientY - cy || 1;
-    const maxW = Math.min(window.innerWidth - 48, FRAME_MAX_W);
-    const maxH = Math.max(minH, window.innerHeight - 40);
+    // Height cap leaves room for the ruler + frame tab above and the status
+    // bar below — at the old viewport-40 cap the frame's bottom edge (and its
+    // corner handles) buried themselves in the status bar.
+    const maxH = Math.max(minH, window.innerHeight - 140);
     // A corner only drives the axes it actually sits on (hx/hy are 0 or 100,
     // 50 would mean "centred" → that axis is left alone). Corners use both.
     const liveW = hx !== 50;
@@ -496,6 +527,23 @@ export default function Hero() {
   // its edges spring outward (see GalleryCard). framer's hover events only
   // fire for real pointers, so touch devices simply keep the resting tuck.
   const [frameHover, setFrameHover] = useState(false);
+
+  // Back to the shipped layout: clear every drag-set CSS var (text box width /
+  // scale / leading, frame width / height — removal falls back to the defaults
+  // in the style attributes) and restore the layer stack. Lives here because
+  // the vars are owned by this component's refs; the Layers panel just calls it.
+  const resetPlayground = () => {
+    const box = headlineRef.current;
+    if (box) {
+      box.style.removeProperty("--bw");
+      box.style.removeProperty("--hs");
+      box.style.removeProperty("--lh");
+    }
+    frameWrapRef.current?.style.removeProperty("--fw");
+    frameBodyRef.current?.style.removeProperty("--fh");
+    setLayerOrder(DEFAULT_LAYER_ORDER);
+    setSelectedLayer("statement");
+  };
 
   // The hero content blocks, keyed by layer id. Rendered through `layerOrder`
   // below so the panel's drag-to-reorder physically restacks them, with a
@@ -746,6 +794,7 @@ export default function Hero() {
             setOrder={setLayerOrder}
             selected={selectedLayer}
             onSelect={setSelectedLayer}
+            onReset={resetPlayground}
           />
         </motion.div>
       )}
@@ -1215,11 +1264,13 @@ function LayersPanel({
   setOrder,
   selected,
   onSelect,
+  onReset,
 }: {
   order: LayerId[];
   setOrder: (order: LayerId[]) => void;
   selected: LayerId;
   onSelect: (id: LayerId) => void;
+  onReset: () => void;
 }) {
   const { introDone } = useIntro();
   return (
@@ -1291,6 +1342,19 @@ function LayersPanel({
           <Lock className="h-3 w-3 shrink-0 text-ink-faint" strokeWidth={2} />
         </li>
       </ul>
+      {/* Reset — undoes everything the playground lets a visitor do (frame /
+          text-box resizes, layer order). A quiet ghost row so it reads as
+          panel chrome, not a call to action. */}
+      <div className="my-1.5 h-px bg-hairline" />
+      <button
+        type="button"
+        onClick={onReset}
+        data-cursor-hover
+        className="flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] uppercase tracking-[0.22em] text-ink-subtle transition-colors hover:bg-glass hover:text-ink"
+      >
+        <RotateCcw className="h-3 w-3" strokeWidth={2} />
+        Reset
+      </button>
     </motion.div>
   );
 }
