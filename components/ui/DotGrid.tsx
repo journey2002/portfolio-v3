@@ -342,15 +342,45 @@ export default function DotGrid({
       }
       ctx.fillStyle = baseStyle;
       ctx.fill(restPath);
-      rafId = requestAnimationFrame(draw);
+
+      // Keep the rAF loop only while something is still moving: cursor trail,
+      // presence fade-in, or an ambient wave. When the field is at rest, park
+      // the loop and wake on the next pointer move / scheduled pulse — same
+      // pixels, idle CPU near zero.
+      const targetPresence = moved ? 1 : 0;
+      const pointerSettling =
+        Math.abs(tx - sx) > 0.08 || Math.abs(ty - sy) > 0.08;
+      const presenceSettling = Math.abs(targetPresence - presence) > 0.002;
+      const waveLive = wave !== null || t >= nextWaveAt - 1;
+      if (pointerSettling || presenceSettling || waveLive) {
+        rafId = requestAnimationFrame(draw);
+      } else {
+        rafId = null;
+        // Wake just before the next ambient pulse so it still fires on time.
+        const delay = Math.max(16, nextWaveAt - performance.now());
+        waveTimer = window.setTimeout(() => startLoop(), delay);
+      }
     };
 
-    const startLoop = () => {
+    let waveTimer: number | null = null;
+    let onScreen = true;
+
+    // `skipStale` only applies when resuming from being genuinely away
+    // (off-screen or a hidden tab) — the timed wake-up (waveTimer, scheduled
+    // to fire right at nextWaveAt) must NOT push nextWaveAt forward, or the
+    // ambient pulse would defer itself by 1500ms every single time it parks
+    // and never actually fire once the page goes idle.
+    const startLoop = (skipStale = false) => {
+      if (!onScreen || document.hidden) return;
+      if (waveTimer !== null) {
+        window.clearTimeout(waveTimer);
+        waveTimer = null;
+      }
       if (rafId !== null) return;
       lastT = performance.now();
       // After being parked off-screen, don't fire a stale pulse the instant
       // the hero re-enters — give it a beat, then resume the normal cadence.
-      if (nextWaveAt < lastT) nextWaveAt = lastT + 1500;
+      if (skipStale && nextWaveAt < lastT) nextWaveAt = lastT + 1500;
       // Paint synchronously (dt = 0 → rest pose) so the grid is visible from
       // the first frame; draw() self-schedules the rAF loop from there.
       draw(lastT);
@@ -360,13 +390,18 @@ export default function DotGrid({
         cancelAnimationFrame(rafId);
         rafId = null;
       }
+      if (waveTimer !== null) {
+        window.clearTimeout(waveTimer);
+        waveTimer = null;
+      }
     };
 
     // Only animate while on screen (and while the canvas is display:none below
     // md it never intersects, so the loop stays parked there too).
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) startLoop();
+        onScreen = !!entries[0]?.isIntersecting;
+        if (onScreen) startLoop(true);
         else stopLoop();
       },
       { rootMargin: "80px" },
@@ -374,7 +409,19 @@ export default function DotGrid({
     io.observe(canvas);
     // Don't wait for the observer's initial callback (hidden/background tabs
     // can defer it indefinitely) — start now, let IO stop us if off-screen.
-    startLoop();
+    startLoop(true);
+
+    // Resume when the pointer moves again after an idle park. Wrapped so the
+    // motion value's changed value isn't passed through as `skipStale`.
+    const unsubX = x.on("change", () => startLoop());
+    const unsubY = y.on("change", () => startLoop());
+
+    // Background tabs: drop the loop entirely; resume on focus.
+    const onVisibility = () => {
+      if (document.hidden) stopLoop();
+      else startLoop(true);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
 
     // ResizeObserver rather than window resize: dragging the hero frame's
     // corners changes the section height, which resizes this layer without
@@ -387,6 +434,9 @@ export default function DotGrid({
       io.disconnect();
       ro.disconnect();
       mo.disconnect();
+      unsubX();
+      unsubY();
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [active, pointer, size, gridSize, repelRadius, repelStrength, wavePeriod]);
 

@@ -114,6 +114,12 @@ const config: Config = {
           "0%, 100%": { transform: "translateX(0)" },
           "50%": { transform: "translateX(12px)" },
         },
+        // Chat "typing…" indicator (nav CTA hover) — staggered dot rise.
+        // Transform/opacity only so the dots stay on the compositor.
+        "typing-dot": {
+          "0%, 55%, 100%": { transform: "translateY(0)", opacity: "0.45" },
+          "27%": { transform: "translateY(-3.5px)", opacity: "1" },
+        },
       },
       animation: {
         "aurora-shift": "aurora-shift 8s ease-in-out infinite",
@@ -123,6 +129,7 @@ const config: Config = {
         "pulse-dot": "pulse-dot 2s ease-in-out infinite",
         "scroll-line": "scroll-line 2.2s ease-in-out infinite",
         "drift-x": "drift-x 7s ease-in-out infinite",
+        "typing-dot": "typing-dot 0.9s ease-in-out infinite",
       },
       transitionTimingFunction: {
         "out-expo": "cubic-bezier(0.16,1,0.3,1)",

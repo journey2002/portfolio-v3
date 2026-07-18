@@ -11,21 +11,18 @@ import {
 import { Github, Linkedin, Instagram, Phone, ArrowUpRight } from "lucide-react";
 import SectionLabel from "@/components/ui/SectionLabel";
 import SplitText from "@/components/ui/SplitText";
-import Globe from "@/components/ui/Globe";
+import { RevealLine } from "@/components/ui/Reveal";
 
-// TODO: replace each href with the real profile URL — these are still platform
-// homepages, which read as broken links to visitors. (GitHub is likely
-// github.com/journey2002 or github.com/worapat2002 — use the public-facing one.)
 const SOCIALS = [
   {
     icon: Github,
     label: "GitHub",
-    href: "https://github.com", // TODO: real profile URL
+    href: "https://github.com/journey2002",
   },
   {
     icon: Linkedin,
     label: "LinkedIn",
-    href: "https://linkedin.com", // TODO: real profile URL
+    href: "https://www.linkedin.com/in/worapat-settapak-562192212",
   },
   {
     icon: Instagram,
@@ -34,11 +31,32 @@ const SOCIALS = [
   },
 ];
 
+const BANGKOK_TZ = "Asia/Bangkok";
+
 const bangkokTime = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Asia/Bangkok",
+  timeZone: BANGKOK_TZ,
   hour: "2-digit",
   minute: "2-digit",
 });
+
+const bangkokParts = new Intl.DateTimeFormat("en-GB", {
+  timeZone: BANGKOK_TZ,
+  hour: "numeric",
+  minute: "numeric",
+  second: "numeric",
+  hourCycle: "h23",
+});
+
+function readBangkokHMS(date = new Date()) {
+  const bag = Object.fromEntries(
+    bangkokParts.formatToParts(date).map((p) => [p.type, p.value])
+  ) as Record<string, string>;
+  return {
+    hour: Number(bag.hour),
+    minute: Number(bag.minute),
+    second: Number(bag.second),
+  };
+}
 
 /* Live Bangkok clock for the footer bar. Isolated in its own component so the
    per-minute tick re-renders just this span, not the whole (heavy) section.
@@ -59,6 +77,158 @@ function BangkokClock() {
   }, []);
 
   return <span suppressHydrationWarning>{time}</span>;
+}
+
+/* Analog face for the location tile — hairline ring + hands, no glow orb.
+   Ticks every second so the minute hand eases with real ICT time. The timer
+   only runs while the face is on-screen (and the tab is visible). */
+function BangkokFaceClock({ size = 96 }: { size?: number }) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [hms, setHms] = useState(() => readBangkokHMS());
+
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    let id: number | undefined;
+    let onScreen = false;
+
+    const stop = () => {
+      if (id !== undefined) {
+        window.clearTimeout(id);
+        id = undefined;
+      }
+    };
+
+    const tick = () => {
+      setHms(readBangkokHMS());
+      id = window.setTimeout(tick, 1000 - (Date.now() % 1000) + 16);
+    };
+
+    const start = () => {
+      if (id !== undefined || document.hidden || !onScreen) return;
+      tick();
+    };
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        onScreen = !!entry?.isIntersecting;
+        if (onScreen) start();
+        else stop();
+      },
+      { rootMargin: "100px" }
+    );
+    io.observe(el);
+
+    const onVisibility = () => {
+      if (document.hidden) stop();
+      else start();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      stop();
+      io.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+
+  const { hour, minute, second } = hms;
+  // 12h face: hour hand sweeps between hours; minute includes seconds.
+  const hourAngle = ((hour % 12) + minute / 60 + second / 3600) * 30;
+  const minuteAngle = (minute + second / 60) * 6;
+  const secondAngle = second * 6;
+
+  const cx = 50;
+  const cy = 50;
+
+  return (
+    <div
+      ref={rootRef}
+      className="relative shrink-0"
+      style={{ width: size, height: size }}
+      aria-hidden
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="h-full w-full text-ink-strong"
+        suppressHydrationWarning
+      >
+        {/* Face */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r="46"
+          fill="var(--glass, rgba(255,255,255,0.03))"
+          stroke="var(--hairline, rgba(255,255,255,0.12))"
+          strokeWidth="1.25"
+        />
+        {/* Hour ticks. Math.sin/cos may differ in the last bit between the
+            server and browser engines, so round the coordinates or hydration
+            flags a y1 mismatch on every load. */}
+        {Array.from({ length: 12 }, (_, i) => {
+          const a = ((i * 30 - 90) * Math.PI) / 180;
+          const outer = 40;
+          const inner = i % 3 === 0 ? 33 : 36;
+          const round = (v: number) => Number(v.toFixed(2));
+          return (
+            <line
+              key={i}
+              x1={round(cx + Math.cos(a) * inner)}
+              y1={round(cy + Math.sin(a) * inner)}
+              x2={round(cx + Math.cos(a) * outer)}
+              y2={round(cy + Math.sin(a) * outer)}
+              stroke="currentColor"
+              strokeWidth={i % 3 === 0 ? 1.6 : 1}
+              strokeOpacity={i % 3 === 0 ? 0.55 : 0.28}
+              strokeLinecap="round"
+            />
+          );
+        })}
+        {/* Hands carry suppressHydrationWarning (it doesn't cascade from the
+            svg): hydration can land a second or two after SSR, so the rotate
+            angles legitimately differ. The mount tick re-syncs them. */}
+        {/* Hour hand */}
+        <line
+          suppressHydrationWarning
+          x1={cx}
+          y1={cy}
+          x2={cx}
+          y2={cy - 22}
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          transform={`rotate(${hourAngle} ${cx} ${cy})`}
+        />
+        {/* Minute hand */}
+        <line
+          suppressHydrationWarning
+          x1={cx}
+          y1={cy}
+          x2={cx}
+          y2={cy - 32}
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          transform={`rotate(${minuteAngle} ${cx} ${cy})`}
+        />
+        {/* Second hand — thin accent, no glow */}
+        <line
+          suppressHydrationWarning
+          x1={cx}
+          y1={cy + 6}
+          x2={cx}
+          y2={cy - 36}
+          stroke="rgb(var(--accent-1))"
+          strokeWidth="1"
+          strokeLinecap="round"
+          transform={`rotate(${secondAngle} ${cx} ${cy})`}
+        />
+        {/* Hub */}
+        <circle cx={cx} cy={cy} r="2.2" fill="currentColor" />
+        <circle cx={cx} cy={cy} r="1" fill="rgb(var(--canvas))" />
+      </svg>
+    </div>
+  );
 }
 
 export default function Contact() {
@@ -102,27 +272,20 @@ export default function Contact() {
           <span>Get in touch</span>
         </motion.div>
 
-        {/* Heading */}
+        {/* Heading — the sign-off gets the same marquee-selection reveal as
+            every section headline, at its biggest scale. */}
         <h2 className="mt-8 font-serif text-5xl font-bold leading-[1.02] text-ink-strong sm:text-7xl md:text-8xl">
-          <SplitText
-            text="Let's make"
-            as="span"
-            className="block"
-            immediate={false}
-            stagger={0.03}
-            fromY={70}
-          />
-          <SplitText
-            text="something good."
-            as="span"
-            className="block"
-            charClassName="bg-accent-gradient bg-clip-text text-transparent"
-            immediate={false}
-            stagger={0.025}
-            delay={0.2}
-            fromY={70}
-            fromRotate={-3}
-          />
+          <RevealLine>
+            <SplitText text="Let's make" as="span" className="block" />
+          </RevealLine>
+          <RevealLine delay={0.16}>
+            <SplitText
+              text="something good."
+              as="span"
+              className="block"
+              charClassName="bg-accent-gradient bg-clip-text text-transparent"
+            />
+          </RevealLine>
         </h2>
 
         {/* Two-column layout — email/phone left, social tile grid right. The
@@ -174,7 +337,7 @@ export default function Contact() {
 
           {/* Right column: location + social tiles */}
           <div className="flex flex-col gap-3 lg:col-span-5">
-            {/* Location tile — rotating globe + Bangkok marker */}
+            {/* Location tile — live Bangkok clock face (ICT) */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
@@ -185,9 +348,7 @@ export default function Contact() {
               }}
               className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-hairline bg-surface/40 p-5 backdrop-blur transition-colors duration-300 hover:border-indigo-accent/40"
             >
-              <div className="shrink-0">
-                <Globe size={96} />
-              </div>
+              <BangkokFaceClock size={96} />
               <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-[0.3em] text-ink-subtle">
                   Currently in
@@ -195,12 +356,8 @@ export default function Contact() {
                 <p className="mt-1 font-serif text-lg font-semibold leading-tight text-ink-strong sm:text-xl">
                   Bangkok, Thailand
                 </p>
-                <p className="mt-1 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.3em] text-ink-subtle">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  </span>
-                  UTC+7 · ICT
+                <p className="mt-1 text-[10px] uppercase tracking-[0.3em] text-ink-subtle">
+                  UTC+7 · ICT · <BangkokClock />
                 </p>
               </div>
             </motion.div>
@@ -295,14 +452,8 @@ export default function Contact() {
           <p>
             © {new Date().getFullYear()} Worapat Settapak. All rights reserved.
           </p>
-          <p className="inline-flex items-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
-            </span>
-            <span>
-              Bangkok · <BangkokClock /> ICT
-            </span>
+          <p>
+            Bangkok · <BangkokClock /> ICT
           </p>
         </div>
       </div>

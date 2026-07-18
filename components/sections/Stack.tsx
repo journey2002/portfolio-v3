@@ -15,6 +15,7 @@ import {
 import { Layers, PenTool, MousePointer2, type LucideIcon } from "lucide-react";
 import SectionLabel from "@/components/ui/SectionLabel";
 import SplitText from "@/components/ui/SplitText";
+import { RevealLine } from "@/components/ui/Reveal";
 import { useMarqueeSlowOnHover } from "@/components/ui/useMarqueeSlowOnHover";
 import { useTheme } from "@/components/ui/ThemeProvider";
 import { usePointer } from "@/components/ui/PointerProvider";
@@ -36,7 +37,7 @@ const FEATURES = [
     icon: Layers,
     label: "UX/UI Design",
     description:
-      "Research, wireframes, and prototypes. I sweat the small stuff so the finished thing feels obvious to the people using it.",
+      "Research, wireframes, and prototypes. I obsess over the details so the finished thing feels obvious to the people using it.",
     accent: "from-[rgb(var(--accent-1)/0.3)] to-transparent",
     hint: "Toolkit",
     tools: ["Figma", "HTML & CSS", "JavaScript"],
@@ -54,7 +55,7 @@ const FEATURES = [
     icon: MousePointer2,
     label: "Interaction Design",
     description:
-      "Micro-interactions and motion prototypes that make an interface feel responsive, physical, and alive under your cursor.",
+      "Micro-interactions and motion prototypes that make an interface feel responsive and physical.",
     accent: "from-[rgb(var(--accent-3)/0.3)] to-transparent",
     hint: "Motion",
     tools: ["Framer", "After Effects", "JavaScript"],
@@ -76,15 +77,26 @@ const featureVariants: Variants = {
   show: { transition: { staggerChildren: 0.14 } },
 };
 
-// Feature items rise on a diagonal, alternating sides.
+// Feature items stand up off the desk: they rise while tipping back upright
+// from a laid-flat rotateX, with a slight alternating lean for hand-feel.
+// transformPerspective keeps the 3D local to each card, so the grid needs no
+// perspective wrapper and the hover tilt (which owns the INNER element's
+// rotateX) is never touched.
 const featureItem = (i: number): Variants => ({
-  hidden: { opacity: 0, y: 36, x: i % 2 === 0 ? -24 : 24, rotate: i % 2 === 0 ? -2 : 2 },
+  hidden: {
+    opacity: 0,
+    y: 64,
+    rotateX: -18,
+    rotate: i % 2 === 0 ? -1.5 : 1.5,
+    transformPerspective: 900,
+  },
   show: {
     opacity: 1,
     y: 0,
-    x: 0,
+    rotateX: 0,
     rotate: 0,
-    transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] },
+    transformPerspective: 900,
+    transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] },
   },
 });
 
@@ -289,6 +301,8 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   return (
     <motion.div
       variants={featureItem(index)}
+      // Pivot the stand-up from the card's base, like it's hinged on the desk.
+      style={{ transformOrigin: "50% 100%" }}
       className="group relative [perspective:1100px]"
     >
       {/* Outer spill — the rim glare on a blurred layer behind the card, so
@@ -550,39 +564,31 @@ export default function Stack() {
 
       <div className="relative mx-auto max-w-7xl px-6 sm:px-10">
         <div className="grid grid-cols-12 items-end gap-6">
-          <motion.div
-            ref={headingRef}
-            initial={{ opacity: 0, y: 16 }}
-            animate={headingInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] as const }}
-            className="col-span-12 sm:col-span-8"
-          >
-            <p className="text-xs uppercase tracking-[0.25em] text-ink-subtle">
+          <div ref={headingRef} className="col-span-12 sm:col-span-8">
+            <motion.p
+              initial={{ opacity: 0, y: 16 }}
+              animate={headingInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] as const }}
+              className="text-xs uppercase tracking-[0.25em] text-ink-subtle"
+            >
               <span className="text-ink">[03]</span> &nbsp; Skills &amp;
               tools
-            </p>
+            </motion.p>
+            {/* Headline lines rise behind a marquee-selection sweep. */}
             <h2 className="mt-6 font-serif text-4xl font-bold leading-tight text-ink-strong sm:text-5xl md:text-6xl">
-              <SplitText
-                text="A toolkit"
-                as="span"
-                className="block"
-                immediate={false}
-                stagger={0.025}
-                fromY={42}
-              />
-              <SplitText
-                text="for craft."
-                as="span"
-                className="block"
-                charClassName="bg-accent-gradient bg-clip-text text-transparent"
-                immediate={false}
-                stagger={0.03}
-                delay={0.12}
-                fromY={42}
-                fromRotate={-3}
-              />
+              <RevealLine>
+                <SplitText text="The tools I" as="span" className="block" />
+              </RevealLine>
+              <RevealLine delay={0.14}>
+                <SplitText
+                  text="use."
+                  as="span"
+                  className="block"
+                  charClassName="bg-accent-gradient bg-clip-text text-transparent"
+                />
+              </RevealLine>
             </h2>
-          </motion.div>
+          </div>
 
           <motion.div
             initial={{ opacity: 0 }}
@@ -598,9 +604,16 @@ export default function Stack() {
       {/* Velocity-skewed marquee. The parallax x-shift rides the inner skewed
           track (below), NOT this container — otherwise the edge-fade overlays
           slide left with the strip and the left edge loses its fade. This
-          container stays put so both fades stay welded to the visible edges. */}
-      <div
+          container stays put so both fades stay welded to the visible edges.
+          Entrance: the whole strip (borders included) WIPES open left-to-right
+          like a length of tape unrolled across the canvas — the clip window
+          opens over the already-moving ticker, so it enters mid-glide. */}
+      <motion.div
         ref={marqueeHoverRef}
+        initial={{ clipPath: "inset(0% 100% 0% 0%)" }}
+        whileInView={{ clipPath: "inset(0% 0% 0% 0%)" }}
+        viewport={{ once: true, margin: "-10%" }}
+        transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
         className="relative mt-16 flex overflow-hidden border-y border-hairline py-8"
       >
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-40 bg-gradient-to-r from-night via-night/80 to-transparent" />
@@ -637,7 +650,7 @@ export default function Stack() {
             </div>
           </div>
         </motion.div>
-      </div>
+      </motion.div>
 
       {/* Feature grid */}
       <motion.div

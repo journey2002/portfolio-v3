@@ -35,11 +35,13 @@ const CustomCursor = dynamic(() => import("@/components/ui/CustomCursor"), {
 // Display face for headings — a clean, confident grotesque with just enough
 // character to not read as a default. Deliberately NOT one of the AI-default
 // header fonts (Inter / Geist / Space Grotesk / Instrument Serif).
+// Preload only the two faces that paint above the fold (display + body).
 const display = Schibsted_Grotesk({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-display",
   display: "swap",
+  preload: true,
 });
 
 // Space Grotesk is retained as the numeral face: standalone numerals site-wide
@@ -51,6 +53,8 @@ const spaceGrotesk = Space_Grotesk({
   weight: ["500", "700"],
   variable: "--font-space-grotesk",
   display: "swap",
+  // Below-fold / decorative numerals — don't contend with LCP font fetch.
+  preload: false,
 });
 
 const dmSans = DM_Sans({
@@ -58,6 +62,7 @@ const dmSans = DM_Sans({
   weight: ["400", "500", "600"],
   variable: "--font-dm-sans",
   display: "swap",
+  preload: true,
 });
 
 // Monospace face — used for live domains/URLs so they read like real addresses:
@@ -68,6 +73,7 @@ const mono = JetBrains_Mono({
   weight: ["400", "500"],
   variable: "--font-mono",
   display: "swap",
+  preload: false,
 });
 
 // Handwriting face — used sparingly for marginalia, signatures, and asides so
@@ -77,6 +83,7 @@ const caveat = Caveat({
   weight: ["400"],
   variable: "--font-caveat",
   display: "swap",
+  preload: false,
 });
 
 const siteUrl =

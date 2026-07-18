@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { ArrowUp, Menu, X } from "lucide-react";
 
 const SECTIONS = [
   { label: "About", href: "#about" },
@@ -13,6 +13,10 @@ const SECTIONS = [
 export default function SectionMenu() {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   // Detect touch / coarse-pointer devices once on mount — they don't fire
   // mouseenter/mouseleave, so the desktop hover behavior would leave the
@@ -109,6 +113,16 @@ export default function SectionMenu() {
             }`}
           />
         </span>
+      </button>
+
+      <button
+        type="button"
+        aria-label="Scroll to top"
+        onClick={scrollToTop}
+        className="group absolute bottom-0 right-[3.75rem] flex h-12 w-12 items-center justify-center rounded-full border border-hairline bg-panel-strong text-ink backdrop-blur-md transition-[border-color,color,transform] duration-200 hover:border-[var(--ring)] hover:text-ink-strong active:scale-95"
+      >
+        <span className="pointer-events-none absolute -inset-px rounded-full bg-accent-gradient opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-40" />
+        <ArrowUp strokeWidth={2} className="relative h-5 w-5" />
       </button>
     </div>
   );

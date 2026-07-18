@@ -11,6 +11,8 @@ export default function LenisProvider({
     let lenis: import("lenis").default | undefined;
     let rafId: number | undefined;
     let handleAnchor: ((e: MouseEvent) => void) | undefined;
+    let unsubScroll: (() => void) | undefined;
+    let kick: (() => void) | undefined;
     let cancelled = false;
 
     (async () => {
@@ -27,11 +29,29 @@ export default function LenisProvider({
         touchMultiplier: 2,
       });
 
+      // Only burn rAF frames while Lenis is actually animating a scroll.
+      // The previous always-on loop ran ~60fps forever even when the page sat
+      // still — same feel, far less idle CPU/GPU.
       const raf = (time: number) => {
-        lenis?.raf(time);
-        rafId = requestAnimationFrame(raf);
+        if (!lenis) return;
+        lenis.raf(time);
+        if (lenis.isScrolling) {
+          rafId = requestAnimationFrame(raf);
+        } else {
+          rafId = undefined;
+        }
       };
-      rafId = requestAnimationFrame(raf);
+
+      kick = () => {
+        if (rafId === undefined && lenis) {
+          rafId = requestAnimationFrame(raf);
+        }
+      };
+
+      unsubScroll = lenis.on("scroll", kick);
+      // First wheel/touch may land before isScrolling flips — arm the loop.
+      window.addEventListener("wheel", kick, { passive: true });
+      window.addEventListener("touchstart", kick, { passive: true });
 
       handleAnchor = (e: MouseEvent) => {
         const anchor = (e.target as HTMLElement).closest<HTMLAnchorElement>(
@@ -44,6 +64,7 @@ export default function LenisProvider({
         if (!el) return;
         e.preventDefault();
         // Offset accounts for the floating pill nav height (~72px) + breathing room
+        kick?.();
         lenis?.scrollTo(el as HTMLElement, { offset: -96 });
       };
 
@@ -53,6 +74,11 @@ export default function LenisProvider({
     return () => {
       cancelled = true;
       if (rafId !== undefined) cancelAnimationFrame(rafId);
+      unsubScroll?.();
+      if (kick) {
+        window.removeEventListener("wheel", kick);
+        window.removeEventListener("touchstart", kick);
+      }
       if (handleAnchor) document.removeEventListener("click", handleAnchor);
       lenis?.destroy();
     };

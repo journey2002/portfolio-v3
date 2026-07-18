@@ -564,17 +564,36 @@ export default function Nav() {
               ))}
             </ul>
 
-            {/* CTA */}
+            {/* CTA — hover turns the pill into a live chat bubble: the label
+                rolls away, a typing indicator takes over, and a tail pops out
+                below, as if the reply is already being written. */}
             <motion.a
               href={ctaHref}
               data-cursor-hover
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 20 }}
-              className="group relative ml-5 shrink-0 overflow-hidden whitespace-nowrap rounded-full bg-accent-gradient px-4 py-1.5 text-xs font-semibold text-white shadow-[0_4px_18px_-4px_rgb(var(--accent-1)/0.7)] transition-[filter,box-shadow] duration-300 hover:brightness-110"
+              className="group relative ml-5 shrink-0 whitespace-nowrap rounded-full bg-accent-gradient px-4 py-1.5 text-xs font-semibold text-white shadow-[0_4px_18px_-4px_rgb(var(--accent-1)/0.7)] transition-[filter,box-shadow] duration-300 hover:brightness-110 hover:shadow-[0_6px_26px_-4px_rgb(var(--accent-1)/0.9)]"
             >
-              <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/35 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-              <span className="relative">Let&apos;s talk</span>
+              {/* Speech-bubble tail */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -bottom-[3px] left-4 h-2.5 w-2.5 rotate-45 scale-0 rounded-[2px] bg-[rgb(var(--accent-1))] transition-transform duration-300 ease-out-expo group-hover:scale-100 group-hover:delay-150"
+              />
+              {/* Label ⇄ typing-dots roll (dots pause when not hovered) */}
+              <span className="relative block overflow-hidden">
+                <span className="block transition-transform duration-300 ease-out-expo group-hover:-translate-y-[110%]">
+                  Let&apos;s talk
+                </span>
+                <span
+                  aria-hidden
+                  className="absolute inset-0 flex translate-y-[110%] items-center justify-center gap-[5px] transition-transform duration-300 ease-out-expo group-hover:translate-y-0"
+                >
+                  <span className="h-1 w-1 animate-typing-dot rounded-full bg-white [animation-play-state:paused] group-hover:[animation-play-state:running]" />
+                  <span className="h-1 w-1 animate-typing-dot rounded-full bg-white [animation-delay:0.15s] [animation-play-state:paused] group-hover:[animation-play-state:running]" />
+                  <span className="h-1 w-1 animate-typing-dot rounded-full bg-white [animation-delay:0.3s] [animation-play-state:paused] group-hover:[animation-play-state:running]" />
+                </span>
+              </span>
             </motion.a>
           </motion.div>
 
@@ -671,15 +690,10 @@ export default function Nav() {
 
               {/* Content */}
               <div className="relative p-3">
-                {/* Panel header — frames the menu as the site's index and
-                    surfaces the live availability signal. */}
+                {/* Panel header — frames the menu as the site's index. */}
                 <div className="mb-1 flex items-center justify-between px-2.5 pt-1">
                   <span className="text-[10px] font-medium uppercase tracking-[0.3em] text-ink-subtle">
                     Index
-                  </span>
-                  <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.28em] text-ink-subtle">
-                    <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-accent-gradient" />
-                    Open to work
                   </span>
                 </div>
                 <span

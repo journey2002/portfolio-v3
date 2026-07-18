@@ -18,6 +18,7 @@ import {
 import { ArrowUpRight } from "lucide-react";
 import SectionLabel from "@/components/ui/SectionLabel";
 import SplitText from "@/components/ui/SplitText";
+import { RevealLine } from "@/components/ui/Reveal";
 import ProjectCover from "@/components/ui/ProjectCover";
 import ViewToggle, { type WorkView } from "@/components/ui/ViewToggle";
 import { usePointer } from "@/components/ui/PointerProvider";
@@ -161,43 +162,47 @@ export default function Work() {
 
       {/* Movement II — off the clock: my own design, drawing & hobby work. */}
       <div className="relative mx-auto mt-14 max-w-7xl px-6 sm:px-10">
-        <motion.div
+        <div
           ref={headingRef}
-          initial={{ opacity: 0, y: 20 }}
-          animate={headingInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] as const }}
           className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end"
         >
           <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-ink-subtle">
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={headingInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] as const }}
+              className="text-xs uppercase tracking-[0.25em] text-ink-subtle"
+            >
               <span className="text-ink">[ II ]</span> &nbsp; Off the clock
-            </p>
+            </motion.p>
+            {/* Headline lines rise behind a marquee-selection sweep. */}
             <h2 className="mt-6 font-serif text-4xl font-bold leading-tight text-ink-strong sm:text-5xl md:text-6xl">
-              <SplitText
-                text="Things I've"
-                as="span"
-                className="block"
-                immediate={false}
-                stagger={0.025}
-                fromY={42}
-              />
-              <SplitText
-                text="been making."
-                as="span"
-                className="block"
-                charClassName="bg-accent-gradient bg-clip-text text-transparent"
-                immediate={false}
-                stagger={0.025}
-                delay={0.15}
-                fromY={42}
-                fromRotate={-3}
-              />
+              <RevealLine>
+                <SplitText text="Things I've" as="span" className="block" />
+              </RevealLine>
+              <RevealLine delay={0.14}>
+                <SplitText
+                  text="been making."
+                  as="span"
+                  className="block"
+                  charClassName="bg-accent-gradient bg-clip-text text-transparent"
+                />
+              </RevealLine>
             </h2>
           </div>
-          <div className="pt-1">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={headingInView ? { opacity: 1, y: 0 } : {}}
+            transition={{
+              duration: 0.6,
+              delay: 0.15,
+              ease: [0.16, 1, 0.3, 1] as const,
+            }}
+            className="pt-1"
+          >
             <ViewToggle view={view} onChange={setView} />
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
 
         {/* Two layouts cross-fade through the same data: an editorial index
             (hover reveals a cover that flies with the cursor) and a bento
@@ -241,11 +246,7 @@ export default function Work() {
           className="mt-16 flex items-center justify-between text-[10px] uppercase tracking-[0.35em] text-ink-faint"
         >
           <span>
-            {view === "index"
-              ? enabled
-                ? "↳ Hover a project to preview"
-                : "↳ Tap a project to expand"
-              : "↳ Off the clock"}
+            {view === "index" ? "Personal work" : "Gallery"}
           </span>
           <span className="font-numeral">05 / 05</span>
         </motion.div>
@@ -497,28 +498,42 @@ function FloatingPreview({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // Which side of the cursor the card rides on. The offset is a motion value
-  // (not React state) so the side-swap can happen WITHOUT a re-render — letting
-  // us snap it at the exact midpoint of the flip, while the card is turned
-  // edge-on and effectively invisible.
+  // Which side of the cursor the card rides on. Offset is a motion value so the
+  // side-swap can glide during the flip without a React re-render.
   const offsetFor = (s: Side) => (s === "left" ? -(CARD_W + EDGE) : EDGE);
   const initialSide: Side = pointerX.get() > vp.w * 0.5 ? "left" : "right";
   const sideRef = useRef<Side>(initialSide);
   const flippingRef = useRef(false);
   const offsetX = useMotionValue(offsetFor(initialSide));
-  const flip = useMotionValue(0); // rotateY, in degrees
+  const flip = useMotionValue(0); // rotateY, in degrees (−90…90 during a flip)
 
-  // Net Y rotation: the velocity yaw, plus the flip's swing. The yaw fades to
-  // nothing at the flip's edge-on midpoint (×settle) so the side-swap still
-  // hides cleanly, then eases back. At rest this is 0 — the card faces forward.
-  const rotateYTotal = useTransform([flip, yaw], ([f, y]: number[]) => {
-    const settle = 1 - Math.min(1, Math.abs(f) / 90);
-    return f + y * settle;
+  // How "edge-on" the flip currently is (1 = face-on, 0 = thin edge). Used to
+  // quiet velocity bank/yaw so the card doesn't tumble while it's spinning.
+  const faceOn = useTransform(flip, (f) => {
+    const t = Math.min(1, Math.abs(f) / 90);
+    // Smoothstep — stays near 1 until the turn is well underway, then drops.
+    return 1 - t * t * (3 - 2 * t);
   });
 
-  // Watch the cursor (dead-zone around centre to avoid flicker) and, when it
-  // crosses to the other half, run a 3D flip: turn edge-on, swap sides while
-  // invisible, then turn back to face the viewer on the new side.
+  // Net Y rotation: velocity yaw fades out as the flip turns edge-on.
+  const rotateYTotal = useTransform([flip, yaw, faceOn], ([f, y, s]: number[]) => {
+    return f + y * s;
+  });
+
+  // Bank (roll) also quiets during the flip so the arc reads as a clean toss,
+  // not a card spinning on two axes at once.
+  const bankTotal = useTransform([bank, faceOn], ([b, s]: number[]) => b * s);
+
+  // Slight lift toward the camera mid-flip — depth cue that sells the 3D turn.
+  const flipZ = useTransform(flip, (f) => {
+    const t = Math.min(1, Math.abs(f) / 90);
+    return 28 * Math.sin(t * Math.PI);
+  });
+
+  // Watch the cursor (dead-zone around centre to avoid flicker). On a half
+  // cross, run one continuous flip: a single eased 0→1 progress drives rotateY
+  // through a full 180° arc and glides the card to the other side of the cursor
+  // in the same motion (no hard midpoint snap).
   useMotionValueEvent(sx, "change", (v) => {
     const want: Side | null =
       sideRef.current !== "left" && v > vp.w * 0.58
@@ -530,12 +545,34 @@ function FloatingPreview({
     sideRef.current = want;
     flippingRef.current = true;
     const dir = want === "left" ? 1 : -1;
+    const startOff = offsetX.get();
+    const endOff = offsetFor(want);
+
     (async () => {
-      await animate(flip, dir * 90, { duration: 0.16, ease: [0.4, 0, 1, 1] })
-        .finished;
-      offsetX.set(offsetFor(want)); // reposition while edge-on (hidden)
-      flip.set(-dir * 90);
-      await animate(flip, 0, { duration: 0.26, ease: [0, 0, 0.2, 1] }).finished;
+      // One continuous progress drives both rotation and side offset so the
+      // toss reads as a single physical motion instead of "spin, teleport, spin".
+      await animate(0, 1, {
+        duration: 0.52,
+        // Accelerate into the edge-on moment, settle gently as it faces forward.
+        ease: [0.45, 0.02, 0.2, 1],
+        onUpdate: (t) => {
+          // Ease the offset with the same progress — card glides while it turns.
+          offsetX.set(startOff + (endOff - startOff) * t);
+
+          // Map 0→1 onto a 180° turn of a single-sided card:
+          // 0→90° face→edge, then jump the visual to the mirrored −90→0 so the
+          // front stays outward (no reverse-content back face).
+          const deg = t * 180;
+          if (deg <= 90) {
+            flip.set(dir * deg);
+          } else {
+            flip.set(dir * (deg - 180));
+          }
+        },
+      }).finished;
+
+      flip.set(0);
+      offsetX.set(endOff);
       flippingRef.current = false;
     })();
   });
@@ -557,9 +594,14 @@ function FloatingPreview({
       transition={{ type: "spring", stiffness: 260, damping: 26 }}
     >
       {/* Perspective stage so the tilt, thickness and flip read in real 3D. */}
-      <div className="[perspective:1200px]">
+      <div className="[perspective:1400px]">
         <motion.div
-          style={{ rotateZ: bank, rotateY: rotateYTotal }}
+          style={{
+            rotateZ: bankTotal,
+            rotateY: rotateYTotal,
+            z: flipZ,
+            transformPerspective: 1400,
+          }}
           className="relative w-[300px] origin-center [transform-style:preserve-3d]"
         >
           {/* Thick sides — real faces extruded back from each vertical edge, so
@@ -597,8 +639,14 @@ function FloatingPreview({
             initial={{ opacity: 0.35, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            style={{ boxShadow: "var(--prism-card-shadow)" }}
-            className="relative w-full overflow-hidden rounded-2xl border border-[var(--ring)] bg-surface"
+            style={{
+              boxShadow: "var(--prism-card-shadow)",
+              // Hide the mirrored reverse face at the edge-on handoff so the
+              // single-sided card never flashes backwards mid-flip.
+              backfaceVisibility: "hidden",
+              WebkitBackfaceVisibility: "hidden",
+            }}
+            className="relative w-full overflow-hidden rounded-2xl border border-[var(--ring)] bg-surface [transform-style:preserve-3d]"
           >
             <div className="relative h-[188px] overflow-hidden">
               <motion.div

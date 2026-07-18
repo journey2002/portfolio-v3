@@ -2,9 +2,20 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { motion, useInView, type Variants } from "framer-motion";
+import {
+  motion,
+  useInView,
+  useMotionTemplate,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+  type MotionStyle,
+  type PanInfo,
+  type Variants,
+} from "framer-motion";
 import SectionLabel from "@/components/ui/SectionLabel";
 import SplitText from "@/components/ui/SplitText";
+import { Handwrite, RevealLine } from "@/components/ui/Reveal";
 import { usePointer } from "@/components/ui/PointerProvider";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -59,38 +70,36 @@ export default function About() {
       <div className="relative mx-auto max-w-7xl px-6 sm:px-10">
         {/* Section header */}
         <div className="grid grid-cols-12 items-end gap-6">
-          <motion.div
-            variants={fadeUp}
-            custom={0}
-            initial="hidden"
-            animate={inView ? "show" : "hidden"}
-            className="col-span-12 sm:col-span-6"
-          >
-            <p className="text-xs uppercase tracking-[0.25em] text-ink-subtle">
+          <div className="col-span-12 sm:col-span-6">
+            <motion.p
+              variants={fadeUp}
+              custom={0}
+              initial="hidden"
+              animate={inView ? "show" : "hidden"}
+              className="text-xs uppercase tracking-[0.25em] text-ink-subtle"
+            >
               <span className="text-ink">[01]</span> &nbsp; About me
-            </p>
+            </motion.p>
+            {/* Each line rises out of a mask behind a marquee-selection sweep
+                (RevealLine) — the same selection grammar as the intro. */}
             <h2 className="mt-6 font-serif text-4xl font-bold leading-tight text-ink-strong sm:text-5xl md:text-6xl">
-              <SplitText
-                text="A quiet designer with"
-                as="span"
-                className="block"
-                immediate={false}
-                stagger={0.022}
-                fromY={42}
-              />
-              <SplitText
-                text="loud ideas."
-                as="span"
-                className="block"
-                charClassName="bg-accent-gradient bg-clip-text text-transparent"
-                immediate={false}
-                stagger={0.025}
-                delay={0.18}
-                fromY={42}
-                fromRotate={-4}
-              />
+              <RevealLine>
+                <SplitText
+                  text="A quiet designer with"
+                  as="span"
+                  className="block"
+                />
+              </RevealLine>
+              <RevealLine delay={0.14}>
+                <SplitText
+                  text="loud ideas."
+                  as="span"
+                  className="block"
+                  charClassName="bg-accent-gradient bg-clip-text text-transparent"
+                />
+              </RevealLine>
             </h2>
-          </motion.div>
+          </div>
 
           <motion.div
             variants={fadeUp}
@@ -120,16 +129,11 @@ export default function About() {
           {/* The note (main). The split waits for lg — at md the facts card
               would be ~260px wide and its key/value rows overflow. */}
           <div className="lg:col-span-7 lg:pr-6">
-            {/* Handwritten kicker — tilted, like a margin scribble */}
-            <motion.p
-              variants={fadeUp}
-              custom={0}
-              initial="hidden"
-              animate={inView ? "show" : "hidden"}
-              className="-rotate-2 font-hand text-2xl text-[color:var(--accent-soft-2)]"
-            >
-              a few true things —
-            </motion.p>
+            {/* Handwritten kicker — tilted, like a margin scribble. Wipes in
+                left-to-right (Handwrite) as if the pen is writing it. */}
+            <p className="-rotate-2 font-hand text-2xl text-[color:var(--accent-soft-2)]">
+              <Handwrite duration={0.8}>a few true things —</Handwrite>
+            </p>
 
             {/* First-person statement with self-drawing ink marks */}
             <motion.p
@@ -141,13 +145,14 @@ export default function About() {
             >
               Hi, I&apos;m{" "}
               <span className="font-medium text-ink-strong">Worapat</span>, a UX/UI
-              designer and digital artist from Bangkok who turns{" "}
+              designer and digital artist from Bangkok who designs interfaces
+              for{" "}
               <InkMark variant="circle" delay={0.7}>
-                half-formed ideas
+                apps, brands,
               </InkMark>{" "}
-              into interfaces people actually{" "}
+              and the occasional{" "}
               <InkMark variant="underline" delay={1.1}>
-                love
+                side project
               </InkMark>
               .
             </motion.p>
@@ -163,8 +168,7 @@ export default function About() {
               <InkMark variant="highlight" delay={1.3}>
                 Figma, Procreate &amp; Blender
               </InkMark>
-              , researching, sketching, and chasing the moment a messy concept
-              finally clicks into place.
+              , researching, sketching, and pushing until a messy idea finally clicks.
             </motion.p>
 
             {/* Signature row */}
@@ -176,10 +180,14 @@ export default function About() {
               className="mt-9 flex items-center gap-4"
             >
               <span className="font-hand text-4xl leading-none text-ink-strong sm:text-5xl">
-                Worapat
+                {/* The signature is written, not faded — the wipe starts once
+                    the row's paper has landed. */}
+                <Handwrite delay={0.4} duration={1.05}>
+                  Worapat
+                </Handwrite>
               </span>
               <span className="text-[10px] uppercase tracking-[0.3em] text-ink-subtle">
-                Bangkok · open to projects
+                Bangkok
               </span>
             </motion.div>
 
@@ -291,18 +299,11 @@ export default function About() {
 
                 <div className="my-6 h-px w-full bg-hairline" />
 
-                {/* Status — the live, important bit */}
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] uppercase tracking-[0.25em] text-ink-faint">
-                    Status
+                    Right now
                   </span>
-                  <span className="inline-flex items-center gap-2 text-sm text-emerald-300">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-pulse-dot absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    </span>
-                    Open to projects
-                  </span>
+                  <span className="text-sm text-ink">Taking new projects</span>
                 </div>
               </div>
             </motion.div>
@@ -409,6 +410,33 @@ const cardVariants: Variants = {
   }),
 };
 
+// Drag tuning for the desk prints. framer's built-in `drag` tracks the cursor
+// 1:1 and offers no way to slow that down, so ArtDesk pans by hand instead:
+// every pointer delta is scaled by DRAG_FACTOR (the print travels at half the
+// cursor's speed — weighted paper under friction, not an air-hockey puck) and
+// hard-clamped to DESK_BOUNDS around the print's resting spot.
+const DRAG_FACTOR = 0.5;
+const DESK_BOUNDS = { left: -80, right: 80, top: -44, bottom: 70 };
+const clamp = (v: number, lo: number, hi: number) =>
+  Math.min(hi, Math.max(lo, v));
+
+// Light-cone hover: the print tilts as if pressed under the cursor (the point
+// beneath the pointer recedes) and a diffuse glare-line drifts on the same
+// diagonal. Kept modest — the card already wobbles from its under-damped
+// pick-up spring, so a steeper tilt on a 160–224px print reads busy rather
+// than glossy. Pointer handlers only move TARGET values; one persistent
+// useSpring per value glides after them. (Never respawn animate() per
+// pointermove — each respawn restarts the spring into its slow opening
+// phase, and under a real event stream the tilt crawls seconds behind the
+// cursor.) The glare-line is lazier than the tilt, and only patrols a short
+// stretch of the diagonal near the bottom-right corner instead of sweeping
+// edge to edge.
+const TILT_MAX = 9; // deg
+const TILT_FOLLOW = { stiffness: 170, damping: 26 } as const;
+const GLARE_FOLLOW = { stiffness: 80, damping: 24 } as const;
+const GLARE_BASE = 74; // % along the 135° axis — bottom-right quadrant
+const GLARE_TRAVEL = 20; // % of patrol range around it — never nears center
+
 /**
  * The "loud part" — a row of tilted art prints, taped down with hand-written
  * captions, paying off the headline with actual color. On desktop each print is
@@ -423,33 +451,24 @@ const cardVariants: Variants = {
 function ArtDesk() {
   const pointer = usePointer();
   const canDrag = !!pointer?.enabled;
+  const reduce = useReducedMotion();
+  const tiltOn = canDrag && !reduce;
   const [topId, setTopId] = useState<string | null>(null);
 
   return (
     <div className="pt-16 lg:pt-20">
-      {/* Kicker — the same margin-scribble voice as the note above */}
+      {/* Kicker — the same margin-scribble voice as the note above, written
+          in rather than faded in */}
       <div className="flex items-end justify-between gap-6">
-        <motion.p
-          variants={fadeUp}
-          custom={0}
-          initial="hidden"
-          whileInView="show"
-          viewport={DRAW_VIEWPORT}
-          className="-rotate-2 font-hand text-2xl text-[color:var(--accent-soft-2)]"
-        >
-          …and the loud part —
-        </motion.p>
+        <p className="-rotate-2 font-hand text-2xl text-[color:var(--accent-soft-2)]">
+          <Handwrite duration={0.85}>…and the loud part —</Handwrite>
+        </p>
         {canDrag && (
-          <motion.span
-            variants={fadeUp}
-            custom={0.25}
-            initial="hidden"
-            whileInView="show"
-            viewport={DRAW_VIEWPORT}
-            className="hidden rotate-1 font-hand text-lg text-ink-faint lg:inline"
-          >
-            (go on — drag them around)
-          </motion.span>
+          <span className="hidden rotate-1 font-hand text-lg text-ink-faint lg:inline">
+            <Handwrite delay={0.55} duration={0.95}>
+              (go on — drag them around)
+            </Handwrite>
+          </span>
         )}
       </div>
 
@@ -466,72 +485,237 @@ function ArtDesk() {
         className="-mx-6 mt-2 flex snap-x gap-7 overflow-x-auto px-6 pb-4 pt-8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-10 sm:px-10 lg:mx-0 lg:snap-none lg:justify-center lg:gap-10 lg:overflow-visible lg:px-0 xl:gap-14"
       >
         {ART_PRINTS.map((p) => (
-          <div
+          <DeskPrint
             key={p.id}
-            className={`relative shrink-0 snap-center ${p.offset}`}
-            style={{ zIndex: topId === p.id ? 30 : undefined }}
-          >
-            <motion.div
-              custom={p.tilt}
-              variants={cardVariants}
-              drag={canDrag}
-              // Fixed constraints around each print's OWN resting spot — enough
-              // travel to overlap a neighbour, never enough to leave the desk.
-              // Deliberately not a measured ref (dragConstraints={containerRef}):
-              // framer re-measures ref boxes on resize and physically shoves any
-              // "outside" element back in, which piles every print onto one spot
-              // when the box measures degenerate (hidden tab, mid-resize mobile
-              // scroll row). Static offsets involve no measurement at all.
-              dragConstraints={{ left: -120, right: 120, top: -60, bottom: 100 }}
-              dragElastic={0.16}
-              dragMomentum={false}
-              onDragStart={() => setTopId(p.id)}
-              whileHover={{ rotate: 0, y: -8, scale: 1.03 }}
-              whileDrag={{ rotate: 0, scale: 1.06 }}
-              data-cursor-hover
-              className="relative w-40 select-none sm:w-48 md:w-52 xl:w-56"
-            >
-              {/* Tape holding the print down — leans against the tilt */}
-              <span
-                aria-hidden
-                className="absolute -top-3 left-1/2 z-10 h-6 w-16 rounded-[2px] border border-white/10 bg-white/10 shadow-sm backdrop-blur-[2px]"
-                style={{
-                  transform: `translateX(-50%) rotate(${-p.tilt * 1.4}deg)`,
-                }}
-              />
-
-              {/* The print itself */}
-              <div
-                className="relative aspect-[3/4] overflow-hidden rounded-xl border border-hairline shadow-[0_28px_55px_-26px_rgba(0,0,0,0.85)]"
-                style={{ background: p.bg }}
-              >
-                {p.img && (
-                  <Image
-                    src={p.img}
-                    alt={p.alt}
-                    fill
-                    draggable={false}
-                    sizes="(min-width: 1280px) 224px, (min-width: 640px) 208px, 160px"
-                    className="object-cover"
-                  />
-                )}
-                <span
-                  aria-hidden
-                  className="noise-overlay pointer-events-none absolute inset-0"
-                />
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/10 to-transparent"
-                />
-              </div>
-
-              {/* Hand-written caption riding along under the print */}
-              <p className="mt-3 text-center font-hand text-lg leading-tight text-ink-muted">
-                {p.caption}
-              </p>
-            </motion.div>
-          </div>
+            p={p}
+            canDrag={canDrag}
+            tiltOn={tiltOn}
+            onTop={topId === p.id}
+            raise={() => setTopId(p.id)}
+          />
         ))}
+      </motion.div>
+    </div>
+  );
+}
+
+/**
+ * One print on the desk. Split out of the map so each card can own real hooks:
+ * the light-cone chase runs on persistent useSpring values that RETARGET as
+ * the pointer moves — momentum carries through, nothing restarts. Entrance
+ * variants still stagger from the desk's container (variant labels propagate
+ * through component boundaries).
+ */
+function DeskPrint({
+  p,
+  canDrag,
+  tiltOn,
+  onTop,
+  raise,
+}: {
+  p: ArtPrint;
+  canDrag: boolean;
+  tiltOn: boolean;
+  onTop: boolean;
+  raise: () => void;
+}) {
+  // Dragged offset — owned by the hand-rolled pan below.
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  // Light-cone chase: pointer handlers write these TARGETS; the springs below
+  // glide after them and are what the DOM actually renders.
+  const rxT = useMotionValue(0);
+  const ryT = useMotionValue(0);
+  const gpT = useMotionValue(GLARE_BASE);
+  const rx = useSpring(rxT, TILT_FOLLOW);
+  const ry = useSpring(ryT, TILT_FOLLOW);
+  const gpS = useSpring(gpT, GLARE_FOLLOW);
+  const gp = useMotionTemplate`${gpS}%`;
+
+  return (
+    <div
+      className={`relative shrink-0 snap-center ${p.offset}`}
+      style={{ zIndex: onTop ? 30 : undefined }}
+    >
+      <motion.div
+        custom={p.tilt}
+        variants={cardVariants}
+        // Hand-rolled drag (see DRAG_FACTOR above): pan deltas move the
+        // x/y motion values at half cursor speed, hard-clamped to fixed
+        // DESK_BOUNDS around the print's own resting spot — static
+        // offsets (not a measured containerRef, which framer re-measures
+        // on resize and uses to shove "outside" prints into a pile).
+        onPanStart={canDrag ? raise : undefined}
+        onPan={
+          canDrag
+            ? (_: PointerEvent, info: PanInfo) => {
+                x.set(
+                  clamp(
+                    x.get() + info.delta.x * DRAG_FACTOR,
+                    DESK_BOUNDS.left,
+                    DESK_BOUNDS.right,
+                  ),
+                );
+                y.set(
+                  clamp(
+                    y.get() + info.delta.y * DRAG_FACTOR,
+                    DESK_BOUNDS.top,
+                    DESK_BOUNDS.bottom,
+                  ),
+                );
+              }
+            : undefined
+        }
+        // Light-cone tilt + glare tracking. The card itself is never
+        // 3D-transformed (only the inner tilt layer is), so its rect
+        // stays undistorted and reads true mid-pan. py is normalised to
+        // the print box, not the whole card — the caption below would
+        // otherwise dilute the tilt and stop the glare short of the
+        // bottom edge. Clamps are load-bearing: pointer capture during a
+        // pan can deliver coordinates past the card's edges.
+        onPointerMove={
+          tiltOn
+            ? (e: React.PointerEvent) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                const px = clamp((e.clientX - r.left) / r.width, 0, 1);
+                const py = clamp(
+                  (e.clientY - r.top) / ((r.width * 4) / 3),
+                  0,
+                  1,
+                );
+                rxT.set((0.5 - py) * TILT_MAX);
+                ryT.set((px - 0.5) * TILT_MAX);
+                // Glare rides the cursor's projection onto the
+                // top-left→bottom-right diagonal, compressed into the
+                // short patrol band around the low-right resting spot.
+                gpT.set(GLARE_BASE + ((px + py) / 2 - 0.5) * GLARE_TRAVEL);
+              }
+            : undefined
+        }
+        // Tilt targets go flat on exit; the springs glide home. The glare
+        // target stays put — recentring it would visibly drag the light
+        // across the print while the layer is still fading out; the next
+        // pointer-enter re-aims it before the fade-in is perceptible.
+        onPointerLeave={
+          tiltOn
+            ? () => {
+                rxT.set(0);
+                ryT.set(0);
+              }
+            : undefined
+        }
+        // Hover = picking the print up: it swings PAST straight (a real
+        // nudge, half its resting tilt the other way) and grows. NO `y`
+        // here — the pan owns y, and a hover-exit re-home would teleport
+        // a dragged print back to its resting baseline.
+        whileHover={{ rotate: p.tilt * -0.5, scale: 1.06 }}
+        // Press = pick up (replaces whileDrag, which only fires for the
+        // built-in drag gesture). The pointer stays down through a pan,
+        // so the pose holds while sliding.
+        whileTap={canDrag ? { rotate: 0, scale: 1.08 } : undefined}
+        // Under-damped spring so the pick-up overshoots and settles with
+        // a small paper wobble — the life is in the motion, not the pose.
+        // Entrance keeps its own tween (declared inside cardVariants).
+        transition={{ type: "spring", stiffness: 350, damping: 14 }}
+        data-cursor-hover
+        style={{
+          x,
+          y,
+          touchAction: canDrag ? "none" : undefined,
+        }}
+        className="group relative w-40 select-none sm:w-48 md:w-52 xl:w-56"
+      >
+        {/* Tilt layer — the sheet that rocks under the cursor. Wraps the
+            tape and the print so both lift as one; the caption below
+            stays flat on the desk. rotateX/Y live here alone, clear of
+            the rotate/scale/x/y the card itself is already juggling. */}
+        <motion.div
+          className="relative"
+          style={{
+            rotateX: rx,
+            rotateY: ry,
+            transformPerspective: 800,
+          }}
+        >
+          {/* Tape holding the print down — leans against the tilt. On
+              hover it visibly peels: swings ~1.6× its angle, rides up 4px
+              and stretches wider, as if the lifting paper is pulling
+              against it. The rotation lives in a CSS var so the
+              group-hover transform can scale the angle with calc(). */}
+          <span
+            aria-hidden
+            className="absolute -top-3 left-1/2 z-10 h-6 w-16 rounded-[2px] border border-white/10 bg-white/10 shadow-sm backdrop-blur-[2px] transition-transform duration-300 ease-out group-hover:[transform:translateX(-50%)_rotate(calc(var(--tape-r)*1.6))_translateY(-4px)_scaleX(1.18)]"
+            style={
+              {
+                "--tape-r": `${-p.tilt * 1.4}deg`,
+                transform: "translateX(-50%) rotate(var(--tape-r))",
+              } as React.CSSProperties
+            }
+          />
+
+          {/* The print itself — it BRIGHTENS as it lifts (light catching
+              the raised paper; far more legible on the dark canvas than a
+              shadow change) and its shadow falls deeper underneath. */}
+          <div
+            className="relative aspect-[3/4] overflow-hidden rounded-xl border border-hairline shadow-[0_28px_55px_-26px_rgba(0,0,0,0.85)] transition-[box-shadow,filter] duration-300 group-hover:brightness-110 group-hover:shadow-[0_46px_80px_-30px_rgba(0,0,0,0.9)]"
+            style={{ background: p.bg }}
+          >
+            {p.img && (
+              <Image
+                src={p.img}
+                alt={p.alt}
+                fill
+                draggable={false}
+                sizes="(min-width: 1280px) 224px, (min-width: 640px) 208px, 160px"
+                className="object-cover"
+              />
+            )}
+            <span
+              aria-hidden
+              className="noise-overlay pointer-events-none absolute inset-0"
+            />
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/10 to-transparent"
+            />
+
+            {/* Framing glass, hover-only. The GLASS layer is the light-cone
+                glare: a feathered beam of light on the 45° ("/") diagonal
+                with a thin companion glint running ahead of it and a faint
+                accent fringe trailing behind (the holographic split), all
+                screened over the print and blurred so the stops melt into
+                real light — no banding, no laser edge. The layer overscans
+                the box (negative inset) so the blur doesn't fade at the
+                clip. The GLARE below is the one-shot band that sweeps
+                across on hover-in. Both clipped by the rounded box. */}
+            <motion.div
+              aria-hidden
+              className="pointer-events-none absolute opacity-0 mix-blend-screen transition-opacity duration-500 group-hover:opacity-100"
+              style={
+                {
+                  "--gp": gp,
+                  inset: "-10%",
+                  filter: "blur(6px)",
+                  background: [
+                    "linear-gradient(135deg, transparent calc(var(--gp) - 9%), rgba(255,255,255,0.06) calc(var(--gp) - 5%), rgba(255,255,255,0.18) calc(var(--gp) - 2%), rgba(255,255,255,0.30) var(--gp), rgba(255,255,255,0.18) calc(var(--gp) + 2%), rgba(255,255,255,0.06) calc(var(--gp) + 5%), transparent calc(var(--gp) + 9%))",
+                    "linear-gradient(135deg, transparent calc(var(--gp) - 15%), rgba(255,255,255,0.12) calc(var(--gp) - 13%), transparent calc(var(--gp) - 11%))",
+                    "linear-gradient(135deg, transparent calc(var(--gp) + 6%), color-mix(in srgb, var(--accent-glow-2) 20%, transparent) calc(var(--gp) + 10%), transparent calc(var(--gp) + 14%))",
+                  ].join(", "),
+                } as MotionStyle
+              }
+            />
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 -left-full w-2/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-1000 ease-out group-hover:translate-x-[300%]"
+            />
+          </div>
+        </motion.div>
+
+        {/* Hand-written caption riding along under the print — snaps to
+            full strength while the print is held, like it's being read */}
+        <p className="mt-3 text-center font-hand text-lg leading-tight text-ink-muted transition-colors duration-300 group-hover:text-ink-strong">
+          {p.caption}
+        </p>
       </motion.div>
     </div>
   );

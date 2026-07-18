@@ -20,19 +20,21 @@ import {
   Download,
   GraduationCap,
   Sparkles,
+  TrendingUp,
   Trophy,
   Globe2,
   Award,
   type LucideIcon,
 } from "lucide-react";
+import DownloadButton from "@/components/ui/DownloadButton";
 import MagneticButton from "@/components/ui/MagneticButton";
 import SectionLabel from "@/components/ui/SectionLabel";
 import SplitText from "@/components/ui/SplitText";
 
-// The downloadable PDF, served from public/. Drop the real file at
-// public/Worapat-Settapak-Resume.pdf — until it exists this link 404s.
+// The downloadable PDF, served from public/assets/. Drop the real file at
+// public/assets/resume.pdf — until it exists this link 404s.
 // Set to null to hide both download buttons entirely.
-const RESUME_PDF: string | null = "/Worapat-Settapak-Resume.pdf";
+const RESUME_PDF: string | null = "/assets/resume.pdf";
 
 type TimelineItem = {
   date: string;
@@ -44,14 +46,27 @@ type TimelineItem = {
 
 const EXPERIENCE: TimelineItem[] = [
   {
+    date: "July 2025 — Present",
+    location: "Bangkok, TH · Hybrid",
+    headline: "GO SG Consulting",
+    subhead: "UX/UI Designer",
+    bullets: [
+      "Own client website redesigns end-to-end, pairing conversion-focused UX with the SEO team's content strategy.",
+      "Design client websites and landing pages end-to-end, from wireframes and interactive prototypes through to developer handoff.",
+      "Partner with SEO and marketing specialists to translate campaign strategy into on-brand ad and social creatives.",
+      "Build per-client design systems and brand guidelines that keep visuals consistent and cut rework across concurrent projects.",
+      "Iterate on layouts and user flows using client feedback and traffic analytics, sharpening usability and conversion with each release.",
+    ],
+  },
+  {
     date: "June 2023 — May 2024",
     location: "Bangkok, TH",
     headline: "Applicad Public Company Limited",
     subhead: "3D and General Designer",
     bullets: [
-      "Created precise 3D models and prototypes, showcasing strong visualisation and design skills for interactive experiences.",
-      "Presented design concepts to clients, translating complex ideas into clear, user-friendly visuals.",
-      "Optimised 3D printing workflows, highlighting attention to detail and iterative design processes relevant to UX/UI prototyping.",
+      "Created precise 3D models and prototypes for interactive experiences.",
+      "Presented design concepts to clients, translating complex ideas into clear visuals.",
+      "Optimised 3D printing workflows for faster, more accurate prototyping.",
     ],
   },
 ];
@@ -63,8 +78,8 @@ const EDUCATION: TimelineItem[] = [
     headline: "Thai-Nichi International College",
     subhead: "Bachelor of Digital Engineering",
     bullets: [
-      "Recognised for excellence in UX/UI web design (HTML & CSS) during the Human–Computer Interaction (HCI) program, demonstrating strong front-end and user-centred design skills.",
-      "Received awards in a competitive 3D design contest, highlighting creativity, technical expertise, and innovative problem-solving.",
+      "Recognised for excellence in UX/UI web design (HTML & CSS) during the Human–Computer Interaction (HCI) program.",
+      "Received awards in a competitive 3D design contest.",
       "Engaged in the international project-based learning program on Solutions for Social Problems and Demands alongside students at the Osaka Institute of Technology.",
     ],
   },
@@ -74,7 +89,7 @@ const EDUCATION: TimelineItem[] = [
     headline: "Rosehill College",
     subhead: "High School Diploma · Digital Arts",
     bullets: [
-      "Received two excellence awards in Art Design for consistently demonstrating creativity, technical skill, and innovation in design projects.",
+      "Received two excellence awards in Art Design.",
     ],
   },
 ];
@@ -97,12 +112,9 @@ const TECHNICAL_SKILLS = [
 const SOFT_SKILLS = [
   "Creativity",
   "Attention to Detail",
-  "Imagination",
   "Communication",
   "Teamwork",
   "Time Management",
-  "Continuous Learning",
-  "Fast Learner",
 ];
 
 const PROFILE = [
@@ -119,7 +131,7 @@ const PROFILE = [
     value: "Worapat2002@gmail.com",
     href: "mailto:Worapat2002@gmail.com",
   },
-  { icon: Briefcase, label: "Interested in", value: "UX/UI Designer" },
+  { icon: Briefcase, label: "Currently", value: "UX/UI Designer" },
 ];
 
 // Quick-fire stats — the "by the numbers" strip below the profile bar.
@@ -138,7 +150,7 @@ type Stat = {
   highlight?: boolean;
 };
 const STATS: Stat[] = [
-  { number: 4, suffix: "+", pad: true, label: "Years designing", note: "Pixels pushed daily", highlight: true },
+  { number: 3, suffix: "+", pad: true, label: "Years designing", note: "Since 2023", highlight: true },
   { number: 4, pad: true, label: "Awards won", note: "Art · 3D · HCI" },
   { value: "TH·EN", label: "Languages", note: "Plus a little JP ✱" },
   { value: "∞", label: "Doodles drawn", note: "Mostly mecha cats" },
@@ -164,7 +176,7 @@ const ACHIEVEMENTS: Achievement[] = [
     icon: Trophy,
     title: "3D Design Contest",
     description:
-      "Award winner in a competitive 3D design contest — creativity, technique, and problem-solving.",
+      "Award winner in a competitive 3D design contest.",
     year: "TNI · 2023",
   },
   {
@@ -178,7 +190,7 @@ const ACHIEVEMENTS: Achievement[] = [
     icon: Award,
     title: "Art Design × 2",
     description:
-      "Two excellence awards in Art Design — consistent creativity, technical skill, and innovation.",
+      "Two excellence awards in Art Design.",
     year: "Rosehill · 2019",
   },
 ];
@@ -314,7 +326,7 @@ function ResumeHero() {
         {/* Poster headline — three lines zig-zag across the full container:
             "I make" holds the left, "things that" rides a hairline to the
             right edge, then the huge kinetic "move." sweeps the bottom with
-            a hand-inked "open to work" note scrawled in the right margin. */}
+            a hand-inked "say hi" note scrawled in the right margin. */}
         <h1 className="mt-10 font-serif font-bold leading-[0.95] tracking-tight text-ink-strong sm:mt-12">
           <span className="flex items-center gap-5 text-[clamp(2.5rem,7.5vw,6.25rem)] sm:gap-8">
             <SplitText
@@ -324,28 +336,6 @@ function ResumeHero() {
               delay={0.3}
               fromY={90}
             />
-            {/* Gradient pill — carries the wave over from the old greeting. */}
-            <motion.span
-              aria-hidden
-              initial={{ opacity: 0, scale: 0, rotate: -12 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              transition={{ type: "spring", stiffness: 170, damping: 13, delay: 0.8 }}
-              className="relative hidden h-[0.62em] min-w-[1.8em] items-center justify-center overflow-hidden rounded-full bg-accent-gradient-3 sm:inline-flex"
-            >
-              <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/[0.25] to-transparent" />
-              <motion.span
-                animate={reduce ? undefined : { rotate: [0, 18, -6, 18, 0] }}
-                transition={{
-                  duration: 1.6,
-                  repeat: Infinity,
-                  repeatDelay: 1.8,
-                  ease: "easeInOut",
-                }}
-                className="inline-block origin-[70%_80%] text-[0.4em] leading-none"
-              >
-                👋
-              </motion.span>
-            </motion.span>
           </span>
 
           <span className="mt-2 flex items-center gap-5 text-[clamp(2.5rem,7.5vw,6.25rem)] sm:gap-8">
@@ -391,10 +381,9 @@ function ResumeHero() {
               className="max-w-xl text-base text-ink-muted sm:text-lg"
             >
               <Balancer>
-                A UX/UI designer &amp; digital artist who sweats the 3am details.
-                Everything behind the work lives below — every project, award, and
-                redraw,{" "}
-                <span className="text-ink">made between Bangkok &amp; Auckland</span>.
+                A UX/UI designer and digital artist. Everything behind the work
+                lives below — every project, award, and redraw,{" "}
+                <span className="text-ink">made between Bangkok and Auckland</span>.
               </Balancer>
             </motion.p>
 
@@ -439,49 +428,26 @@ function ResumeHero() {
             </motion.ul>
           </div>
 
-          {/* CTAs — a chunky pink→violet button + a quiet way back. */}
+          {/* CTAs — the way back is the chunky button; the PDF download
+              confirms with a quick arrow-drop beside it (see DownloadButton). */}
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 1.3, ease: [0.16, 1, 0.3, 1] as const }}
-            className="col-span-12 flex flex-wrap items-center gap-x-6 gap-y-4 md:col-span-5 md:justify-end"
+            className="col-span-12 flex flex-wrap items-center gap-x-6 gap-y-4 md:col-span-5 md:mb-9 md:justify-end"
           >
             <MagneticButton
-              href="mailto:Worapat2002@gmail.com"
+              href="/"
               glow
               className="px-7 py-3.5 text-sm font-semibold text-white"
             >
-              Let&rsquo;s make something
-              <ArrowUpRight
-                className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+              <ArrowLeft
+                className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5"
                 strokeWidth={2.25}
               />
-            </MagneticButton>
-            {RESUME_PDF && (
-              <a
-                href={RESUME_PDF}
-                download
-                data-cursor-hover
-                className="group inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink-strong"
-              >
-                <Download
-                  className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-y-0.5"
-                  strokeWidth={2}
-                />
-                Download PDF
-              </a>
-            )}
-            <a
-              href="/"
-              data-cursor-hover
-              className="group inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink-strong"
-            >
-              <ArrowLeft
-                className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5"
-                strokeWidth={2}
-              />
               Back to portfolio
-            </a>
+            </MagneticButton>
+            {RESUME_PDF && <DownloadButton href={RESUME_PDF} />}
           </motion.div>
         </div>
       </div>
@@ -525,7 +491,7 @@ function WigglyWord({ text }: { text: string }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Hand note — "open to work" scrawled in the margin next to "move."   */
+/*  Hand note — "say hi" scrawled in the margin next to "move."          */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -541,7 +507,7 @@ function HandNote() {
   return (
     <motion.a
       href="#contact"
-      aria-label="Open to work — jump to contact"
+      aria-label="Say hi — jump to contact"
       data-cursor-hover
       initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16, rotate: -8 }}
       animate={{ opacity: 1, y: 0, rotate: -4 }}
@@ -561,7 +527,7 @@ function HandNote() {
       className="hidden shrink-0 md:block"
     >
       <span className="block whitespace-nowrap pr-2 text-right font-hand text-3xl leading-none text-[color:var(--accent-soft)] lg:text-4xl">
-        open to work
+        say hi
       </span>
       {/* Ink arrow — hooks out from under the note and curves down-left
           toward the period of "move.", drawn stroke-first like the About
@@ -822,59 +788,113 @@ function AchievementsGrid() {
         <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.4em] text-ink-faint">
           <span className="h-px w-12 bg-hairline" />
           <span className="text-ink">Highlights</span>
-          <span>Awards &amp; recognitions</span>
+          <span>Impact, awards &amp; recognitions</span>
           <span className="h-px flex-1 bg-hairline" />
         </div>
 
-        <div
-          ref={ref}
-          className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        >
-          {ACHIEVEMENTS.map((a, i) => {
-            const Icon = a.icon;
-            return (
-              <motion.div
-                key={a.title}
-                initial={{
-                  opacity: 0,
-                  y: 28,
-                  rotate: i % 2 === 0 ? -3 : 3,
-                }}
-                animate={inView ? { opacity: 1, y: 0, rotate: 0 } : undefined}
-                transition={{
-                  duration: 0.75,
-                  delay: i * 0.1,
-                  ease: [0.16, 1, 0.3, 1] as const,
-                }}
-                whileHover={{ y: -6 }}
-                className="group relative flex flex-col gap-3 rounded-xl border border-hairline bg-surface/40 p-5 backdrop-blur transition-colors hover:border-indigo-accent/40"
-              >
-                {/* Accent wash on hover */}
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 -z-10 rounded-xl bg-gradient-to-br from-[rgb(var(--accent-1)/0.15)] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-                />
+        <div ref={ref} className="mt-10">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {ACHIEVEMENTS.map((a, i) => {
+              const Icon = a.icon;
+              return (
+                <motion.div
+                  key={a.title}
+                  initial={{
+                    opacity: 0,
+                    y: 28,
+                    rotate: i % 2 === 0 ? -3 : 3,
+                  }}
+                  animate={inView ? { opacity: 1, y: 0, rotate: 0 } : undefined}
+                  transition={{
+                    duration: 0.75,
+                    delay: i * 0.1,
+                    ease: [0.16, 1, 0.3, 1] as const,
+                  }}
+                  whileHover={{ y: -6 }}
+                  className="group relative flex flex-col gap-3 rounded-xl border border-hairline bg-surface/40 p-5 backdrop-blur transition-colors hover:border-indigo-accent/40"
+                >
+                  {/* Accent wash on hover */}
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 -z-10 rounded-xl bg-gradient-to-br from-[rgb(var(--accent-1)/0.15)] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                  />
 
-                <span className="font-numeral text-[9px] uppercase tracking-[0.4em] text-ink-faint">
-                  0{i + 1}
-                </span>
-                <Icon
-                  className="h-6 w-6 text-indigo-accent transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110"
+                  <span className="font-numeral text-[9px] uppercase tracking-[0.4em] text-ink-faint">
+                    0{i + 1}
+                  </span>
+                  <Icon
+                    className="h-6 w-6 text-indigo-accent transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110"
+                    strokeWidth={1.5}
+                  />
+                  <h3 className="font-serif text-base font-semibold leading-tight text-ink-strong">
+                    {a.title}
+                  </h3>
+                  <p className="text-xs leading-relaxed text-ink-muted">
+                    {a.description}
+                  </p>
+                  <div className="mt-auto flex items-center gap-2 pt-2 text-[9px] uppercase tracking-[0.3em] text-ink-faint">
+                    <span className="h-px w-4 bg-current transition-transform duration-500 group-hover:scale-x-150" />
+                    {a.year}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Featured impact metric — closes the grid: the four awards read
+              first, then the business result lands as the section's punchline
+              (the hero says "I make things that move"; this is the number
+              that moved). Counter reuses AnimatedStatNumber; the numeral is a
+              solid accent (not gradient-clipped) because NumberFlow's shadow
+              DOM blocks background-clip — see StatsStrip. */}
+          <motion.div
+            initial={{ opacity: 0, y: 28, rotate: -1.5 }}
+            animate={inView ? { opacity: 1, y: 0, rotate: 0 } : undefined}
+            transition={{ duration: 0.75, delay: 0.45, ease: [0.16, 1, 0.3, 1] as const }}
+            whileHover={{ y: -6 }}
+            className="group relative mt-4 flex flex-col gap-6 overflow-hidden rounded-xl border border-hairline bg-surface/40 p-6 backdrop-blur transition-colors hover:border-indigo-accent/40 sm:p-8 md:flex-row md:items-center md:gap-10"
+          >
+            {/* Accent wash on hover */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 -z-10 rounded-xl bg-gradient-to-br from-[rgb(var(--accent-1)/0.15)] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+            />
+
+            <div className="shrink-0">
+              <span className="text-[10px] uppercase tracking-[0.35em] text-ink-faint">
+                Impact
+              </span>
+              <p className="mt-2 font-numeral text-6xl font-bold leading-none tracking-tight text-violet-accent sm:text-7xl">
+                <AnimatedStatNumber target={3} inView={inView} delay={0.6} suffix="×" />
+              </p>
+              <p className="mt-2 text-[10px] uppercase tracking-[0.35em] text-ink-faint">
+                organic clicks
+              </p>
+            </div>
+
+            <div aria-hidden className="h-px w-full bg-hairline md:h-20 md:w-px" />
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <TrendingUp
+                  className="h-5 w-5 shrink-0 text-indigo-accent transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110"
                   strokeWidth={1.5}
                 />
-                <h3 className="font-serif text-base font-semibold leading-tight text-ink-strong">
-                  {a.title}
+                <h3 className="font-serif text-lg font-semibold leading-tight text-ink-strong sm:text-xl">
+                  Design that moves numbers
                 </h3>
-                <p className="text-xs leading-relaxed text-ink-muted">
-                  {a.description}
-                </p>
-                <div className="mt-auto flex items-center gap-2 pt-2 text-[9px] uppercase tracking-[0.3em] text-ink-faint">
-                  <span className="h-px w-4 bg-current transition-transform duration-500 group-hover:scale-x-150" />
-                  {a.year}
-                </div>
-              </motion.div>
-            );
-          })}
+              </div>
+              <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-ink-muted">
+                Small SME site, big swing — conversion-focused UX with the
+                SEO team&apos;s content strategy tripled organic clicks off a
+                modest starting base.
+              </p>
+              <div className="mt-3 flex items-center gap-2 text-[9px] uppercase tracking-[0.3em] text-ink-faint">
+                <span className="h-px w-4 bg-current transition-transform duration-500 group-hover:scale-x-150" />
+                GO SG · 2025–26
+              </div>
+            </div>
+          </motion.div>
         </div>
       </div>
     </section>
@@ -1274,7 +1294,7 @@ function SkillsBlock({
           </h3>
         </div>
         <span className="font-numeral text-[10px] uppercase tracking-[0.3em] text-ink-faint">
-          0{items.length}
+          {String(items.length).padStart(2, "0")}
         </span>
       </div>
 
@@ -1457,7 +1477,7 @@ function ResumeFooter() {
 
 /**
  * Hand-inked scrawl on the right of the contact row — the same marginalia
- * voice as the hero's "open to work" note, so the page closes on the motif
+ * voice as the hero's "say hi" note, so the page closes on the motif
  * it opened with. The ink arrow draws itself down-left toward the email
  * once the footer scrolls into view. Gradient def gets its own id: the
  * hero's #note-ink lives in this same document.

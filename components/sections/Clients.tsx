@@ -1,10 +1,18 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { motion, useInView, type Variants } from "framer-motion";
+import {
+  motion,
+  useInView,
+  useReducedMotion,
+  type Variants,
+} from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import SplitText from "@/components/ui/SplitText";
+import { Handwrite, RevealLine } from "@/components/ui/Reveal";
 import Parallax from "@/components/ui/Parallax";
+
+const EASE = [0.16, 1, 0.3, 1] as const;
 
 type ClientSite = {
   /** Client / project name. */
@@ -173,49 +181,48 @@ export default function ClientWork() {
       />
 
       <div className="relative mx-auto max-w-7xl px-6 sm:px-10">
-        <motion.div
+        <div
           ref={headingRef}
-          initial={{ opacity: 0, y: 20 }}
-          animate={headingInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] as const }}
           className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end"
         >
           <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-ink-subtle">
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={headingInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.6, ease: EASE }}
+              className="text-xs uppercase tracking-[0.25em] text-ink-subtle"
+            >
               <span className="text-ink">[ I ]</span> &nbsp; Client work
-            </p>
+            </motion.p>
+            {/* Headline lines rise behind a marquee-selection sweep. */}
             <h2 className="mt-6 font-serif text-4xl font-bold leading-tight text-ink-strong sm:text-5xl md:text-6xl">
-              <SplitText
-                text="Shipped for"
-                as="span"
-                className="block"
-                immediate={false}
-                stagger={0.025}
-                fromY={42}
-              />
-              <SplitText
-                text="real clients."
-                as="span"
-                className="block"
-                charClassName="bg-accent-gradient bg-clip-text text-transparent"
-                immediate={false}
-                stagger={0.025}
-                delay={0.15}
-                fromY={42}
-                fromRotate={-3}
-              />
+              <RevealLine>
+                <SplitText text="Client work" as="span" className="block" />
+              </RevealLine>
+              <RevealLine delay={0.14}>
+                <SplitText
+                  text="that shipped."
+                  as="span"
+                  className="block"
+                  charClassName="bg-accent-gradient bg-clip-text text-transparent"
+                />
+              </RevealLine>
             </h2>
           </div>
-          <div className="flex flex-col items-start gap-2 pt-1 sm:items-end">
-            <span className="flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-ink-subtle">
-              <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-indigo-accent" />
-              Live in production
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={headingInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.15, ease: EASE }}
+            className="flex flex-col items-start gap-2 pt-1 sm:items-end"
+          >
+            <span className="text-[10px] uppercase tracking-[0.3em] text-ink-subtle">
+              Live sites
             </span>
             <span className="font-numeral text-[11px] tracking-[0.2em] text-ink-faint">
               {TOTAL} sites · {YEAR_SPAN}
             </span>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
 
         {/* Featured artboards — three frames staggered on the pasteboard.
             Hovering one gives it the design-tool selection treatment: accent
@@ -233,12 +240,15 @@ export default function ClientWork() {
               delay={0}
               aspect="aspect-[4/3]"
             />
-            {/* Hand note — same handwriting voice as the hero chips. */}
+            {/* Hand note — same handwriting voice as the hero chips; written
+                in after the first frame's page has streamed in. */}
             <span
               aria-hidden
               className="pointer-events-none absolute -bottom-8 right-2 hidden -rotate-3 font-hand text-xl text-[color:var(--accent-soft)] md:block"
             >
-              still my favourite ✦
+              <Handwrite delay={1.1} duration={0.85}>
+                still like this one
+              </Handwrite>
             </span>
           </div>
 
@@ -295,14 +305,7 @@ export default function ClientWork() {
           </motion.ul>
         </div>
 
-        {/* Movement footer */}
-        <div className="mt-16 flex items-center justify-between text-[10px] uppercase tracking-[0.35em] text-ink-faint">
-          <span>
-            <span className="hidden mouse:inline">
-              ↳ Hover a frame to inspect · click to visit
-            </span>
-            <span className="mouse:hidden">↳ Tap a frame to visit the site</span>
-          </span>
+        <div className="mt-16 flex items-center justify-end text-[10px] uppercase tracking-[0.35em] text-ink-faint">
           <span>{TOTAL} shipped</span>
         </div>
       </div>
@@ -334,15 +337,21 @@ function FeaturedFrame({
   delay: number;
   aspect: string;
 }) {
+  // The load-in stages a file opening in the design tool: the artboard rises,
+  // gets SELECTED (accent outline + corner handles + dimension badge), its
+  // page streams in top-to-bottom behind an accent scanline, and the
+  // selection releases. Reduced motion skips the theatre — plain fade.
+  const reduced = useReducedMotion();
+
   return (
     <motion.a
       href={site.url}
       target="_blank"
       rel="noreferrer"
       data-cursor-hover
-      initial={{ opacity: 0, y: 34 }}
+      initial={{ opacity: 0, y: 28 }}
       animate={show ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.8, delay, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.8, delay, ease: EASE }}
       className="group block"
     >
       {/* Frame label — like a Figma frame name, it turns accent when the
@@ -364,11 +373,40 @@ function FeaturedFrame({
         <div
           className={`relative overflow-hidden rounded-xl border border-hairline bg-[#0b0b0d] [container-type:size] ${aspect}`}
         >
-          {site.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={site.image} alt={`${site.name} — website`} className={PAN} />
-          ) : (
-            <SiteCover from={site.from} to={site.to} variant={index} className={PAN} />
+          {/* The page streams in top-to-bottom while the entrance selection is
+              on — clip and scanline share one duration/ease so the line rides
+              exactly on the develop edge. */}
+          <motion.div
+            className="absolute inset-0"
+            initial={reduced ? false : { clipPath: "inset(0% 0% 101% 0%)" }}
+            animate={
+              show && !reduced ? { clipPath: "inset(0% 0% 0% 0%)" } : undefined
+            }
+            transition={{ duration: 1.0, delay: delay + 0.45, ease: EASE }}
+          >
+            {site.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={site.image} alt={`${site.name} — website`} className={PAN} />
+            ) : (
+              <SiteCover from={site.from} to={site.to} variant={index} className={PAN} />
+            )}
+          </motion.div>
+
+          {!reduced && (
+            <motion.span
+              aria-hidden
+              initial={{ top: "0%", opacity: 0 }}
+              animate={show ? { top: "100%", opacity: [0, 0.9, 0.9, 0] } : {}}
+              transition={{
+                top: { duration: 1.0, delay: delay + 0.45, ease: EASE },
+                opacity: {
+                  duration: 1.0,
+                  delay: delay + 0.45,
+                  times: [0, 0.05, 0.9, 1],
+                },
+              }}
+              className="pointer-events-none absolute inset-x-0 z-10 h-px bg-accent-gradient"
+            />
           )}
 
           {/* Visit chip — hover flourish on desktop, always on for touch. */}
@@ -377,27 +415,103 @@ function FeaturedFrame({
           </span>
         </div>
 
+        {/* Entrance selection — the same chrome as the hover treatment below,
+            shown once while the page streams in, then released. Lives outside
+            the clipped artboard so handles and badge can overhang. */}
+        {!reduced && (
+          <motion.div
+            aria-hidden
+            initial={{ opacity: 0 }}
+            animate={show ? { opacity: [0, 1, 1, 0] } : {}}
+            transition={{
+              duration: 2.1,
+              delay: delay + 0.1,
+              times: [0, 0.1, 0.78, 1],
+            }}
+            className="pointer-events-none absolute -inset-px"
+          >
+            <div
+              className="absolute inset-0 rounded-xl border-[1.5px] border-indigo-accent"
+              style={{
+                boxShadow: "0 14px 44px -18px rgb(var(--accent-1) / 0.35)",
+              }}
+            />
+            {/* Corner handles pop in clockwise from the top-left. */}
+            {(
+              [
+                "-left-1 -top-1",
+                "-right-1 -top-1",
+                "-right-1 -bottom-1",
+                "-left-1 -bottom-1",
+              ] as const
+            ).map((pos, i) => (
+              <motion.span
+                key={pos}
+                initial={{ scale: 0 }}
+                animate={show ? { scale: 1 } : {}}
+                transition={{
+                  type: "spring",
+                  stiffness: 420,
+                  damping: 22,
+                  delay: delay + 0.2 + i * 0.07,
+                }}
+                className={`absolute ${pos} h-2 w-2 rounded-[2px] border-[1.5px] border-indigo-accent bg-white shadow-[0_1px_5px_rgba(0,0,0,0.35)]`}
+              />
+            ))}
+            {/* Dimension badge — position on the plain wrapper, motion on the
+                inner span (framer would drop the -translate-x-1/2 otherwise). */}
+            <span className="absolute -bottom-3 left-1/2 -translate-x-1/2">
+              <motion.span
+                initial={{ opacity: 0, y: 8 }}
+                animate={show ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.35, delay: delay + 0.4, ease: EASE }}
+                className="block whitespace-nowrap rounded-[4px] bg-indigo-accent px-2 py-[3px] font-numeral text-[10px] font-medium leading-none text-white shadow-[0_2px_10px_rgba(0,0,0,0.35)]"
+              >
+                {site.size}
+              </motion.span>
+            </span>
+          </motion.div>
+        )}
+
         {/* Selection treatment — accent outline, corner handles and the
             dimension badge, exactly like selecting a frame in a design tool.
-            Lives outside the clipped artboard so the handles and badge can
-            overhang its edges. */}
+            The whole layer scales down a touch as it fades in, so the
+            selection reads as snapping onto the frame; handles pop in with a
+            small stagger and the badge rides up after. Lives outside the
+            clipped artboard so the handles, badge and guides can overhang. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -inset-px opacity-0 transition-opacity duration-300 mouse:group-hover:opacity-100"
+          className="pointer-events-none absolute -inset-px scale-[1.01] opacity-0 transition-[opacity,transform] duration-300 ease-out-expo mouse:group-hover:scale-100 mouse:group-hover:opacity-100"
         >
-          <div className="absolute inset-0 rounded-xl border-[1.5px] border-indigo-accent" />
-          {[
-            "-left-1 -top-1",
-            "-right-1 -top-1",
-            "-left-1 -bottom-1",
-            "-right-1 -bottom-1",
-          ].map((pos) => (
+          {/* Outline + a faint accent drop below — enough lift to separate the
+              selected artboard from the pasteboard while the edges stay crisp.
+              The shadow itself is static — only the layer's opacity animates —
+              so the themed tint never hits the transitioned-var-shadow bug. */}
+          <div
+            className="absolute inset-0 rounded-xl border-[1.5px] border-indigo-accent"
+            style={{
+              boxShadow: "0 14px 44px -18px rgb(var(--accent-1) / 0.35)",
+            }}
+          />
+
+          {/* Corner handles — white-filled like a real selection, popping in
+              clockwise from the top-left. */}
+          {(
+            [
+              ["-left-1 -top-1", "0ms"],
+              ["-right-1 -top-1", "60ms"],
+              ["-right-1 -bottom-1", "120ms"],
+              ["-left-1 -bottom-1", "180ms"],
+            ] as const
+          ).map(([pos, delay]) => (
             <span
               key={pos}
-              className={`absolute ${pos} h-2 w-2 rounded-[2px] border border-indigo-accent bg-night`}
+              style={{ transitionDelay: delay }}
+              className={`absolute ${pos} h-2 w-2 scale-0 rounded-[2px] border-[1.5px] border-indigo-accent bg-white shadow-[0_1px_5px_rgba(0,0,0,0.35)] transition-transform duration-300 ease-out-expo mouse:group-hover:scale-100`}
             />
           ))}
-          <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-[4px] bg-indigo-accent px-2 py-[3px] font-numeral text-[10px] font-medium leading-none text-white">
+
+          <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 translate-y-2 whitespace-nowrap rounded-[4px] bg-indigo-accent px-2 py-[3px] font-numeral text-[10px] font-medium leading-none text-white shadow-[0_2px_10px_rgba(0,0,0,0.35)] transition-transform delay-100 duration-300 ease-out-expo mouse:group-hover:translate-y-0">
             {site.size}
           </span>
         </div>

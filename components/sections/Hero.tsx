@@ -50,7 +50,7 @@ const MARQUEE_TAGS = [
   "Digital Artist",
   "Based in Thailand",
   "TNI Graduate",
-  "Available for Work",
+  "Taking New Projects",
 ];
 
 // The artboard's reorderable "layers". Each id maps to a real block of the hero
@@ -112,17 +112,21 @@ const RESIZE_ANGLE: Record<string, number> = {
   "nesw-resize": -45,
 };
 
-// Floating artwork "reference" cards pinned around the canvas — the digital-art
-// half of the folio staged as assets on the design surface. Each renders a vivid
+// Floating artwork "reference" cards TUCKED UNDER the artboard's side edges —
+// like prints slipped under a sheet of paper on the desk. Each renders a vivid
 // PLACEHOLDER for now; drop a real file path into `src` to swap it in (object-cover
 // keeps the 3:4 crop, no other change needed). Positions are anchored to the
-// ARTBOARD, not the viewport: `calc(50% - 33rem - width)` parks each card ~1rem
-// off the 64rem frame's edge on any monitor (viewport-percentage corners drifted
-// to the far screen edges on wide displays), and the `max(…)` floor stops them
-// sliding offscreen below ~1400px. Each carries its own parallax depth + float
-// phase. Colours are deliberately NOT the site accent — the art is meant to
-// be its own burst of colour against the mono canvas, so it stays vivid
-// whatever accent the visitor picks.
+// ARTBOARD: the 64rem frame's edge sits at 32rem from centre, so e.g.
+// `calc(50% - 36rem)` with a 10rem card leaves ~60% of it hidden beneath the
+// frame's frosted glass (panel-weak + backdrop-blur) and ~40% peeking out; the
+// `max(…)` floor keeps a slice on-screen below ~1200px. Hovering the artboard
+// "opens the folder": every card springs OUT along its `pop` vector — an X-fan
+// toward the four open viewport corners, aimed to clear the side panels and
+// status bar so they land in empty canvas, not back under the UI (see
+// GalleryCard + the note on `pop`). Colours are
+// deliberately NOT the site accent — the art is meant to be its own burst of
+// colour against the mono canvas, so it stays vivid whatever accent the
+// visitor picks.
 type GalleryItem = {
   id: string;
   /** Real artwork path later (e.g. "/art/idol.png"); undefined → colour placeholder. */
@@ -135,11 +139,32 @@ type GalleryItem = {
   glow: string;
   /** Absolute position + responsive width (rotation is applied separately). */
   className: string;
+  /**
+   * Extra classes layered on ONLY when the side panels are actually rendered
+   * (enabled && xl). Used by chair to pull its right anchor back off the
+   * Inspector; a plain `xl:` in `className` can't express this because the
+   * panels also depend on `enabled`, not width alone.
+   */
+  panelClassName?: string;
   rotate: number;
   /** Mouse-parallax travel — larger = nearer/faster, for depth layering. */
   strength: number;
   /** Entrance + float-phase offset (s). */
   delay: number;
+  /**
+   * Slide (px) + swivel (deg) when the artboard is hovered. Each vector aims its
+   * card at the nearest OPEN viewport corner — clear of the Layers/Inspector
+   * panels (mid-height gutters) and the status bar (bottom) — so the fan-out
+   * reveals into empty canvas instead of sliding back under the UI chrome.
+   */
+  pop: { x: number; y: number; rotate: number };
+  /**
+   * Pop stagger (s) — the cards uncover ONE BY ONE (1→2→3→4), not as a slab.
+   * The tuck-back runs this in reverse (see POP_DELAY_MAX).
+   */
+  popDelay: number;
+  /** Filename-chip corner — must sit on the card's VISIBLE (outer) half. */
+  chipClass: string;
 };
 
 const GALLERY: GalleryItem[] = [
@@ -149,10 +174,15 @@ const GALLERY: GalleryItem[] = [
     from: "#38bdf8",
     to: "#4f46e5",
     glow: "rgba(255,255,255,0.55)",
-    className: "left-[max(1rem,calc(50%_-_43rem))] top-[15%] w-32 xl:w-40",
-    rotate: -9,
+    className: "left-[max(-2rem,calc(50%_-_36rem))] top-[24%] w-32 xl:w-40",
+    rotate: -8,
     strength: 30,
     delay: 0.5,
+    // Fans to the open top-LEFT corner — up-and-out, clearing the Layers panel
+    // that sits mid-height in this gutter (the old x:-104,y:-8 slid it under it).
+    pop: { x: -92, y: -56, rotate: -8 },
+    popDelay: 0,
+    chipClass: "bottom-2 left-2",
   },
   {
     id: "donut",
@@ -160,10 +190,22 @@ const GALLERY: GalleryItem[] = [
     from: "#fbcfe8",
     to: "#fb7185",
     glow: "rgba(255,255,255,0.6)",
-    className: "left-[max(2.5rem,calc(50%_-_40rem))] bottom-[13%] w-24 xl:w-28",
-    rotate: 8,
-    strength: 48,
+    // Anchored to the centre (50% + offset), not bottom-%: the frame's height is
+    // fixed and vertically centred, so a viewport-% anchor descends faster than
+    // the frame's underside and slides the card out from under it on tall windows.
+    // The +9.5rem drop levels it with chair on the opposite side so the two read
+    // as a matched bottom pair, while still clearing the status bar at normal
+    // window heights.
+    className: "left-[max(-1.5rem,calc(50%_-_34.5rem))] top-[calc(50%_+_9.5rem)] w-24 xl:w-28",
+    rotate: 7,
+    strength: 46,
     delay: 0.78,
+    // Fans to the open bottom-LEFT corner. This card is the most buried at rest
+    // (fully under the frame on a 1280 canvas), so it travels the furthest —
+    // dropping clear BELOW the Layers panel rather than sliding under it.
+    pop: { x: -70, y: 94, rotate: 9 },
+    popDelay: 0.11,
+    chipClass: "bottom-2 left-2",
   },
   {
     id: "muse",
@@ -171,10 +213,15 @@ const GALLERY: GalleryItem[] = [
     from: "#e879f9",
     to: "#7c3aed",
     glow: "rgba(255,255,255,0.5)",
-    className: "right-[max(1rem,calc(50%_-_42rem))] top-[12%] w-28 xl:w-36",
-    rotate: 7,
+    className: "right-[max(-2rem,calc(50%_-_35.5rem))] top-[20%] w-28 xl:w-36",
+    rotate: 9,
     strength: 34,
     delay: 0.62,
+    // Fans to the open top-RIGHT corner — lifts well above the Inspector panel
+    // (which owns the mid-height of this gutter) so it never tucks behind it.
+    pop: { x: 92, y: -56, rotate: 7 },
+    popDelay: 0.22,
+    chipClass: "bottom-2 right-2",
   },
   {
     id: "chair",
@@ -182,12 +229,33 @@ const GALLERY: GalleryItem[] = [
     from: "#fcd34d",
     to: "#6b7280",
     glow: "rgba(255,255,255,0.45)",
-    className: "right-[max(2rem,calc(50%_-_42rem))] bottom-[15%] w-28 xl:w-36",
+    // Peeks out past the frame's bottom-right corner, mirroring muse up top
+    // (same 35.5rem right anchor → the two share a right edge). This is the
+    // resting spot whenever the Inspector panel is absent — i.e. touch / no fine
+    // pointer, OR below xl. Top-anchored (50% + offset) so it stays glued to the
+    // vertically-centred frame's underside at any viewport height.
+    className: "right-[max(-2rem,calc(50%_-_35.5rem))] top-[calc(50%_+_8rem)] w-28 xl:w-36",
+    // Applied by GalleryCard ONLY when the panels are actually rendered
+    // (enabled && xl): pull the anchor back to hug the frame edge so the card
+    // never tucks behind the Inspector. Width alone (a plain `xl:`) was wrong —
+    // it hid the peek from no-fine-pointer sessions, which show no panel at all.
+    panelClassName: "xl:right-[max(2rem,calc(50%_-_28rem))]",
     rotate: -7,
-    strength: 22,
+    strength: 24,
     delay: 0.9,
+    // Emerges DOWN out of the frame's bottom edge. The Inspector panel walls off
+    // the right gutter and the status bar caps the bottom, so travel is mostly
+    // vertical and stops short of the bar (the old y:64 pushed it into the bar).
+    pop: { x: 8, y: 40, rotate: -8 },
+    popDelay: 0.33,
+    chipClass: "bottom-2 right-2",
   },
 ];
+
+// Longest pop stagger in the set — the pivot that mirrors the sequence for the
+// tuck-back, so `MAX - popDelay` turns the fan-out order inside out (last card
+// out is the first back under the glass) without hand-maintaining a second list.
+const POP_DELAY_MAX = Math.max(...GALLERY.map((item) => item.popDelay));
 
 /**
  * Hero, staged as a live design canvas instead of a conventional headline block.
@@ -424,6 +492,11 @@ export default function Hero() {
   const [layerOrder, setLayerOrder] = useState<LayerId[]>(DEFAULT_LAYER_ORDER);
   const [selectedLayer, setSelectedLayer] = useState<LayerId>("statement");
 
+  // Hovering the artboard "opens the folder": the artwork cards tucked under
+  // its edges spring outward (see GalleryCard). framer's hover events only
+  // fire for real pointers, so touch devices simply keep the resting tuck.
+  const [frameHover, setFrameHover] = useState(false);
+
   // The hero content blocks, keyed by layer id. Rendered through `layerOrder`
   // below so the panel's drag-to-reorder physically restacks them, with a
   // `layout` transition animating each block to its new slot.
@@ -435,9 +508,8 @@ export default function Hero() {
         transition={{ duration: 0.7, delay: 0.5, ease: EASE }}
         className="flex flex-wrap items-center gap-3"
       >
-        <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-glass px-3.5 py-1.5 text-[11px] uppercase tracking-[0.18em] text-ink-muted backdrop-blur">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent-gradient" />
-          Available for work
+        <span className="inline-flex items-center rounded-full border border-hairline bg-glass px-3.5 py-1.5 text-[11px] uppercase tracking-[0.18em] text-ink-muted backdrop-blur">
+          Taking new projects
         </span>
         <span className="hidden text-[10px] uppercase tracking-[0.28em] text-ink-faint sm:inline">
           UX/UI &amp; Digital Art
@@ -536,7 +608,7 @@ export default function Hero() {
           <Balancer>
             UX/UI designer and digital artist based in Bangkok. I care about
             how things work, then build{" "}
-            <span className="text-ink">interfaces people actually reach for</span>.
+            <span className="text-ink">interfaces that get used, not just admired</span>.
           </Balancer>
         </p>
 
@@ -618,10 +690,12 @@ export default function Hero() {
         className="noise-overlay pointer-events-none absolute inset-0"
       />
 
-      {/* ── Floating artwork cards — the digital-art half of the folio, pinned
-             as reference assets around the canvas. Vivid placeholders now; swap
-             real images into GALLERY[].src later. Non-interactive, sits below the
-             frame (no z → default, under the z-10 artboard) and fades out with the
+      {/* ── Floating artwork cards — the digital-art half of the folio, tucked
+             under the artboard's edges like prints under a sheet of paper.
+             Hovering the frame pops them out ("folder open"). Vivid placeholders
+             now; swap real images into GALLERY[].src later. Non-interactive, and
+             MUST render below the frame (no z → default, under the z-10 artboard)
+             so the frosted panel veils the tucked halves. Fades out with the
              frame on scroll. Hidden below md so it never crowds the phone layout. */}
       <motion.div
         aria-hidden
@@ -629,7 +703,12 @@ export default function Hero() {
         className="pointer-events-none absolute inset-0 hidden md:block"
       >
         {GALLERY.map((item) => (
-          <GalleryCard key={item.id} item={item} />
+          <GalleryCard
+            key={item.id}
+            item={item}
+            frameHovered={frameHover}
+            enabled={enabled}
+          />
         ))}
       </motion.div>
 
@@ -710,6 +789,8 @@ export default function Hero() {
             introDone ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.985 }
           }
           transition={{ duration: 0.9, delay: 0.2, ease: EASE }}
+          onHoverStart={() => setFrameHover(true)}
+          onHoverEnd={() => setFrameHover(false)}
           style={{ minHeight: "var(--fh)" }}
           // On phones the artboard card is dropped entirely — the border+panel
           // just shrank the text column and added box-in-box chrome. Content
@@ -868,46 +949,106 @@ export default function Hero() {
 /* ── Sub-components ────────────────────────────────────────────────────────── */
 
 /**
- * A single pinned artwork card. Layering is deliberate so nothing fights:
+ * A single tucked artwork card. Layering is deliberate so nothing fights:
  *   • outer plain div  → absolute position + static rotation (a CSS `rotate`, kept
  *     off any motion element because framer would overwrite a Tailwind transform).
  *   • MouseParallax    → cursor-driven translate (its own depth via `strength`).
- *   • entrance motion  → fade / scale / lift in on load.
+ *   • entrance motion  → fade in while sliding OUT from deeper under the frame
+ *     (start pose is pushed inward along the pop vector), on the slow hero ease.
+ *   • pop motion       → the "folder open" slide when the artboard is hovered.
+ *     Its own element with a snappy spring, so the spring never fights the slow
+ *     entrance tween and the two transforms simply compose.
  *   • inner card       → the perpetual `float-card` bob, phase-offset per card.
  * The art itself is a real <img> once `src` is set, else the colour placeholder.
+ *
+ * The card ALWAYS sits below the artboard — no z-index switching (lifting it above
+ * the frame made the whole "Frame 01" surface visibly jump). The frame's frosted
+ * backdrop-blur just veils whatever overlaps it, so the tucked half reads soft
+ * while the sliver past the frame edge is already crisp. Hovering only slides the
+ * card further out; the emerging portion clears the glass on its own, so it grows
+ * clearer as it travels — no stacking flip.
  */
-function GalleryCard({ item }: { item: GalleryItem }) {
+function GalleryCard({
+  item,
+  frameHovered,
+  enabled,
+}: {
+  item: GalleryItem;
+  frameHovered: boolean;
+  /**
+   * Fine-pointer present → the side panels can render. Gates chair's
+   * `panelClassName` pull-back; the `xl:` inside it self-limits to the widths
+   * where the Inspector actually shows, so this only needs the `enabled` half.
+   */
+  enabled: boolean;
+}) {
   const { introDone } = useIntro();
+  // Entrance start pose: pushed the OPPOSITE way to the pop — i.e. deeper under
+  // the artboard — so on load each card slides out from beneath the glass.
+  const inX = item.pop.x * -0.6;
+  const inY = item.pop.y * -0.6;
+
   return (
     <div
-      className={`absolute ${item.className}`}
+      className={`absolute ${item.className}${
+        enabled && item.panelClassName ? ` ${item.panelClassName}` : ""
+      }`}
       style={{ rotate: `${item.rotate}deg` }}
     >
       <MouseParallax strength={item.strength}>
         <motion.div
-          initial={{ opacity: 0, scale: 0.88, y: 26 }}
+          initial={{ opacity: 0, x: inX, y: inY, scale: 0.96 }}
           animate={
             introDone
-              ? { opacity: 1, scale: 1, y: 0 }
-              : { opacity: 0, scale: 0.88, y: 26 }
+              ? { opacity: 1, x: 0, y: 0, scale: 1 }
+              : { opacity: 0, x: inX, y: inY, scale: 0.96 }
           }
           transition={{ duration: 1, delay: item.delay, ease: EASE }}
         >
-          <div
-            className="animate-float-card overflow-hidden rounded-2xl border border-white/[0.12] shadow-[0_28px_55px_-24px_rgba(0,0,0,0.75)]"
-            style={{ animationDelay: `${item.delay}s`, aspectRatio: "3 / 4" }}
+          <motion.div
+            animate={
+              frameHovered
+                ? {
+                    x: item.pop.x,
+                    y: item.pop.y,
+                    rotate: item.pop.rotate,
+                    scale: 1.06,
+                  }
+                : { x: 0, y: 0, rotate: 0, scale: 1 }
+            }
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 24,
+              // The fan opens 1→2→3→4 and unwinds 4→3→2→1 — last card out is
+              // the first back under, like dealing cards then gathering the
+              // pile from the top. Replaying the open order on the way in read
+              // as a rewind of the wrong tape.
+              delay: frameHovered ? item.popDelay : POP_DELAY_MAX - item.popDelay,
+            }}
           >
-            {item.src ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={item.src}
-                alt=""
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <PlaceholderArt from={item.from} to={item.to} glow={item.glow} label={item.label} />
-            )}
-          </div>
+            <div
+              className="animate-float-card overflow-hidden rounded-2xl border border-white/[0.12] shadow-[0_28px_55px_-24px_rgba(0,0,0,0.75)]"
+              style={{ animationDelay: `${item.delay}s`, aspectRatio: "3 / 4" }}
+            >
+              {item.src ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={item.src}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <PlaceholderArt
+                  from={item.from}
+                  to={item.to}
+                  glow={item.glow}
+                  label={item.label}
+                  chipClass={item.chipClass}
+                />
+              )}
+            </div>
+          </motion.div>
         </motion.div>
       </MouseParallax>
     </div>
@@ -925,7 +1066,8 @@ function PlaceholderArt({
   to,
   glow,
   label,
-}: Pick<GalleryItem, "from" | "to" | "glow" | "label">) {
+  chipClass,
+}: Pick<GalleryItem, "from" | "to" | "glow" | "label" | "chipClass">) {
   return (
     <div
       aria-hidden
@@ -942,7 +1084,9 @@ function PlaceholderArt({
       <div className="absolute inset-0 grid place-items-center text-white/80">
         <ImageIcon className="h-6 w-6" strokeWidth={1.5} />
       </div>
-      <span className="absolute bottom-2 left-2 rounded-[4px] bg-black/35 px-1.5 py-0.5 text-[9px] font-medium tracking-wide text-white/85 backdrop-blur-sm">
+      <span
+        className={`absolute ${chipClass} rounded-[4px] bg-black/35 px-1.5 py-0.5 text-[9px] font-medium tracking-wide text-white/85 backdrop-blur-sm`}
+      >
         {label}
       </span>
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent" />
