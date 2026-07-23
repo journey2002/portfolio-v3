@@ -26,7 +26,9 @@ function ThemeToggleBase({ className = "" }: { className?: string }) {
       onClick={toggle}
       whileTap={reduce ? undefined : { scale: 0.92 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      className={`group relative grid h-9 w-9 shrink-0 place-items-center rounded-full border border-hairline bg-glass transition-colors hover:border-indigo-accent/40 ${className}`}
+      // after:-inset-1 grows the HIT area to 44px while the pill stays a 36px
+      // circle — invisible, no layout shift, just an easier thumb target.
+      className={`group relative grid h-9 w-9 shrink-0 place-items-center rounded-full border border-hairline bg-glass transition-colors after:absolute after:-inset-1 after:content-[''] hover:border-indigo-accent/40 ${className}`}
     >
       {/* Accent glow blooms on hover, matching the section menu button. */}
       <span className="pointer-events-none absolute -inset-px rounded-full bg-accent-gradient opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-30" />

@@ -21,7 +21,7 @@ const Contact = dynamic(() => import("@/components/sections/Contact"), {
 
 export default function Home() {
   return (
-    <main className="relative">
+    <main id="main" tabIndex={-1} className="relative">
       <Nav />
       <Hero />
       <About />

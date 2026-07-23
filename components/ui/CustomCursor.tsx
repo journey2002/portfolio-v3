@@ -139,6 +139,21 @@ export default function CustomCursor() {
     animate(dotOpacity, glyph || link ? 0 : 1, FADE);
   }, [cursor.variant, ringSize, dotSize, ringOpacity, dotOpacity]);
 
+  // The OS cursor is hidden by CSS, but only once this component is actually
+  // mounted and drawing a replacement — it loads ssr:false, so between first
+  // paint and hydration (or forever, if the JS never arrives) an unconditional
+  // `cursor: none` would leave a fine-pointer visitor with no cursor at all.
+  // The attribute name deliberately isn't `data-cursor`: resolveCursor walks
+  // ancestors with closest(), and a match on <html> would style every element.
+  useEffect(() => {
+    if (!enabled) return;
+    const root = document.documentElement;
+    root.dataset.cursorReady = "1";
+    return () => {
+      delete root.dataset.cursorReady;
+    };
+  }, [enabled]);
+
   if (!enabled) return null;
 
   const showGlyph = cursor.variant === "move" || cursor.variant === "resize";

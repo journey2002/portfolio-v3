@@ -14,6 +14,7 @@ import { PointerProvider } from "@/components/ui/PointerProvider";
 import { ThemeProvider } from "@/components/ui/ThemeProvider";
 import { AccentProvider } from "@/components/ui/AccentProvider";
 import { IntroProvider } from "@/components/ui/IntroProvider";
+import MotionProvider from "@/components/ui/MotionProvider";
 import PageIntro from "@/components/ui/PageIntro";
 import "./globals.css";
 
@@ -89,6 +90,32 @@ const caveat = Caveat({
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://worapat-portfolio.vercel.app";
 
+// Structured data for the person behind the site, so search engines tie the
+// name, role, location and profiles together instead of inferring them from
+// body copy. Mirrors the metadata below and the Contact section — keep in sync.
+// Instagram is deliberately absent until the placeholder link is replaced.
+const PERSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: "Worapat Settapak",
+  url: siteUrl,
+  jobTitle: "UX/UI Designer & Digital Artist",
+  email: "mailto:worapat2002@gmail.com",
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Bangkok",
+    addressCountry: "TH",
+  },
+  alumniOf: {
+    "@type": "CollegeOrUniversity",
+    name: "Thai-Nichi Institute of Technology",
+  },
+  sameAs: [
+    "https://github.com/journey2002",
+    "https://www.linkedin.com/in/worapat-settapak-562192212",
+  ],
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
@@ -139,6 +166,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  // Extends the canvas under the iOS notch/home indicator so
+  // env(safe-area-inset-*) resolves to real values (it's 0 without cover) —
+  // the hero status bar and SectionMenu pad themselves clear of it.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -157,21 +188,36 @@ export default function RootLayout({
     >
       <body className="font-sans bg-night text-ink-strong antialiased">
         <script dangerouslySetInnerHTML={{ __html: NO_FLASH_THEME }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(PERSON_LD) }}
+        />
         {/* Without JS the overlay could never animate away — hide it so the
             server-rendered page stays reachable. */}
         <noscript>
           <style>{`#page-intro{display:none}`}</style>
         </noscript>
+        {/* First focusable element on every page — the nav pill is fixed and
+            the sections are long, so without this a keyboard visitor tabs the
+            whole header before reaching content. */}
+        <a
+          href="#main"
+          className="sr-only rounded-full bg-accent-gradient px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200]"
+        >
+          Skip to content
+        </a>
         <ThemeProvider>
           <AccentProvider>
             <IntroProvider>
-              <LenisProvider>
-                <PointerProvider>
-                  <CustomCursor />
-                  <PageIntro />
-                  {children}
-                </PointerProvider>
-              </LenisProvider>
+              <MotionProvider>
+                <LenisProvider>
+                  <PointerProvider>
+                    <CustomCursor />
+                    <PageIntro />
+                    {children}
+                  </PointerProvider>
+                </LenisProvider>
+              </MotionProvider>
             </IntroProvider>
           </AccentProvider>
         </ThemeProvider>

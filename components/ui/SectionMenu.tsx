@@ -3,14 +3,33 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Menu, X } from "lucide-react";
 
-const SECTIONS = [
+export type SectionLink = { label: string; href: string };
+
+const HOME_SECTIONS: SectionLink[] = [
   { label: "About", href: "#about" },
   { label: "Work", href: "#work" },
   { label: "Stack", href: "#stack" },
   { label: "Contact", href: "#contact" },
 ];
 
-export default function SectionMenu() {
+/**
+ * The resume's own stops. Every one of these anchors already existed in the
+ * markup — ResumeHero's #top, the two TimelineSections (#experience /
+ * #education), SkillsSection and ResumeFooter — but nothing ever linked to
+ * them, and the page had no way back up short of scrolling its full length.
+ */
+export const RESUME_SECTIONS: SectionLink[] = [
+  { label: "Experience", href: "#experience" },
+  { label: "Education", href: "#education" },
+  { label: "Skills", href: "#skills" },
+  { label: "Contact", href: "#contact" },
+];
+
+export default function SectionMenu({
+  sections = HOME_SECTIONS,
+}: {
+  sections?: SectionLink[];
+}) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -55,17 +74,19 @@ export default function SectionMenu() {
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-6 right-6 z-40 flex flex-col items-end"
+      // Safe-area offsets keep the cluster clear of the iOS home indicator /
+      // landscape notch; env() is 0 elsewhere so this stays bottom-6 right-6.
+      className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-[max(1.5rem,env(safe-area-inset-right))] z-40 flex flex-col items-end"
       {...hoverHandlers}
     >
       <ul
         aria-hidden={!open}
         className={`mb-3 flex flex-col items-end gap-2 ${open ? "" : "pointer-events-none"}`}
       >
-        {SECTIONS.map((section, i) => {
+        {sections.map((section, i) => {
           // Bottom-up reveal: items closest to the button animate first on open,
           // first to leave on close.
-          const total = SECTIONS.length;
+          const total = sections.length;
           const delay = open ? (total - 1 - i) * 55 : i * 30;
           return (
             <li

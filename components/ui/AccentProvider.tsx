@@ -14,7 +14,7 @@ import {
  * Accent-palette state — orthogonal to the dark/light theme.
  *
  * The `data-accent` attribute on <html> is set *before paint* by the no-flash
- * script in app/layout.tsx (reading localStorage, defaulting to "sunset"), so
+ * script in app/layout.tsx (reading localStorage, defaulting to "emerald"), so
  * the accent applies with no flash exactly like the theme. This provider mirrors
  * that into React state, exposes a setter, and keeps localStorage in sync. The
  * actual hues live in app/globals.css keyed by `data-accent`; swapping the

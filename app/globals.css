@@ -226,9 +226,9 @@
 
    Channels are space-separated RGB so Tailwind's `/alpha` modifier and
    `rgb(var(--accent-1) / a)` both work. The glow tints are the lighter 300/400
-   end used for SVG icon strokes and pale accent text. Sunset (orange) is the
-   default and lives on :root so it applies with no JS and before the no-flash
-   script runs.
+   end used for SVG icon strokes and pale accent text. Emerald is the default
+   and lives on :root so it applies with no JS and before the no-flash script
+   runs.
    ────────────────────────────────────────────────────────────────────────── */
 :root {
   /* Emerald — emerald → cyan → blue (default) */
@@ -336,16 +336,19 @@ html.theme-switching *::after {
   opacity: 1;
 }
 
-/* Hide native cursor on devices with a fine pointer (desktop) where the
-   custom cursor takes over. Touch devices keep their default behavior. */
+/* Hide native cursor on devices with a fine pointer (desktop) where the custom
+   cursor takes over. Touch devices keep their default behavior.
+
+   Gated on [data-cursor-ready], which CustomCursor stamps on <html> once it is
+   mounted and drawing: it loads ssr:false, so an unconditional rule left the
+   pre-hydration window — and any visit where the JS fails or is disabled —
+   with no visible cursor whatsoever. */
 @media (hover: hover) and (pointer: fine) {
-  body {
-    cursor: none;
-  }
-  a,
-  button,
-  [data-cursor-hover],
-  [data-cursor] {
+  [data-cursor-ready] body,
+  [data-cursor-ready] a,
+  [data-cursor-ready] button,
+  [data-cursor-ready] [data-cursor-hover],
+  [data-cursor-ready] [data-cursor] {
     cursor: none;
   }
 }

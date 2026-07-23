@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Nav from "@/components/ui/Nav";
+import SectionMenu, { RESUME_SECTIONS } from "@/components/ui/SectionMenu";
 import Resume from "@/components/sections/Resume";
 
 export const metadata: Metadata = {
@@ -10,9 +11,10 @@ export const metadata: Metadata = {
 
 export default function ResumePage() {
   return (
-    <main className="relative">
+    <main id="main" tabIndex={-1} className="relative">
       <Nav />
       <Resume />
+      <SectionMenu sections={RESUME_SECTIONS} />
     </main>
   );
 }

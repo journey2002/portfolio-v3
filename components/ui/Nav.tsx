@@ -243,7 +243,9 @@ const MenuToggle = forwardRef<
       aria-controls="mobile-nav-panel"
       aria-label={open ? "Close menu" : "Open menu"}
       data-cursor-hover
-      className="relative z-10 ml-3 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-glass ring-1 ring-inset ring-[var(--ring)] transition-colors hover:bg-glass-strong md:hidden"
+      // after:-inset-1 grows the HIT area to 44px while the pill stays a 36px
+      // circle — invisible, no layout shift, just an easier thumb target.
+      className="relative z-10 ml-3 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-glass ring-1 ring-inset ring-[var(--ring)] transition-colors after:absolute after:-inset-1 after:content-[''] hover:bg-glass-strong md:hidden"
     >
       <motion.span
         aria-hidden
@@ -554,6 +556,10 @@ export default function Nav() {
                 <li key={link.href}>
                   <motion.a
                     href={link.href}
+                    // The scroll-spy already tracks the section in view for the
+                    // mobile sheet; the desktop row gets the same flag so it
+                    // isn't the one place assistive tech can't tell where it is.
+                    aria-current={activeSection === link.id ? "true" : undefined}
                     whileTap={{ scale: 0.94 }}
                     transition={{ type: "spring", stiffness: 500, damping: 20 }}
                     className="group/link relative z-10 block whitespace-nowrap rounded-full px-3.5 py-1.5"
