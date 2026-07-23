@@ -25,6 +25,26 @@ const nextConfig = {
         ? { exclude: ["error", "warn"] }
         : false,
   },
+  // Everything under /_next/static is content-hashed and already served
+  // immutable by Next. Files in /public are not, so they default to
+  // `max-age=0, must-revalidate` — a revalidation round trip per asset on
+  // every repeat visit, which for the client screenshots means re-checking
+  // ~3.5 MB. These change only on redeploy, so cache them for a week and let
+  // the CDN serve stale while it refreshes. Names are NOT content-hashed:
+  // rename the file to force an early update.
+  async headers() {
+    return [
+      {
+        source: "/:dir(clients|assets)/:file*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=604800, stale-while-revalidate=2592000",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default withBundleAnalyzer(nextConfig);

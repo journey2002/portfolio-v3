@@ -38,85 +38,79 @@ type ClientSite = {
 };
 
 /* ────────────────────────────────────────────────────────────────────
-   ⚠ PLACEHOLDER DATA — swap for the real client projects.
-   Each entry needs: name, live domain + url, year, services, a brand
-   colour pair and a made-up-until-real `size`. Drop a full-page
-   screenshot into /public/clients and set `image: "/clients/x.jpg"`;
-   until then a generative wireframe cover in the brand colours stands
-   in. First three are the featured artboards, the rest go to the ledger.
+   Live client sites. Drop a full-page screenshot into /public/clients
+   and set `image: "/clients/x.jpg"` to replace the generative cover;
+   until then a wireframe stand-in in the brand colours is used.
+   First two = featured artboards; the rest go to the ledger.
    ──────────────────────────────────────────────────────────────────── */
 const FEATURED: ClientSite[] = [
   {
-    name: "Aurelia Café",
-    domain: "aurelia.cafe",
-    url: "https://aurelia.cafe",
-    year: "2025",
-    services: ["Brand site", "Online menu", "Booking"],
+    name: "JIJI Studio",
+    domain: "jijistudio.fr",
+    url: "https://jijistudio.fr/en",
+    year: "2026",
+    services: ["E-commerce", "Fashion", "Shopify"],
     summary:
-      "Full brand site for a specialty coffee house — menu, story and table booking in one warm, editorial page.",
-    from: "#f59e0b",
-    to: "#ef4444",
-    size: "1440 × 4160",
+      "Shopify build for a Paris ready-to-wear label: bilingual storefront, seasonal lookbooks, and a shopping flow as pared-back as the clothes themselves.",
+    from: "#1c1917",
+    to: "#d6c3a8",
+    size: "1440 × 3990",
+    image: "/clients/jijistudio.jpg",
   },
   {
-    name: "Nara Dental",
-    domain: "naradental.co",
-    url: "https://naradental.co",
-    year: "2024",
-    services: ["UX/UI", "Development", "CMS"],
+    name: "La Maison du Poké Bowl",
+    domain: "lamaisondupokebowl.com",
+    url: "https://www.lamaisondupokebowl.com/en/",
+    year: "2026",
+    services: ["Brand site", "Menu", "Bilingual"],
     summary:
-      "A calm, trust-first clinic site with treatment pages and appointment requests the staff edit themselves.",
-    from: "#22d3ee",
-    to: "#6366f1",
-    size: "1440 × 3480",
-  },
-  {
-    name: "Vela Studio",
-    domain: "velastudio.io",
-    url: "https://velastudio.io",
-    year: "2025",
-    services: ["Portfolio", "Motion", "CMS"],
-    summary:
-      "Photography studio portfolio — huge imagery, smooth motion, and a gallery the studio updates on their own.",
-    from: "#a855f7",
-    to: "#ec4899",
-    size: "1440 × 5020",
+      "Poké bowls with a story — brand site for a Paris restaurant serving seasonal bowls since 2020, with a build-your-own menu in French and English.",
+    from: "#14b8a6",
+    to: "#f97316",
+    size: "1440 × 5024",
+    image: "/clients/pokebowl.jpg",
   },
 ];
 
 const MORE: ClientSite[] = [
   {
-    name: "Horizon Legal",
-    domain: "horizonlegal.co",
-    url: "https://horizonlegal.co",
-    year: "2024",
-    services: ["Corporate", "Bilingual"],
-    summary: "Bilingual corporate site for a boutique law office.",
-    from: "#34d399",
-    to: "#0ea5e9",
-    size: "1440 × 2900",
+    name: "Julia Paris",
+    domain: "juliaparis.fr",
+    url: "https://juliaparis.fr/",
+    year: "2026",
+    services: ["E-commerce", "Brand site", "Shopify"],
+    summary:
+      "A family-run Parisian knitwear house, given a warm editorial storefront where the knits and leather goods do the talking.",
+    from: "#c4a484",
+    to: "#8b5e4b",
+    size: "1440 × 6369",
+    image: "/clients/juliaparis.jpg",
   },
   {
-    name: "Mori Interior",
-    domain: "moriinterior.com",
-    url: "https://moriinterior.com",
-    year: "2023",
-    services: ["Catalogue", "CMS"],
-    summary: "Furniture catalogue with a self-serve product CMS.",
-    from: "#fbbf24",
-    to: "#f97316",
-    size: "1440 × 3300",
+    name: "Olara",
+    domain: "olara.fr",
+    url: "https://olara.fr/en",
+    year: "2026",
+    services: ["E-commerce", "Beauty", "Shopify"],
+    summary:
+      "Parisian parfumerie trading since 1999 — a catalogue of niche and heritage houses, from fragrance to skincare, made easy to wander.",
+    from: "#4a1942",
+    to: "#c9a227",
+    size: "1440 × 5409",
+    image: "/clients/olara.jpg",
   },
   {
-    name: "Trailhead Tours",
-    domain: "trailheadtours.asia",
-    url: "https://trailheadtours.asia",
-    year: "2023",
-    services: ["Booking", "SEO"],
-    summary: "Tour operator site with route pages and trip booking.",
-    from: "#4ade80",
-    to: "#14b8a6",
-    size: "1440 × 3750",
+    name: "Quatre-Quarts",
+    domain: "quatrequarts.fr",
+    url: "https://quatrequarts.fr/",
+    year: "2026",
+    services: ["Brand site", "Coworking"],
+    summary:
+      "A coworking café in central Dijon with a lot under one roof — desks, meeting rooms, domiciliation and events — now with a site to match.",
+    from: "#a16207",
+    to: "#ea580c",
+    size: "1440 × 4680",
+    image: "/clients/quatrequarts.jpg",
   },
 ];
 
@@ -224,21 +218,26 @@ export default function ClientWork() {
           </motion.div>
         </div>
 
-        {/* Featured artboards — three frames staggered on the pasteboard.
-            Hovering one gives it the design-tool selection treatment: accent
-            outline, corner handles, dimension badge, and the page slowly pans
-            inside the frame like it is being scrolled. */}
+        {/* Featured artboards — two equal frames staggered as a mirrored pair:
+            JIJI flush left on row one (cols 1-9), Poké Bowl flush right on row
+            two (cols 4-12). Each is inset three columns on the opposite side,
+            so the offset reads as deliberate rather than as two frames that
+            failed to line up, and Poké Bowl still clears JIJI's whole column
+            (frame, copy and hand note). Hovering one gives it the design-tool
+            selection treatment: accent outline, corner handles, dimension
+            badge, and the page slowly pans inside the frame like it is being
+            scrolled. */}
         <div
           ref={boardRef}
           className="relative mt-14 grid grid-cols-1 gap-y-16 md:grid-cols-12 md:gap-x-6 md:gap-y-0"
         >
-          <div className="relative md:col-span-7">
+          <div className="relative md:col-span-9 md:row-start-1">
             <FeaturedFrame
               site={FEATURED[0]}
               index={0}
               show={boardInView}
               delay={0}
-              aspect="aspect-[4/3]"
+              aspect="aspect-[16/9]"
             />
             {/* Hand note — same handwriting voice as the hero chips; written
                 in after the first frame's page has streamed in. */}
@@ -252,25 +251,15 @@ export default function ClientWork() {
             </span>
           </div>
 
-          <Parallax offset={44} className="md:col-span-5 md:mt-28">
+          <Parallax
+            offset={40}
+            className="md:col-span-9 md:col-start-4 md:row-start-2 md:mt-6"
+          >
             <FeaturedFrame
               site={FEATURED[1]}
               index={1}
               show={boardInView}
               delay={0.15}
-              aspect="aspect-[3/4]"
-            />
-          </Parallax>
-
-          <Parallax
-            offset={24}
-            className="md:col-span-9 md:col-start-4 md:mt-16"
-          >
-            <FeaturedFrame
-              site={FEATURED[2]}
-              index={2}
-              show={boardInView}
-              delay={0.3}
               aspect="aspect-[16/9]"
             />
           </Parallax>
@@ -317,12 +306,15 @@ export default function ClientWork() {
 /* Featured frame — an artboard pinned on the pasteboard               */
 /* ------------------------------------------------------------------ */
 
-// The page pans inside the frame on hover. 100cqh is the artboard's own
-// height (it is a size container), so the travel is exactly coverHeight −
-// frameHeight — the pan always lands on the page's footer, never past it.
-// min() guards covers shorter than the frame (no-op instead of sliding down).
+// The page pans inside the frame on hover, riding all the way down to the
+// site's footer. 100cqh is the artboard's own height (it is a size container),
+// so calc(100cqh − 100%) is exactly coverHeight − frameHeight — the pan lands
+// on the page's end, never past it; min() guards covers shorter than the
+// frame. Linear easing keeps the speed constant the whole way down — an eased
+// curve over a multi-thousand-px travel is what read as a mid-pan speed-up —
+// and the short base duration glides the page back up quickly on mouse-out.
 const PAN =
-  "absolute inset-x-0 top-0 w-full will-change-transform transition-transform duration-[4500ms] ease-[cubic-bezier(0.3,0.4,0.2,1)] mouse:group-hover:translate-y-[min(0px,calc(100cqh-100%))]";
+  "absolute inset-x-0 top-0 w-full will-change-transform transition-transform duration-[1100ms] ease-out mouse:group-hover:duration-[14000ms] mouse:group-hover:ease-linear mouse:group-hover:translate-y-[min(0px,calc(100cqh_-_100%))]";
 
 function FeaturedFrame({
   site,
@@ -369,13 +361,25 @@ function FeaturedFrame({
       </div>
 
       <div className="relative">
-        {/* Artboard — a size container so the pan (see PAN) can measure it. */}
+        {/* Artboard — a size container so the pan (see PAN) can measure it.
+            Square by rule, not by oversight: this is a window onto a real site,
+            and a browser viewport has square corners. Rounding it made it read
+            as "a card containing a website" rather than as the website. Chrome
+            we build (buttons, chips, panels) keeps its radius; the simulated
+            browser UI *inside* these previews keeps its own too, since that's
+            standing in for a site's interface rather than framing it.
+            The two selection rings below overlay this box at inset-0 — they
+            have to stay square with it or they'd ring a sharp shot with a
+            rounded outline. */}
         <div
-          className={`relative overflow-hidden rounded-xl border border-hairline bg-[#0b0b0d] [container-type:size] ${aspect}`}
+          className={`relative overflow-hidden border border-hairline bg-[#0b0b0d] [container-type:size] ${aspect}`}
         >
           {/* The page streams in top-to-bottom while the entrance selection is
               on — clip and scanline share one duration/ease so the line rides
-              exactly on the develop edge. */}
+              exactly on the develop edge. The screenshot below must not carry
+              loading="lazy": this clip keeps it hidden until the reveal runs,
+              so the browser never counts it as visible and never fetches it —
+              the artboard just renders empty. */}
           <motion.div
             className="absolute inset-0"
             initial={reduced ? false : { clipPath: "inset(0% 0% 101% 0%)" }}
@@ -386,7 +390,12 @@ function FeaturedFrame({
           >
             {site.image ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={site.image} alt={`${site.name} — website`} className={PAN} />
+              <img
+                src={site.image}
+                alt={`${site.name} — website`}
+                decoding="async"
+                className={PAN}
+              />
             ) : (
               <SiteCover from={site.from} to={site.to} variant={index} className={PAN} />
             )}
@@ -431,7 +440,7 @@ function FeaturedFrame({
             className="pointer-events-none absolute -inset-px"
           >
             <div
-              className="absolute inset-0 rounded-xl border-[1.5px] border-indigo-accent"
+              className="absolute inset-0 border-[1.5px] border-indigo-accent"
               style={{
                 boxShadow: "0 14px 44px -18px rgb(var(--accent-1) / 0.35)",
               }}
@@ -488,7 +497,7 @@ function FeaturedFrame({
               The shadow itself is static — only the layer's opacity animates —
               so the themed tint never hits the transitioned-var-shadow bug. */}
           <div
-            className="absolute inset-0 rounded-xl border-[1.5px] border-indigo-accent"
+            className="absolute inset-0 border-[1.5px] border-indigo-accent"
             style={{
               boxShadow: "0 14px 44px -18px rgb(var(--accent-1) / 0.35)",
             }}
@@ -596,25 +605,31 @@ function LedgerRow({
           />
         </div>
 
-        {/* Slice peek — a letterboxed slit through to the site, drifting
-            slowly upward while open as if the page were scrolling past the
-            slot. Mouse-only: rows are plain links on touch. */}
+        {/* Peek — a near-artboard-height window onto the site. Opens at the
+            page's top and drifts slowly down while hovered, as if the page
+            were being scrolled. Mouse-only: rows are plain links on touch. */}
         <div
           className="hidden mouse:grid transition-[grid-template-rows] duration-500 ease-out-expo"
           style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
         >
           <div className="overflow-hidden">
-            <div className="relative mb-5 h-20 overflow-hidden rounded-lg border border-hairline bg-[#0b0b0d]">
+            {/* Same viewport rule as the artboard above — square. */}
+            <div className="relative mb-5 h-[30rem] overflow-hidden border border-hairline bg-[#0b0b0d]">
               <div
                 className="absolute inset-x-0 top-0 will-change-transform"
                 style={{
-                  transform: open ? "translateY(-320px)" : "translateY(-60px)",
-                  transition: "transform 7s linear",
+                  transform: open ? "translateY(-520px)" : "translateY(0px)",
+                  transition: "transform 14s linear",
                 }}
               >
                 {site.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={site.image} alt="" className="w-full" />
+                  <img
+                    src={site.image}
+                    alt=""
+                    decoding="async"
+                    className="w-full"
+                  />
                 ) : (
                   <SiteCover from={site.from} to={site.to} variant={number} />
                 )}
