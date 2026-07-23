@@ -221,12 +221,13 @@ export default function PageIntro() {
       aria-hidden
       className="pointer-events-none fixed inset-0 z-[100] overflow-hidden"
     >
-      {/* Empty pasteboard — canvas, dot grid, grain. Present in the server
-          HTML, so a first visit's first paint is this, not the page. Exits
-          with a fade + slight zoom, like the camera pushing into the canvas. */}
+      {/* Empty pasteboard — bare canvas and grain, no dot grid: the grid is
+          the hero's to introduce, and it arrives on the ripple DotGrid fires
+          as this backdrop clears. Present in the server HTML, so a first
+          visit's first paint is this, not the page. */}
       {/* Opacity-only exit: a scale zoom here re-rasters the full-viewport
-          dot-grid + grain textures every frame, right when the hero's
-          entrance needs the frame budget. */}
+          grain texture every frame, right when the hero's entrance needs the
+          frame budget. */}
       <motion.div
         initial={false}
         animate={stage === "open" ? { opacity: 0 } : { opacity: 1 }}
@@ -237,7 +238,6 @@ export default function PageIntro() {
         }}
         className="absolute inset-0 bg-night"
       >
-        <div className="grid-dots absolute inset-0" />
         <div className="noise-overlay absolute inset-0" />
         <p className="absolute inset-x-0 bottom-6 text-center font-mono text-[10px] uppercase tracking-[0.3em] text-ink-faint">
           Worapat Settapak — Portfolio 2026

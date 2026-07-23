@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePointer } from "@/components/ui/PointerProvider";
+import { useIntro } from "@/components/ui/IntroProvider";
 
 type DotGridProps = {
   className?: string;
@@ -35,15 +36,54 @@ const smoothstep = (t: number) => t * t * (3 - 2 * t);
 // crest with a long exponential wake, dying out exactly as it reaches the
 // farthest corner.
 const WAVE_FIRST_DELAY = 2500; // ms until the very first pulse
-const WAVE_CHARGE_MS = 700; // anticipation phase length
-const WAVE_SPEED = 0.6; // ring expansion, px per ms
-const WAVE_FRONT_W = 80; // gaussian sigma of the leading crest, px
-const WAVE_TAIL_W = 260; // exponential wake length behind the crest, px
-const WAVE_AMP = 16; // peak radial displacement at the crest, px
 const WAVE_GATHER = 6; // inward pull during charge, px
 const WAVE_GLOW = 0.9; // crest's max contribution to the accent blend
 const WAVE_PEAK_MIN = 0.55; // dimmest a single pulse's brightness can roll
 const WAVE_PEAK_MAX = 1.25; // brightest a single pulse's brightness can roll
+
+/** Per-pulse shape. Ambient raindrops all share AMBIENT_WAVE; the one-shot
+ *  arrival pulse is the same machinery turned up. */
+type WaveShape = {
+  charge: number; // anticipation phase length, ms
+  speed: number; // ring expansion, px per ms
+  frontW: number; // gaussian sigma of the leading crest, px
+  tailW: number; // exponential wake length behind the crest, px
+  amp: number; // peak radial displacement at the crest, px
+  /** Extra alpha + radius at the crest, on top of the normal accent ceiling —
+   *  the only way to read as brighter once the blend has saturated at 1. */
+  boost: number;
+};
+
+const AMBIENT_WAVE: WaveShape = {
+  charge: 700,
+  speed: 0.6,
+  frontW: 80,
+  tailW: 260,
+  amp: 16,
+  boost: 0,
+};
+
+// ── Arrival pulse ───────────────────────────────────────────────────────────
+// Fires once, from the middle of the field: a wider, faster, brighter version
+// of the ambient raindrop, timed to ride the intro's zoom-out rather than
+// follow it. The delay runs from `introDone`, which PageIntro flips as the
+// selection frame starts expanding (0.85s grow; the backdrop covering the
+// grid fades out by 0.58s). At 380ms the ring is born through the last of
+// that veil — lit enough to read, so the burst is already underway when the
+// grid is handed over — and outruns the frame's fast phase, both clearing the
+// viewport together. No charge phase: the raindrop's anticipatory gather
+// would play out behind an opaque backdrop, so it read as dead air rather
+// than tension.
+const INTRO_WAVE_DELAY = 380;
+const INTRO_WAVE_PEAK = 2.4;
+const INTRO_WAVE: WaveShape = {
+  charge: 0,
+  speed: 1.08,
+  frontW: 120,
+  tailW: 340,
+  amp: 24,
+  boost: 0.55,
+};
 
 type RGBA = { r: number; g: number; b: number; a: number };
 
@@ -61,7 +101,10 @@ type RGBA = { r: number; g: number; b: number; a: number };
  * expanding ring with a sharp leading crest and a long fading wake,
  * dissipating as it reaches the farthest corner. Each pulse also rolls its
  * own peak brightness once, held for its whole lifetime, so some flashes
- * read bold and others barely glimmer.
+ * read bold and others barely glimmer. Once per load — right after the
+ * intro's selection frame finishes expanding away — the same machinery fires
+ * a single wider, brighter pulse from the middle of the field, so the page
+ * arrives on a ripple instead of just being there.
  * CSS backgrounds can't move
  * individual dots, hence the canvas; it replaces BOTH old layers (static
  * `.grid-dots` + masked spotlight copy) so a displaced dot never leaves a
@@ -89,12 +132,28 @@ export default function DotGrid({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointer = usePointer();
   const [active, setActive] = useState(false);
+  const { introDone } = useIntro();
+  // When the arrival pulse is due, as a performance.now() stamp; null once
+  // it has fired. A ref, not state, so arming it never restarts the loop —
+  // and so the draw loop can still find it if the canvas mounts late.
+  const introWaveAt = useRef<number | null>(null);
+  const introArmed = useRef(false);
+  const wake = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!pointer?.enabled) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     setActive(true);
   }, [pointer]);
+
+  useEffect(() => {
+    if (!introDone || introArmed.current) return;
+    introArmed.current = true;
+    introWaveAt.current = performance.now() + INTRO_WAVE_DELAY;
+    // The loop may be parked on a timer aimed at the next ambient pulse —
+    // nudge it so it re-computes against the nearer deadline.
+    wake.current?.();
+  }, [introDone]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -161,9 +220,18 @@ export default function DotGrid({
     // takes ~3.5s against a 10s period). `maxD` is the epicenter→farthest-
     // corner distance: total energy is a smoothstep of remaining life so the
     // ripple reaches zero exactly as the crest exits the canvas.
-    type Wave = { cx: number; cy: number; t0: number; maxD: number; peak: number };
+    type Wave = WaveShape & {
+      cx: number;
+      cy: number;
+      t0: number;
+      maxD: number;
+      peak: number;
+    };
     let wave: Wave | null = null;
     let nextWaveAt = performance.now() + WAVE_FIRST_DELAY;
+    // Epicenter → farthest corner, the distance the ring has to cover.
+    const spanFrom = (cx: number, cy: number) =>
+      Math.hypot(Math.max(cx, cssW - cx), Math.max(cy, cssH - cy));
 
     let rafId: number | null = null;
     let lastT = performance.now();
@@ -176,7 +244,31 @@ export default function DotGrid({
         resolveColors();
       }
 
-      if (t >= nextWaveAt && cssW > 0 && cssH > 0) {
+      const introAt = introWaveAt.current;
+      if (introAt !== null && t >= introAt && cssW > 0 && cssH > 0) {
+        introWaveAt.current = null;
+        // Snapped to the nearest grid dot so the ring leaves the middle
+        // perfectly symmetric rather than half a cell off.
+        const cx = half + Math.round((cssW / 2 - half) / gridSize) * gridSize;
+        const cy = half + Math.round((cssH / 2 - half) / gridSize) * gridSize;
+        wave = {
+          cx,
+          cy,
+          t0: t,
+          maxD: spanFrom(cx, cy),
+          peak: INTRO_WAVE_PEAK,
+          ...INTRO_WAVE,
+        };
+        // Give the arrival its own space — no ambient raindrop on its heels.
+        nextWaveAt = t + wavePeriod;
+      } else if (introAt === null && t >= nextWaveAt && cssW > 0 && cssH > 0) {
+        // `introAt === null` holds the ambient schedule while the arrival is
+        // armed. Both deadlines land around 2.5-3.5s after load — WAVE_FIRST_DELAY
+        // from mount vs `introDone` + INTRO_WAVE_DELAY — so without this gate a
+        // random raindrop fires in the gap and the arrival, sharing the single
+        // `wave` slot, cuts it off mid-flight. That collision is what made the
+        // load-in look mistimed and stuttery, and it landed differently every
+        // reload depending on which deadline won.
         // Random pattern per pulse: half the time a corner sweep (the ring
         // enters from just outside a random corner and crosses the whole
         // field diagonally), half the time a raindrop on a random interior
@@ -196,10 +288,11 @@ export default function DotGrid({
           cx,
           cy,
           t0: t,
-          maxD: Math.hypot(Math.max(cx, cssW - cx), Math.max(cy, cssH - cy)),
+          maxD: spanFrom(cx, cy),
           // Each pulse rolls its own brightness once, held for its whole
           // lifetime — some flashes read bright, some barely glimmer.
           peak: WAVE_PEAK_MIN + Math.random() * (WAVE_PEAK_MAX - WAVE_PEAK_MIN),
+          ...AMBIENT_WAVE,
         };
         nextWaveAt = t + wavePeriod;
       }
@@ -212,10 +305,10 @@ export default function DotGrid({
       let waveEnergy = 0;
       if (wave) {
         const age = t - wave.t0;
-        if (age < WAVE_CHARGE_MS) {
-          chargeT = smoothstep(age / WAVE_CHARGE_MS);
+        if (age < wave.charge) {
+          chargeT = smoothstep(age / wave.charge);
         } else {
-          waveR = (age - WAVE_CHARGE_MS) * WAVE_SPEED;
+          waveR = (age - wave.charge) * wave.speed;
           const life = 1 - waveR / wave.maxD;
           if (life <= 0) {
             wave = null;
@@ -225,6 +318,12 @@ export default function DotGrid({
           }
         }
       }
+      // Shape pulled out of the live pulse once per frame — the dot loop
+      // below runs these thousands of times.
+      const wFrontW = wave ? wave.frontW : AMBIENT_WAVE.frontW;
+      const wTailW = wave ? wave.tailW : AMBIENT_WAVE.tailW;
+      const wAmp = wave ? wave.amp : AMBIENT_WAVE.amp;
+      const wBoost = wave ? wave.boost : 0;
 
       // Fresh rect every frame: parallax + the hero's scroll transform move
       // this element constantly (same per-frame read the old spotlight did).
@@ -295,12 +394,12 @@ export default function DotGrid({
               const dd = wd - waveR;
               const env =
                 dd > 0
-                  ? Math.exp(-(dd * dd) / (2 * WAVE_FRONT_W * WAVE_FRONT_W))
-                  : Math.exp(dd / WAVE_TAIL_W);
+                  ? Math.exp(-(dd * dd) / (2 * wFrontW * wFrontW))
+                  : Math.exp(dd / wTailW);
               waveT = env * waveEnergy;
               waveGlow = waveT * wave.peak;
               if (waveT > 0.004) {
-                const push = WAVE_AMP * waveT;
+                const push = wAmp * waveT;
                 px += (wdx / wd) * push;
                 py += (wdy / wd) * push;
               }
@@ -326,10 +425,21 @@ export default function DotGrid({
             const cr = base.r + (glow.r - base.r) * glowT;
             const cg = base.g + (glow.g - base.g) * glowT;
             const cb = base.b + (glow.b - base.b) * glowT;
-            const ca = base.a + (glow.a - base.a) * glowT;
+            let ca = base.a + (glow.a - base.a) * glowT;
+            // Boosted pulses (the arrival) push past that ceiling: once the
+            // blend saturates at glowT 1 the color can't say "brighter", only
+            // alpha and radius can.
+            const over = wBoost > 0 ? wBoost * Math.min(1, waveGlow) : 0;
+            if (over > 0) ca += (1 - ca) * over;
             ctx.beginPath();
             ctx.fillStyle = `rgba(${cr | 0},${cg | 0},${cb | 0},${ca.toFixed(3)})`;
-            ctx.arc(px, py, baseR + 0.55 * glowT + 0.35 * waveT, 0, TWO_PI);
+            ctx.arc(
+              px,
+              py,
+              baseR + 0.55 * glowT + 0.35 * waveT + 0.6 * over,
+              0,
+              TWO_PI,
+            );
             ctx.fill();
           } else {
             // moveTo before arc() opens a fresh subpath per dot — required so
@@ -351,13 +461,15 @@ export default function DotGrid({
       const pointerSettling =
         Math.abs(tx - sx) > 0.08 || Math.abs(ty - sy) > 0.08;
       const presenceSettling = Math.abs(targetPresence - presence) > 0.002;
-      const waveLive = wave !== null || t >= nextWaveAt - 1;
+      const dueAt = Math.min(nextWaveAt, introWaveAt.current ?? Infinity);
+      const waveLive = wave !== null || t >= dueAt - 1;
       if (pointerSettling || presenceSettling || waveLive) {
         rafId = requestAnimationFrame(draw);
       } else {
         rafId = null;
-        // Wake just before the next ambient pulse so it still fires on time.
-        const delay = Math.max(16, nextWaveAt - performance.now());
+        // Wake just before whichever pulse is due next so it still fires on
+        // time — the arrival one-shot usually beats the ambient cadence.
+        const delay = Math.max(16, dueAt - performance.now());
         waveTimer = window.setTimeout(() => startLoop(), delay);
       }
     };
@@ -381,6 +493,10 @@ export default function DotGrid({
       // After being parked off-screen, don't fire a stale pulse the instant
       // the hero re-enters — give it a beat, then resume the normal cadence.
       if (skipStale && nextWaveAt < lastT) nextWaveAt = lastT + 1500;
+      // Same for the arrival pulse: if the page loaded in a background tab or
+      // out of view, it waits and greets them when they actually get here.
+      if (skipStale && introWaveAt.current !== null && introWaveAt.current < lastT)
+        introWaveAt.current = lastT + 600;
       // Paint synchronously (dt = 0 → rest pose) so the grid is visible from
       // the first frame; draw() self-schedules the rAF loop from there.
       draw(lastT);
@@ -410,6 +526,8 @@ export default function DotGrid({
     // Don't wait for the observer's initial callback (hidden/background tabs
     // can defer it indefinitely) — start now, let IO stop us if off-screen.
     startLoop(true);
+    // Lets the intro effect re-aim a parked timer at the arrival pulse.
+    wake.current = () => startLoop();
 
     // Resume when the pointer moves again after an idle park. Wrapped so the
     // motion value's changed value isn't passed through as `skipStale`.
@@ -431,6 +549,7 @@ export default function DotGrid({
 
     return () => {
       stopLoop();
+      wake.current = null;
       io.disconnect();
       ro.disconnect();
       mo.disconnect();
