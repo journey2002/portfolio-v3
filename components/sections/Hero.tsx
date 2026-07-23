@@ -9,6 +9,7 @@ import {
   useTransform,
 } from "framer-motion";
 import {
+  ArrowDown,
   ArrowUpRight,
   Eye,
   Frame as FrameIcon,
@@ -146,8 +147,18 @@ type GalleryItem = {
   from: string;
   to: string;
   glow: string;
-  /** Absolute position + responsive width (rotation is applied separately). */
+  /**
+   * Absolute position + responsive width (rotation is applied separately).
+   * Rendered inside a md+ wrapper: the base tier is the TABLET anchor
+   * (768-1023, fully on-canvas), the lg: tier the original desktop anchor
+   * (edge-clamped `max(…)` floors that tuck under the frame).
+   */
   className: string;
+  /**
+   * Phone-only mini variant (position + width) for the `md:hidden` wrapper —
+   * omit to keep the card off phones entirely.
+   */
+  mobileClassName?: string;
   /**
    * Extra classes layered on ONLY when the side panels are actually rendered
    * (enabled && xl). Used by chair to pull its right anchor back off the
@@ -158,8 +169,14 @@ type GalleryItem = {
   rotate: number;
   /** Mouse-parallax travel — larger = nearer/faster, for depth layering. */
   strength: number;
-  /** Entrance + float-phase offset (s). */
+  /** Entrance stagger (s). */
   delay: number;
+  /**
+   * Float-bob phase (s), NEGATIVE so the card starts mid-cycle instead of
+   * sitting still until its first frame comes round. Spread across the 5s
+   * keyframe so the four never rise and fall together.
+   */
+  floatDelay: number;
   /**
    * Slide (px) + swivel (deg) when the artboard is hovered. Each vector aims its
    * card at the nearest OPEN viewport corner — clear of the Layers/Inspector
@@ -183,10 +200,18 @@ const GALLERY: GalleryItem[] = [
     from: "#38bdf8",
     to: "#4f46e5",
     glow: "rgba(255,255,255,0.55)",
-    className: "left-[max(-2rem,calc(50%_-_36rem))] top-[24%] w-32 xl:w-40",
+    className:
+      "left-3 top-[24%] w-24 lg:left-[max(-2rem,calc(50%_-_36rem))] lg:w-32 xl:w-40",
+    // Phone minis: only the width — layout comes from the shelf wrapper's
+    // centered flex row (see the phone-minis wrapper in the hero JSX).
+    // Piled/scattered/edge-tucked absolute anchors were all tried and read as
+    // clipping bugs or dropped stickers; a symmetric docked row is the one
+    // arrangement that reads deliberate without the artboard frame.
+    mobileClassName: "w-20",
     rotate: -8,
     strength: 30,
-    delay: 0.5,
+    delay: 0.3,
+    floatDelay: -0.4,
     // Fans to the open top-LEFT corner — up-and-out, clearing the Layers panel
     // that sits mid-height in this gutter (the old x:-104,y:-8 slid it under it).
     pop: { x: -92, y: -56, rotate: -8 },
@@ -205,10 +230,15 @@ const GALLERY: GalleryItem[] = [
     // The +9.5rem drop levels it with chair on the opposite side so the two read
     // as a matched bottom pair, while still clearing the status bar at normal
     // window heights.
-    className: "left-[max(-1.5rem,calc(50%_-_34.5rem))] top-[calc(50%_+_9.5rem)] w-24 xl:w-28",
+    className:
+      "left-4 top-[calc(50%_+_8rem)] w-20 lg:left-[max(-1.5rem,calc(50%_-_34.5rem))] lg:top-[calc(50%_+_9.5rem)] lg:w-24 xl:w-28",
+    // Middle of the shelf — one step larger, so the row reads as a featured
+    // asset flanked by two supports rather than three identical tiles.
+    mobileClassName: "w-24",
     rotate: 7,
     strength: 46,
-    delay: 0.78,
+    delay: 0.46,
+    floatDelay: -3.1,
     // Fans to the open bottom-LEFT corner. This card is the most buried at rest
     // (fully under the frame on a 1280 canvas), so it travels the furthest —
     // dropping clear BELOW the Layers panel rather than sliding under it.
@@ -222,10 +252,13 @@ const GALLERY: GalleryItem[] = [
     from: "#e879f9",
     to: "#7c3aed",
     glow: "rgba(255,255,255,0.5)",
-    className: "right-[max(-2rem,calc(50%_-_35.5rem))] top-[20%] w-28 xl:w-36",
+    className:
+      "right-3 top-[20%] w-24 lg:right-[max(-2rem,calc(50%_-_35.5rem))] lg:w-28 xl:w-36",
+    mobileClassName: "w-20",
     rotate: 9,
     strength: 34,
-    delay: 0.62,
+    delay: 0.38,
+    floatDelay: -1.7,
     // Fans to the open top-RIGHT corner — lifts well above the Inspector panel
     // (which owns the mid-height of this gutter) so it never tucks behind it.
     pop: { x: 92, y: -56, rotate: 7 },
@@ -247,10 +280,12 @@ const GALLERY: GalleryItem[] = [
     // tucks under the frame edge (and, like donut under the Layers panel, partly
     // behind the Inspector at narrow widths — the intended "reference tucked
     // under a panel" look); no width-specific pull-back needed.
-    className: "right-[max(-1.5rem,calc(50%_-_34.5rem))] top-[calc(50%_+_9.5rem)] w-24 xl:w-28",
+    className:
+      "right-4 top-[calc(50%_+_8rem)] w-20 lg:right-[max(-1.5rem,calc(50%_-_34.5rem))] lg:top-[calc(50%_+_9.5rem)] lg:w-24 xl:w-28",
     rotate: -7,
     strength: 24,
-    delay: 0.9,
+    delay: 0.54,
+    floatDelay: -4.2,
     // Fans to the open bottom-RIGHT corner — donut's bottom-left vector flipped.
     // The mostly-diagonal drop clears the frame's right edge AND drops the card
     // BELOW the Inspector's lower corner (the smaller card now fits under it,
@@ -389,9 +424,13 @@ export default function Hero() {
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    // A cancelled gesture (touch interruption, browser takeover) never fires
+    // pointerup, so without this the move listener outlives the drag.
+    window.addEventListener("pointercancel", onUp);
   };
 
   // The big "Frame 01" artboard is itself resizable: dragging a frame corner
@@ -458,9 +497,13 @@ export default function Hero() {
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    // A cancelled gesture (touch interruption, browser takeover) never fires
+    // pointerup, so without this the move listener outlives the drag.
+    window.addEventListener("pointercancel", onUp);
   };
 
   // Hero exits as you scroll — UI chrome fades, the frame content lifts, the
@@ -667,9 +710,13 @@ export default function Hero() {
             className="px-7 py-3.5 text-sm font-semibold text-white"
           >
             View my work
+            {/* Down, not the site-wide up-right: this is an in-page scroll to
+                #work, so ↓ is literally what happens — and it leaves ↗ meaning
+                "go somewhere" everywhere else. Exits downward rather than
+                spinning away, so the gesture keeps pointing the same way out. */}
             <span className="relative inline-flex h-4 w-4 items-center justify-center">
-              <ArrowUpRight
-                className="absolute h-4 w-4 transition-all duration-300 group-hover:rotate-45 group-hover:scale-50 group-hover:opacity-0"
+              <ArrowDown
+                className="absolute h-4 w-4 transition-all duration-300 group-hover:translate-y-1 group-hover:scale-50 group-hover:opacity-0"
                 strokeWidth={2}
               />
               <Eye
@@ -697,11 +744,13 @@ export default function Hero() {
     <section
       id="top"
       ref={sectionRef}
-      // Mobile hugs the content: pt clears the fixed nav pill, pb leaves room
-      // for the absolute status bar. The full-viewport "design canvas" stage
-      // only starts at md — on a tall phone it just parked the card between
-      // two big voids.
-      className="relative flex items-center justify-center overflow-hidden px-6 pb-24 pt-28 sm:px-10 md:min-h-[100svh] md:py-16"
+      // Full-viewport at every width. svh, not dvh: dvh resizes live when the
+      // iOS URL bar collapses, which would jolt the per-frame heroProgress read
+      // (-rect.top / rect.height) mid-scroll. The asymmetric mobile padding
+      // (pb much heavier than pt) lifts the flex-centred text block well above
+      // viewport centre — the void under the nav pill reads worse than one
+      // above the asset shelf, which fills the freed bottom band.
+      className="relative flex min-h-[100svh] items-center justify-center overflow-hidden px-6 pb-48 pt-24 sm:px-10 md:py-16"
     >
       {/* ── Background: dot grid (cursor glow + repel), aurora, accents, dust ──── */}
       <motion.div style={{ y: gridY }} className="absolute inset-0">
@@ -744,7 +793,7 @@ export default function Hero() {
              now; swap real images into GALLERY[].src later. Non-interactive, and
              MUST render below the frame (no z → default, under the z-10 artboard)
              so the frosted panel veils the tucked halves. Fades out with the
-             frame on scroll. Hidden below md so it never crowds the phone layout. */}
+             frame on scroll. Below md the phone wrapper underneath takes over. */}
       <motion.div
         aria-hidden
         style={{ opacity: exitOpacity }}
@@ -756,6 +805,32 @@ export default function Hero() {
             item={item}
             frameHovered={frameHover}
             enabled={enabled}
+          />
+        ))}
+      </motion.div>
+
+      {/* Phone minis — the three artworks docked as a centered "asset shelf"
+          row floating above the status bar, so the design-canvas personality
+          survives without the artboard frame. A flex row (cards are relative,
+          not absolute — see GalleryCard's mini branch) because symmetric even
+          spacing is what makes decor read deliberate at this size; absolute
+          scatters/piles read as clipping bugs. Static by design — entrance
+          slide + float bob run, hover pop never fires on touch. The compound
+          media gate (phone width AND ≥680px of height) keeps the shelf off
+          short/landscape viewports where the text stack needs the room; its
+          bottom-20 also keeps card bottoms above the SectionMenu FABs' tops. */}
+      <motion.div
+        aria-hidden
+        style={{ opacity: exitOpacity }}
+        className="pointer-events-none absolute inset-x-0 bottom-20 hidden items-end justify-center gap-5 [@media(min-height:680px)_and_(max-width:767.98px)]:flex"
+      >
+        {GALLERY.filter((item) => item.mobileClassName).map((item) => (
+          <GalleryCard
+            key={item.id}
+            item={item}
+            frameHovered={false}
+            enabled={false}
+            mini
           />
         ))}
       </motion.div>
@@ -902,6 +977,9 @@ export default function Hero() {
         initial={{ opacity: 0, y: 20 }}
         animate={introDone ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
         transition={{ duration: 0.8, delay: 1.6, ease: EASE }}
+        // Glass extends under the iOS home indicator (env = 0 elsewhere)
+        // instead of the indicator overlaying the marquee.
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         className="border-t border-hairline bg-panel backdrop-blur"
        >
         <div className="flex h-10 items-center justify-between gap-4 pl-2 pr-3 sm:h-11">
@@ -1021,6 +1099,7 @@ function GalleryCard({
   item,
   frameHovered,
   enabled,
+  mini = false,
 }: {
   item: GalleryItem;
   frameHovered: boolean;
@@ -1030,20 +1109,39 @@ function GalleryCard({
    * where the Inspector actually shows, so this only needs the `enabled` half.
    */
   enabled: boolean;
+  /** Phone shelf variant: in-flow (flex row), half tilt, grounded color spill. */
+  mini?: boolean;
 }) {
   const { introDone } = useIntro();
   // Entrance start pose: pushed the OPPOSITE way to the pop — i.e. deeper under
   // the artboard — so on load each card slides out from beneath the glass.
-  const inX = item.pop.x * -0.6;
-  const inY = item.pop.y * -0.6;
+  const inX = item.pop.x * -0.4;
+  const inY = item.pop.y * -0.4;
 
   return (
     <div
-      className={`absolute ${item.className}${
-        enabled && item.panelClassName ? ` ${item.panelClassName}` : ""
-      }`}
-      style={{ rotate: `${item.rotate}deg` }}
+      className={
+        mini
+          ? `relative ${item.mobileClassName}`
+          : `absolute ${item.className}${
+              enabled && item.panelClassName ? ` ${item.panelClassName}` : ""
+            }`
+      }
+      // Half tilt on the shelf: the full scatter angles look tossed, the
+      // docked row wants only a hint of hand-placement.
+      style={{ rotate: `${mini ? item.rotate * 0.5 : item.rotate}deg` }}
     >
+      {/* Colour spill onto the canvas under the shelf card — dark drop-shadows
+          vanish on the near-black bg, so the card's own gradient is what
+          grounds it. Sits outside the float-bob layer on purpose: light stays
+          put while the card breathes. */}
+      {mini && (
+        <span
+          aria-hidden
+          className="absolute -bottom-3 inset-x-1 h-6 rounded-full opacity-40 blur-md"
+          style={{ background: item.from }}
+        />
+      )}
       <MouseParallax strength={item.strength}>
         <motion.div
           initial={{ opacity: 0, x: inX, y: inY, scale: 0.96 }}
@@ -1052,7 +1150,7 @@ function GalleryCard({
               ? { opacity: 1, x: 0, y: 0, scale: 1 }
               : { opacity: 0, x: inX, y: inY, scale: 0.96 }
           }
-          transition={{ duration: 1, delay: item.delay, ease: EASE }}
+          transition={{ duration: 0.7, delay: item.delay, ease: EASE }}
         >
           <motion.div
             animate={
@@ -1078,7 +1176,7 @@ function GalleryCard({
           >
             <div
               className="animate-float-card overflow-hidden rounded-2xl border border-white/[0.12] shadow-[0_28px_55px_-24px_rgba(0,0,0,0.75)]"
-              style={{ animationDelay: `${item.delay}s`, aspectRatio: "3 / 4" }}
+              style={{ animationDelay: `${item.floatDelay}s`, aspectRatio: "3 / 4" }}
             >
               {item.src ? (
                 // eslint-disable-next-line @next/next/no-img-element

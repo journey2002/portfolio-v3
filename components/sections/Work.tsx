@@ -299,7 +299,10 @@ function IndexView({
       {PROJECTS.map((p, i) => {
         const isActive = enabled && hovered === i;
         const dim = enabled && hovered !== null && hovered !== i;
-        const isOpen = !enabled && open === i;
+        // Was gated to touch. The expanded panel is the only way to read a
+        // project's description, so it has to answer to click and keyboard on
+        // every device — on desktop the cursor-flown preview rides alongside.
+        const isOpen = open === i;
         const lit = isActive || isOpen;
 
         return (
@@ -311,7 +314,6 @@ function IndexView({
             <motion.div
               data-cursor-hover
               onMouseEnter={enabled ? () => setHovered(i) : undefined}
-              onClick={enabled ? undefined : () => setOpen(isOpen ? null : i)}
               animate={{ opacity: dim ? 0.32 : 1 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
               className="group relative flex cursor-pointer items-center gap-4 py-6 sm:gap-6 sm:py-8"
@@ -351,7 +353,20 @@ function IndexView({
                       : undefined
                   }
                 >
-                  {p.title}
+                  {/* The trigger lives INSIDE the heading and stretches its hit
+                      area over the whole row: the row stays clickable exactly
+                      as it looks, while the accessible name is just the project
+                      title and the h3 survives as a real heading (a role=button
+                      wrapper would have flattened both). */}
+                  <button
+                    type="button"
+                    aria-expanded={isOpen}
+                    aria-controls={`work-panel-${i}`}
+                    onClick={() => setOpen(isOpen ? null : i)}
+                    className="text-left outline-none after:absolute after:inset-0 after:rounded-sm after:content-[''] focus-visible:after:ring-1 focus-visible:after:ring-inset focus-visible:after:ring-indigo-accent"
+                  >
+                    {p.title}
+                  </button>
                 </motion.h3>
                 <motion.div
                   animate={{ x: isActive ? 16 : 0 }}
@@ -391,11 +406,12 @@ function IndexView({
               />
             </motion.div>
 
-            {/* Touch fallback — tapping a row expands the cover + details */}
+            {/* Expanded record — the open row's cover + full description */}
             <AnimatePresence initial={false}>
               {isOpen && (
                 <motion.div
                   key="panel"
+                  id={`work-panel-${i}`}
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
@@ -733,11 +749,13 @@ const GALLERY_TEMPLATES = [
 function GalleryView({ show }: { show: boolean }) {
   const [hovered, setHovered] = useState<number | null>(null);
   // The expanding template only applies once the bento is actually side-by-side
-  // (md+ — at 640-767px the 6-col template pinched the side tiles to ~90px
-  // columns). On a single-column stack there's nothing to redistribute.
+  // (lg+ — below that the 6-col template pinched the side tiles: ~90px columns
+  // at 640-767, and the fixed 620px height crammed a portrait tablet at
+  // 768-1023). On a single-column stack there's nothing to redistribute, and
+  // the hover-driven expansion is mouse-only anyway.
   const [isWide, setIsWide] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
+    const mq = window.matchMedia("(min-width: 1024px)");
     const update = () => setIsWide(mq.matches);
     update(); // sync the real value on mount (avoids a missed-change race)
     mq.addEventListener("change", update);
@@ -786,7 +804,7 @@ function GalleryView({ show }: { show: boolean }) {
             <div
               data-cursor-hover
               style={{ opacity: dim ? 0.5 : 1 }}
-              className="relative h-full min-h-[300px] overflow-hidden rounded-2xl border border-hairline transition-[border-color,opacity] duration-500 ease-out-expo group-hover:border-white/25 md:min-h-0"
+              className="relative h-full min-h-[300px] overflow-hidden rounded-2xl border border-hairline transition-[border-color,opacity] duration-500 ease-out-expo group-hover:border-white/25 lg:min-h-0"
             >
               {/* Cover slowly drifts in scale as the tile grows */}
               <div className="absolute inset-0 transition-transform duration-[1200ms] ease-out-expo group-hover:scale-[1.07]">
@@ -809,12 +827,15 @@ function GalleryView({ show }: { show: boolean }) {
                     <h3 className="mt-2 font-serif text-2xl font-semibold text-white sm:text-3xl">
                       {p.title}
                     </h3>
-                    {/* Description fades/expands in only on the focused tile */}
+                    {/* Description expands on the focused tile. Only the wide
+                        bento hides it at rest — the stacked layout has room,
+                        and hover never fires there, so gating on hover alone
+                        made the copy unreachable on touch. */}
                     <div
                       className="grid transition-all duration-500 ease-out-expo"
                       style={{
-                        gridTemplateRows: hovered === i ? "1fr" : "0fr",
-                        opacity: hovered === i ? 1 : 0,
+                        gridTemplateRows: !isWide || hovered === i ? "1fr" : "0fr",
+                        opacity: !isWide || hovered === i ? 1 : 0,
                       }}
                     >
                       <p className="overflow-hidden text-sm leading-relaxed text-neutral-300/90">

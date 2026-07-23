@@ -8,7 +8,7 @@ import {
   useMotionValue,
   type MotionValue,
 } from "framer-motion";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   useAccent,
   ACCENT_PRIMARY,
@@ -42,6 +42,12 @@ type ReflectiveGlyphProps = {
    */
   revealProgress?: MotionValue<number>;
   /**
+   * Optional separate progress that drives the light-pass. Defaults to
+   * `progress`. Prefer an entry-based signal for tall sections so the glint
+   * still crosses while the numeral is on screen.
+   */
+  sheenProgress?: MotionValue<number>;
+  /**
    * Progress window over which the light-pass sweeps across. Paired with a
    * travel span that barely overshoots the glyph, so nearly all of the window
    * is spent visibly crossing it — stretching the window slows the pass.
@@ -56,7 +62,7 @@ type ReflectiveGlyphProps = {
  *   2. flood  — the lit stroke revealed bottom-up (white → accent), a clean
  *               line with no glow of its own
  *   3. crest  — a near-white scan line tracing the rising waterline
- *   4. sheen  — a wide screen-blended light streak with a white-hot bloom
+ *   4. sheen  — a wide near-white light streak with a white-hot bloom
  *               (the only glowing layer), swept across *after* the tube is
  *               fully lit
  *
@@ -68,11 +74,13 @@ export function ReflectiveGlyph({
   progress,
   revealRange,
   revealProgress,
+  sheenProgress,
   sheenRange = [0.03, 0.55],
 }: ReflectiveGlyphProps) {
-  // The flood can track a different progress than the sheen (e.g. the section's
-  // entry into view rather than its full scroll-through).
+  // Flood and sheen can each track a different progress than the base (e.g.
+  // entry into view rather than the section's full scroll-through).
   const floodProgress = revealProgress ?? progress;
+  const lightProgress = sheenProgress ?? progress;
 
   // With a reveal window the waterline retreats 102% → -18% across it; without
   // one the glyph stays full and only the sheen moves. The overshoot past
@@ -118,12 +126,11 @@ export function ReflectiveGlyph({
 
   // Light-pass — only the mask position animates; the band shape is static and
   // the highlight is gated to the revealed area via the same waterline clip.
-  // Runs on the full scroll-through so it starts moving as soon as the section
-  // does; the early reveal (see SectionLabel) has the tube lit before the hot
-  // core of the band crosses it. Travel (130% → -30%) just clears the glyph on
-  // each side — pairing that short span with the long sheenRange window is
-  // what makes the pass move slowly instead of flashing through.
-  const sheenPos = useTransform(progress, sheenRange, [
+  // SectionLabel drives this from entry progress so tall sections (Work) still
+  // get the glint while the numeral is on screen. Travel (130% → -30%) just
+  // clears the glyph on each side — pairing that short span with the sheenRange
+  // window is what makes the pass move slowly instead of flashing through.
+  const sheenPos = useTransform(lightProgress, sheenRange, [
     "130% 130%",
     "-30% -30%",
   ]);
@@ -172,33 +179,49 @@ export function ReflectiveGlyph({
       </motion.span>
 
       {/* Light-pass — a wide specular streak with a white-hot core that sweeps
-          across the lit tube, screen-blended and bloomed so it reads as a
-          reflection travelling over glass. */}
+          across the lit tube, bloomed so it reads as a reflection travelling
+          over glass. Mobile Safari/Chrome refuse to composite clip-path + mask
+          + filter + blend stacked on ONE element (the layer simply doesn't
+          paint), so each effect gets its own box: outer = waterline clip,
+          middle = bloom filter, inner = band mask on the stroke. The screen
+          blend is dropped rather than re-homed — a 0.95-alpha white stroke
+          over the lit accent stroke reads the same under normal compositing,
+          and blend was the least mobile-safe piece of the stack. */}
       <motion.span
         className="absolute inset-0 block"
-        style={{
-          clipPath: floodClip,
-          WebkitClipPath: floodClip,
-          WebkitTextStrokeWidth: "3.5px",
-          WebkitTextStrokeColor: "rgba(255,255,255,0.95)",
-          color: "transparent",
-          mixBlendMode: "screen",
-          filter: sheenGlow,
-          maskImage: SHEEN_BAND,
-          WebkitMaskImage: SHEEN_BAND,
-          maskSize: "250% 250%",
-          WebkitMaskSize: "250% 250%",
-          maskRepeat: "no-repeat",
-          WebkitMaskRepeat: "no-repeat",
-          maskPosition: sheenPos,
-          WebkitMaskPosition: sheenPos,
-        }}
+        style={{ clipPath: floodClip, WebkitClipPath: floodClip }}
       >
-        {text}
+        <span className="block" style={{ filter: sheenGlow }}>
+          <motion.span
+            className="block"
+            style={{
+              WebkitTextStrokeWidth: "3.5px",
+              WebkitTextStrokeColor: "rgba(255,255,255,0.95)",
+              color: "transparent",
+              maskImage: SHEEN_BAND,
+              WebkitMaskImage: SHEEN_BAND,
+              maskSize: "250% 250%",
+              WebkitMaskSize: "250% 250%",
+              maskRepeat: "no-repeat",
+              WebkitMaskRepeat: "no-repeat",
+              maskPosition: sheenPos,
+              WebkitMaskPosition: sheenPos,
+            }}
+          >
+            {text}
+          </motion.span>
+        </span>
       </motion.span>
     </span>
   );
 }
+
+// Numeral fade-in is still keyed to full scroll-through, so on a very tall
+// section (Work ~5 viewports) the 0→1 opacity ramp would finish long after
+// the mark is on screen. Past this window length the fade is compressed;
+// shorter sections divide out to 1 and keep their original timing. (Sheen no
+// longer needs this — it rides entry progress, one viewport of travel.)
+const TIMING_REFERENCE_WINDOW = 3.5;
 
 type SectionLabelProps = {
   /** Section index, shown as a giant outlined numeral. */
@@ -239,11 +262,30 @@ export default function SectionLabel({
     offset: ["start end", "start start"],
   });
 
+  // 1 for every section short enough to animate correctly on its own, and below
+  // 1 only for the outliers tall enough to stall (see TIMING_REFERENCE_WINDOW).
+  // This box is `inset-0` on its section, so its own height is the section's.
+  const [timingScale, setTimingScale] = useState(1);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const vh = window.innerHeight;
+      if (!vh) return;
+      const span = el.offsetHeight + vh;
+      setTimingScale(Math.min(1, (TIMING_REFERENCE_WINDOW * vh) / span));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Numeral drifts upward as you scroll through the section.
   const numeralY = useTransform(scrollYProgress, [0, 1], ["12%", "-32%"]);
   const numeralOpacity = useTransform(
     scrollYProgress,
-    [0, 0.18, 0.82, 1],
+    [0, 0.18 * timingScale, 0.82, 1],
     [0, 1, 1, 0]
   );
 
@@ -275,14 +317,20 @@ export default function SectionLabel({
           align === "left" ? "-left-[0.04em]" : "-right-[0.04em]"
         } ${numeralSize}`}
       >
-        {/* Reveal tops off early (0.68 of the entry) so the tube is already
-            fully lit when the light-pass's hot core crosses it low on the
-            screen — the glint reads over a lit stroke, not an empty ghost. */}
+        {/* Reveal tops off early (0.68 of entry) so the tube is already lit
+            when the light-pass crosses. Sheen is also entry-driven: full
+            scroll-through progress stretched Work's glint so late the numeral
+            had already left the frame. Entry progress is one viewport of
+            travel regardless of section height, so the reflection lands while
+            "02" is still the focal mark. Window starts mid-flood so the hot
+            core rides a mostly-lit stroke. */}
         <ReflectiveGlyph
           text={index}
           progress={scrollYProgress}
           revealProgress={entryProgress}
           revealRange={[0.1, 0.68]}
+          sheenProgress={entryProgress}
+          sheenRange={[0.38, 0.92]}
         />
       </motion.span>
 

@@ -594,7 +594,7 @@ export default function Stack() {
             initial={{ opacity: 0 }}
             animate={headingInView ? { opacity: 1 } : {}}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="col-span-12 hidden text-right text-[10px] uppercase tracking-[0.35em] text-ink-faint sm:col-span-4 sm:block"
+            className="col-span-12 text-[10px] uppercase tracking-[0.35em] text-ink-faint sm:col-span-4 sm:text-right"
           >
             ↳ 09 tools · 03 disciplines
           </motion.div>
@@ -607,48 +607,63 @@ export default function Stack() {
           container stays put so both fades stay welded to the visible edges.
           Entrance: the whole strip (borders included) WIPES open left-to-right
           like a length of tape unrolled across the canvas — the clip window
-          opens over the already-moving ticker, so it enters mid-glide. */}
+          opens over the already-moving ticker, so it enters mid-glide.
+
+          The wipe needs an outer sentinel it does not clip: Chromium folds an
+          element's OWN clip-path into the intersection rect it reports, so a
+          `whileInView` sitting on the clipped element starts at zero area,
+          never reads as intersecting, and never opens — the strip stays
+          invisible forever. Keeping the viewport trigger on an unclipped
+          parent and driving the clip through variants breaks that deadlock. */}
       <motion.div
-        ref={marqueeHoverRef}
-        initial={{ clipPath: "inset(0% 100% 0% 0%)" }}
-        whileInView={{ clipPath: "inset(0% 0% 0% 0%)" }}
+        initial="closed"
+        whileInView="open"
         viewport={{ once: true, margin: "-10%" }}
-        transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
-        className="relative mt-16 flex overflow-hidden border-y border-hairline py-8"
+        className="relative mt-16"
       >
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-40 bg-gradient-to-r from-night via-night/80 to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-40 bg-gradient-to-l from-night via-night/80 to-transparent" />
         <motion.div
-          style={{ skewX: skew, x: marqueeX }}
-          className="flex w-full origin-center"
+          ref={marqueeHoverRef}
+          variants={{
+            closed: { clipPath: "inset(0% 100% 0% 0%)" },
+            open: { clipPath: "inset(0% 0% 0% 0%)" },
+          }}
+          transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+          className="relative flex overflow-hidden border-y border-hairline py-8"
         >
-          <div className="animate-marquee flex shrink-0 items-center">
-            <div className="flex shrink-0 items-center gap-14 pr-14">
-              {TICKER.map((item) => (
-                <span
-                  key={item}
-                  className="inline-flex shrink-0 items-center gap-14 font-serif text-3xl font-medium text-ink-faint transition-colors duration-200 hover:text-ink-strong sm:text-4xl md:text-5xl"
-                >
-                  {item}
-                  <span className="h-1.5 w-1.5 rotate-45 bg-accent-gradient" />
-                </span>
-              ))}
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-40 bg-gradient-to-r from-night via-night/80 to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-40 bg-gradient-to-l from-night via-night/80 to-transparent" />
+          <motion.div
+            style={{ skewX: skew, x: marqueeX }}
+            className="flex w-full origin-center"
+          >
+            <div className="animate-marquee flex shrink-0 items-center">
+              <div className="flex shrink-0 items-center gap-14 pr-14">
+                {TICKER.map((item) => (
+                  <span
+                    key={item}
+                    className="inline-flex shrink-0 items-center gap-14 font-serif text-3xl font-medium text-ink-faint transition-colors duration-200 hover:text-ink-strong sm:text-4xl md:text-5xl"
+                  >
+                    {item}
+                    <span className="h-1.5 w-1.5 rotate-45 bg-accent-gradient" />
+                  </span>
+                ))}
+              </div>
+              <div
+                aria-hidden
+                className="flex shrink-0 items-center gap-14 pr-14"
+              >
+                {TICKER.map((item) => (
+                  <span
+                    key={`${item}-dup`}
+                    className="inline-flex shrink-0 items-center gap-14 font-serif text-3xl font-medium text-ink-faint transition-colors duration-200 hover:text-ink-strong sm:text-4xl md:text-5xl"
+                  >
+                    {item}
+                    <span className="h-1.5 w-1.5 rotate-45 bg-accent-gradient" />
+                  </span>
+                ))}
+              </div>
             </div>
-            <div
-              aria-hidden
-              className="flex shrink-0 items-center gap-14 pr-14"
-            >
-              {TICKER.map((item) => (
-                <span
-                  key={`${item}-dup`}
-                  className="inline-flex shrink-0 items-center gap-14 font-serif text-3xl font-medium text-ink-faint transition-colors duration-200 hover:text-ink-strong sm:text-4xl md:text-5xl"
-                >
-                  {item}
-                  <span className="h-1.5 w-1.5 rotate-45 bg-accent-gradient" />
-                </span>
-              ))}
-            </div>
-          </div>
+          </motion.div>
         </motion.div>
       </motion.div>
 

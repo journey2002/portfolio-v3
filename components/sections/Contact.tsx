@@ -274,7 +274,9 @@ export default function Contact() {
 
         {/* Heading — the sign-off gets the same marquee-selection reveal as
             every section headline, at its biggest scale. */}
-        <h2 className="mt-8 font-serif text-5xl font-bold leading-[1.02] text-ink-strong sm:text-7xl md:text-8xl">
+        {/* text-8xl waits for lg: at 768-1023 a 96px "something good." nearly
+            filled the content column and wrapped ugly. */}
+        <h2 className="mt-8 font-serif text-5xl font-bold leading-[1.02] text-ink-strong sm:text-7xl lg:text-8xl">
           <RevealLine>
             <SplitText text="Let's make" as="span" className="block" />
           </RevealLine>
@@ -302,7 +304,7 @@ export default function Contact() {
               Reach me at
             </motion.p>
             <motion.a
-              href="mailto:Worapat2002@gmail.com"
+              href="mailto:worapat2002@gmail.com"
               data-cursor-hover
               initial={{ opacity: 0, y: 20 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
@@ -313,7 +315,7 @@ export default function Contact() {
               }}
               className="group mt-3 inline-flex items-baseline gap-3 text-2xl text-ink transition-colors duration-200 hover:text-ink-strong sm:text-3xl"
             >
-              <span className="underline-wipe">Worapat2002@gmail.com</span>
+              <span className="underline-wipe">worapat2002@gmail.com</span>
               <ArrowUpRight
                 className="h-5 w-5 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
                 strokeWidth={2}
@@ -419,7 +421,7 @@ export default function Contact() {
           size the CSS stroke has no antialiasing, so its 1px outline stair-steps
           and breaks into blocky, disconnected segments — a jagged "lego" edge.
           An SVG stroke is vector-antialiased, so the outline stays one smooth,
-          continuous line. viewBox (1143×108) matches the text's aspect at font
+          continuous line. viewBox (439×108) matches the text's aspect at font
           100, so `h-[30vw] w-auto` reproduces the previous 28vw glyph size and
           the % parallax still sweeps over the same distance. `non-scaling-stroke`
           keeps the hairline a true device pixel regardless of the viewBox scale. */}
