@@ -46,27 +46,37 @@ type TimelineItem = {
 
 const EXPERIENCE: TimelineItem[] = [
   {
-    date: "July 2025 — Present",
-    location: "Bangkok, TH · Hybrid",
-    headline: "GO SG Consulting",
-    subhead: "UX/UI Designer",
+    date: "Mar 2023 — Present",
+    location: "Bangkok, TH · Remote",
+    headline: "Freelance & Commission",
+    subhead: "Application & UX Designer · Independent",
     bullets: [
-      "Own client website redesigns end-to-end, pairing conversion-focused UX with the SEO team's content strategy.",
-      "Design client websites and landing pages end-to-end, from wireframes and interactive prototypes through to developer handoff.",
-      "Partner with SEO and marketing specialists to translate campaign strategy into on-brand ad and social creatives.",
-      "Build per-client design systems and brand guidelines that keep visuals consistent and cut rework across concurrent projects.",
-      "Iterate on layouts and user flows using client feedback and traffic analytics, sharpening usability and conversion with each release.",
+      "Take full ownership of web and mobile products — from initial concepts through to final handoff.",
+      "Move quickly from sketch to working prototype, using Figma, Photoshop or Sketch depending on what the project needs.",
+      "Build accessible, responsive layouts by default — not as an afterthought.",
     ],
   },
   {
-    date: "June 2023 — May 2024",
-    location: "Bangkok, TH",
-    headline: "Applicad Public Company Limited",
-    subhead: "3D and General Designer",
+    date: "Nov 2025 — Jul 2026",
+    location: "Bangkok, TH · Hybrid",
+    headline: "G.O. SG Consulting Pte. Ltd.",
+    subhead: "UX/UI Designer",
     bullets: [
-      "Created precise 3D models and prototypes for interactive experiences.",
-      "Presented design concepts to clients, translating complex ideas into clear visuals.",
-      "Optimised 3D printing workflows for faster, more accurate prototyping.",
+      "Redesigned an SME client's website around the SEO team's content strategy, and its click-through rate climbed.",
+      "Owned client websites and landing pages from start to finish — from wireframes to developer handoff.",
+      "Maintained a design system for each client, so visuals stayed consistent and there was less rework across projects.",
+      "Wove AI tools into the daily workflow — ideation, copy variants, research digests — so more of my time went to design.",
+    ],
+  },
+  {
+    date: "Jun 2023 — May 2024",
+    location: "Bangkok, TH",
+    headline: "Applicad Public Co., Ltd.",
+    subhead: "3D & General Designer · Internship",
+    bullets: [
+      "Created precise 3D prototypes daily, applying the spatial thinking developed in 3D work to interaction design.",
+      "Translated complex technical concepts into clear visuals for clients during in-person discussions.",
+      "Optimised 3D-printing workflows until they ran efficiently; that iterative approach carried directly into my UX process.",
     ],
   },
 ];
@@ -75,12 +85,13 @@ const EDUCATION: TimelineItem[] = [
   {
     date: "Jul 2020 — Mar 2024",
     location: "Bangkok, TH",
-    headline: "Thai-Nichi International College",
-    subhead: "Bachelor of Digital Engineering",
+    headline: "Thai-Nichi Institute of Technology",
+    subhead: "B.Eng · Digital Engineering",
     bullets: [
-      "Recognised for excellence in UX/UI web design (HTML & CSS) during the Human–Computer Interaction (HCI) program.",
-      "Received awards in a competitive 3D design contest.",
-      "Engaged in the international project-based learning program on Solutions for Social Problems and Demands alongside students at the Osaka Institute of Technology.",
+      "Studied machine learning and algorithms as part of the Digital Engineering curriculum.",
+      "Recognised for excellence in UX/UI web design (HTML & CSS) within the Human–Computer Interaction (HCI) program.",
+      "Awarded in a competitive 3D design contest — judged on creativity, technical depth and problem-solving.",
+      "Joined the international project-based learning program on Solutions for Social Problems and Demands alongside students at the Osaka Institute of Technology.",
     ],
   },
   {
@@ -89,32 +100,32 @@ const EDUCATION: TimelineItem[] = [
     headline: "Rosehill College",
     subhead: "High School Diploma · Digital Arts",
     bullets: [
-      "Received two excellence awards in Art Design.",
+      "Earned two Art & Design excellence awards.",
     ],
   },
 ];
 
-const TECHNICAL_SKILLS = [
-  "Interaction Design",
-  "Design Thinking",
-  "Web Design",
-  "Wireframing",
+// Skills mirror the CV's three groupings: what I do, what I work in, how I
+// work. Capabilities leads (it spans both columns), toolkit and methods sit
+// side by side underneath.
+const CAPABILITIES = [
   "Prototyping",
-  "HTML / CSS",
-  "Digital Art",
+  "Interaction Design",
+  "Wireframing",
   "Graphic Design",
-  "3D Art (Blender)",
-  "Animation",
-  "CAD",
-  "Agile Methodologies",
+  "HTML / CSS",
+  "3D Art / CAD",
+  "Accessibility",
+  "AI-Accelerated Workflow",
 ];
 
-const SOFT_SKILLS = [
-  "Creativity",
-  "Attention to Detail",
-  "Communication",
-  "Teamwork",
-  "Time Management",
+const TOOLKIT = ["Figma", "Framer", "Blender / CAD", "Photoshop"];
+
+const METHODS = [
+  "Agile methodology",
+  "Lean UX",
+  "User research & usability testing",
+  "Design systems",
 ];
 
 const PROFILE = [
@@ -128,10 +139,14 @@ const PROFILE = [
   {
     icon: Mail,
     label: "Email",
-    value: "Worapat2002@gmail.com",
-    href: "mailto:Worapat2002@gmail.com",
+    value: "worapat2002@gmail.com",
+    href: "mailto:worapat2002@gmail.com",
   },
-  { icon: Briefcase, label: "Currently", value: "UX/UI Designer" },
+  {
+    icon: Briefcase,
+    label: "Currently",
+    value: "Open to UX/UI design roles",
+  },
 ];
 
 // Quick-fire stats — the "by the numbers" strip below the profile bar.
@@ -153,7 +168,7 @@ const STATS: Stat[] = [
   { number: 3, suffix: "+", pad: true, label: "Years designing", note: "Since 2023", highlight: true },
   { number: 4, pad: true, label: "Awards won", note: "Art · 3D · HCI" },
   { value: "TH·EN", label: "Languages", note: "Plus a little JP ✱" },
-  { value: "∞", label: "Doodles drawn", note: "Mostly mecha cats" },
+  { value: "∞", label: "Ctrl+Z pressed", note: "Undo is a lifestyle" },
 ];
 
 // Achievements pulled directly from the experience + education content —
@@ -176,7 +191,7 @@ const ACHIEVEMENTS: Achievement[] = [
     icon: Trophy,
     title: "3D Design Contest",
     description:
-      "Award winner in a competitive 3D design contest.",
+      "Award winner in a competitive 3D design contest — creativity, technical depth, problem-solving.",
     year: "TNI · 2023",
   },
   {
@@ -188,9 +203,9 @@ const ACHIEVEMENTS: Achievement[] = [
   },
   {
     icon: Award,
-    title: "Art Design × 2",
+    title: "Art & Design × 2",
     description:
-      "Two excellence awards in Art Design.",
+      "Two excellence awards in Art & Design.",
     year: "Rosehill · 2019",
   },
 ];
@@ -381,9 +396,10 @@ function ResumeHero() {
               className="max-w-xl text-base text-ink-muted sm:text-lg"
             >
               <Balancer>
-                A UX/UI designer and digital artist. Everything behind the work
-                lives below — every project, award, and redraw,{" "}
-                <span className="text-ink">made between Bangkok and Auckland</span>.
+                I came to UX by way of 3D and digital engineering — I think in{" "}
+                <span className="italic text-ink">systems</span>, sweat the
+                details, and fold AI into the process so more of my time goes to
+                the actual design work.
               </Balancer>
             </motion.p>
 
@@ -885,8 +901,8 @@ function AchievementsGrid() {
                 </h3>
               </div>
               <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-ink-muted">
-                Small SME site, big swing — conversion-focused UX with the
-                SEO team&apos;s content strategy tripled organic clicks off a
+                Small SME site, big swing — a redesign built around the SEO
+                team&apos;s content strategy tripled organic clicks off a
                 modest starting base.
               </p>
               <div className="mt-3 flex items-center gap-2 text-[9px] uppercase tracking-[0.3em] text-ink-faint">
@@ -1105,7 +1121,7 @@ function TimelineEntry({
         initial={{ rotate: restTilt }}
         whileHover={{ rotate: 0, y: -5 }}
         transition={{ type: "spring", stiffness: 240, damping: 22 }}
-        className="group relative mt-4 overflow-hidden rounded-2xl border border-hairline bg-surface/40 p-7 backdrop-blur transition-colors hover:border-indigo-accent/30 md:p-9"
+        className="group relative mt-4 overflow-hidden rounded-2xl border border-hairline bg-surface/40 p-5 backdrop-blur transition-colors hover:border-indigo-accent/30 sm:p-7 md:p-9"
       >
         {/* Top sheen */}
         <span
@@ -1224,8 +1240,8 @@ function SkillsSection() {
             </h2>
           </div>
           <div className="col-span-12 hidden text-right text-[10px] uppercase tracking-[0.35em] text-ink-faint sm:col-span-4 sm:block">
-            ↳ {TECHNICAL_SKILLS.length + SOFT_SKILLS.length} skills · 02
-            categories
+            ↳ {CAPABILITIES.length + TOOLKIT.length + METHODS.length} skills ·
+            03 categories
           </div>
         </motion.div>
 
@@ -1234,17 +1250,25 @@ function SkillsSection() {
           className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-2"
         >
           <SkillsBlock
-            title="Technical"
-            subtitle="Tools & disciplines"
-            items={TECHNICAL_SKILLS}
+            title="Capabilities"
+            subtitle="What I do"
+            items={CAPABILITIES}
             inView={gridInView}
+            className="md:col-span-2"
           />
           <SkillsBlock
-            title="Soft"
-            subtitle="Mindset & approach"
-            items={SOFT_SKILLS}
+            title="Toolkit"
+            subtitle="What I work in"
+            items={TOOLKIT}
             inView={gridInView}
-            delay={0.18}
+            delay={0.12}
+          />
+          <SkillsBlock
+            title="Methods"
+            subtitle="How I work"
+            items={METHODS}
+            inView={gridInView}
+            delay={0.22}
           />
         </div>
       </div>
@@ -1258,12 +1282,14 @@ function SkillsBlock({
   items,
   inView,
   delay = 0,
+  className = "",
 }: {
   title: string;
   subtitle: string;
   items: string[];
   inView: boolean;
   delay?: number;
+  className?: string;
 }) {
   return (
     <motion.div
@@ -1271,7 +1297,7 @@ function SkillsBlock({
       animate={inView ? { opacity: 1, y: 0 } : undefined}
       transition={{ duration: 0.85, delay, ease: [0.16, 1, 0.3, 1] as const }}
       whileHover={{ y: -4 }}
-      className="group relative overflow-hidden rounded-2xl border border-hairline bg-surface/40 p-7 backdrop-blur transition-[border-color,box-shadow] duration-300 hover:border-indigo-accent/40 hover:shadow-[0_18px_48px_-28px_rgb(var(--accent-1)/0.45)] sm:p-9"
+      className={`group relative overflow-hidden rounded-2xl border border-hairline bg-surface/40 p-7 backdrop-blur transition-[border-color,box-shadow] duration-300 hover:border-indigo-accent/40 hover:shadow-[0_18px_48px_-28px_rgb(var(--accent-1)/0.45)] sm:p-9 ${className}`}
     >
       {/* Top sheen — thin highlight that fades in along the upper edge */}
       <span
@@ -1399,13 +1425,16 @@ function ResumeFooter() {
               Reach me at
             </p>
             <a
-              href="mailto:Worapat2002@gmail.com"
+              href="mailto:worapat2002@gmail.com"
               data-cursor-hover
-              className="group mt-3 inline-flex items-baseline gap-3 text-3xl text-ink transition-colors hover:text-ink-strong sm:text-4xl"
+              // 21 unbreakable chars in a non-wrapping inline-flex: at text-3xl
+              // it overflows a 360px phone and overflow-x:clip cuts it. The
+              // clamp tracks viewport width up to the old 30px.
+              className="group mt-3 inline-flex items-baseline gap-2 text-[clamp(1.35rem,6.5vw,1.875rem)] text-ink transition-colors hover:text-ink-strong sm:gap-3 sm:text-4xl"
             >
-              <span className="underline-wipe">Worapat2002@gmail.com</span>
+              <span className="underline-wipe">worapat2002@gmail.com</span>
               <ArrowUpRight
-                className="h-6 w-6 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                className="h-5 w-5 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 sm:h-6 sm:w-6"
                 strokeWidth={2}
               />
             </a>
@@ -1427,8 +1456,8 @@ function ResumeFooter() {
 
       {/* Footer bar — copyright on the left, utility links on the right */}
       <div className="relative border-t border-hairline">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 px-6 py-6 text-sm text-ink-subtle sm:flex-row sm:px-10">
-          <p>
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 py-7 text-sm text-ink-subtle sm:flex-row sm:gap-5 sm:px-10 sm:py-6">
+          <p className="text-center text-xs sm:text-left sm:text-sm">
             © {new Date().getFullYear()} Worapat Settapak. All rights reserved.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
@@ -1486,7 +1515,7 @@ function FooterScrawl({ inView }: { inView: boolean }) {
   const reduce = useReducedMotion();
   return (
     <motion.a
-      href="mailto:Worapat2002@gmail.com"
+      href="mailto:worapat2002@gmail.com"
       aria-label="Say hi — email me"
       data-cursor-hover
       initial={reduce ? { opacity: 0 } : { opacity: 0, y: 14, rotate: 8 }}
