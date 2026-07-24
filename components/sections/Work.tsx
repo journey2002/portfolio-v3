@@ -23,6 +23,7 @@ import ProjectCover from "@/components/ui/ProjectCover";
 import ViewToggle, { type WorkView } from "@/components/ui/ViewToggle";
 import { usePointer } from "@/components/ui/PointerProvider";
 import ClientWork from "@/components/sections/Clients";
+import Reel from "@/components/sections/Reel";
 
 type Project = {
   title: string;
@@ -33,53 +34,73 @@ type Project = {
   /** Per-project colour identity — drives the cover, spine and title fill. */
   from: string;
   to: string;
+  /** The piece itself. `ratio` is the file's own w/h: the gallery grows a
+   *  hovered tile into exactly that shape, so the focused work is shown whole
+   *  instead of cropped to whatever the bento happened to leave it. */
+  cover: { src: string; ratio: number; position?: string; flip?: string };
 };
 
+// Titles stay short on purpose — they sit inside tiles that shrink, and a
+// three-word title is the difference between one line and an overflowing card.
 const PROJECTS: Project[] = [
   {
-    title: "Work & Travel — Montana",
+    title: "Montana",
     description:
       "A digital design project highlighting user experience and visual storytelling while showcasing the beauty of the Rocky Mountains, created during a work and travel program in Montana.",
     tags: ["UX Design", "Visual Design", "Figma", "Procreate"],
-    caption: "Digital Design · Montana",
+    caption: "Digital Design · Work & Travel",
     from: "#6366f1",
     to: "#38bdf8",
+    cover: { src: "/assets/work/montana.jpg", ratio: 1800 / 1280 },
   },
   {
-    title: "Honkai Star Rail: Firefly",
+    title: "Firefly",
     description:
       "Fan art digital illustration of Firefly from Honkai: Star Rail — exploring character design, light and shadow, and detailed digital painting.",
     tags: ["Digital Art", "Illustration", "Photoshop"],
-    caption: "Fan Art · Illustration",
-    from: "#fbbf24",
-    to: "#fb7185",
+    caption: "Fan Art · Honkai: Star Rail",
+    from: "#f5c451",
+    to: "#7c8cf8",
+    // Portrait piece — hold the face high in frame when the crop is wide.
+    cover: {
+      src: "/assets/work/firefly.jpg",
+      ratio: 1200 / 1302,
+      position: "center 22%",
+    },
   },
   {
-    title: "E-commerce Website Mockup",
+    title: "DJ .instrument",
     description:
       "Final project for the Intelligent Human-Computer Interaction course — a fully designed and coded online store applying UX principles, user-centered design, and front-end implementation.",
     tags: ["UX/UI", "HTML / CSS / JS", "Figma"],
-    caption: "UX/UI · Coursework",
-    from: "#2dd4bf",
-    to: "#6366f1",
+    caption: "UX/UI · E-commerce",
+    from: "#22d3ee",
+    to: "#c084fc",
+    cover: {
+      src: "/assets/work/instrument-home.jpg",
+      ratio: 1248 / 776,
+      flip: "/assets/work/instrument-about.jpg",
+    },
   },
   {
-    title: "Journey",
+    title: "Partly Cloudy",
     description:
-      "A visual storytelling and motion design project exploring emotional narrative through typography, composition, and layered imagery.",
-    tags: ["Visual Design", "Motion", "Procreate"],
-    caption: "Visual · Motion",
-    from: "#a855f7",
-    to: "#ec4899",
+      "A weather app concept built on soft 3D and frosted glass — hourly forecast, sunrise arc, visibility and humidity all readable in one glance, with the whole screen taking its temperature from the sky.",
+    tags: ["UI Design", "Dashboard", "Figma"],
+    caption: "UI Concept · Weather",
+    from: "#6fbfb8",
+    to: "#e0a340",
+    cover: { src: "/assets/work/weather.jpg", ratio: 1600 / 1068 },
   },
   {
-    title: "Da Donut",
+    title: "Paimon Eats",
     description:
-      "A playful branding and visual identity concept — character design, color theory, and packaging aesthetics combined into a cohesive creative direction.",
-    tags: ["Branding", "Illustration", "Figma"],
-    caption: "Branding · Concept",
-    from: "#f472b6",
-    to: "#fbbf24",
+      "A food delivery app concept taken from browse to checkout — search and category browsing, a cart that keeps the food photography front and centre, and an order summary you can read without thinking.",
+    tags: ["App Design", "UX/UI", "Figma"],
+    caption: "App Concept · Food Delivery",
+    from: "#60a5fa",
+    to: "#f472b6",
+    cover: { src: "/assets/work/foods.jpg", ratio: 1024 / 576 },
   },
 ];
 
@@ -118,7 +139,7 @@ export default function Work() {
   // section scrolls away faster than the pointer can leave the list.
   const sectionInView = useInView(sectionRef, { margin: "-15%" });
 
-  const [view, setView] = useState<WorkView>("index");
+  const [view, setView] = useState<WorkView>("gallery");
   const [hovered, setHovered] = useState<number | null>(null);
   const [open, setOpen] = useState<number | null>(null);
 
@@ -240,7 +261,9 @@ export default function Work() {
           </AnimatePresence>
         </div>
 
-        {/* Bottom rail — counter shifts with scroll */}
+        {/* Bottom rail — counter shifts with scroll. Closes the project list;
+            the reel below is a separate sub-block, so the 05 / 05 still counts
+            only the pieces above it. */}
         <motion.div
           style={{ y: counterY }}
           className="mt-16 flex items-center justify-between text-[10px] uppercase tracking-[0.35em] text-ink-faint"
@@ -250,6 +273,11 @@ export default function Work() {
           </span>
           <span className="font-numeral">05 / 05</span>
         </motion.div>
+
+        {/* The same off-the-clock work, in motion — 3D and animation pieces on
+            an editor timeline. A sub-block of this movement rather than its own
+            stop, so it shares this container's width and padding. */}
+        <Reel />
       </div>
 
       {/* Cursor-flown preview — desktop, index view only. Lives at the section
@@ -419,11 +447,18 @@ function IndexView({
                   className="overflow-hidden"
                 >
                   <div className="flex flex-col gap-4 pb-7 sm:flex-row">
-                    <div className="relative h-40 w-full shrink-0 overflow-hidden rounded-xl border border-hairline sm:w-60">
+                    {/* The box takes the piece's own proportions, so the record
+                        shows the work whole rather than a fixed letterbox. */}
+                    <div
+                      style={{ aspectRatio: p.cover.ratio }}
+                      className="relative w-full shrink-0 overflow-hidden rounded-xl border border-hairline sm:h-44 sm:w-auto"
+                    >
                       <ProjectCover
                         index={i}
                         from={p.from}
                         to={p.to}
+                        src={p.cover.src}
+                        position={p.cover.position}
                         className="h-full w-full"
                       />
                     </div>
@@ -458,9 +493,11 @@ function IndexView({
 /* ------------------------------------------------------------------ */
 
 const CARD_W = 300;
-const CARD_H = 392;
 const CARD_DEPTH = 22; // visible thickness of the slab's side faces
 const EDGE = 28; // gap between the cursor and the card
+// Roughly the text block under the cover — the card's height varies with the
+// piece's shape, and the vertical clamp needs a number to work from.
+const CARD_TEXT_H = 210;
 
 // A soft iridescent sheen over a base tone — a subtle prism reflection on the
 // card's thick side, rather than a full RGB rainbow. Brightest mid-height so it
@@ -481,6 +518,12 @@ function FloatingPreview({
   pointerX: MotionValue<number>;
   pointerY: MotionValue<number>;
 }) {
+  // The cover pane keeps the piece's own proportions (floored and capped so a
+  // tall illustration doesn't turn the card into a column), which makes the
+  // whole card taller or shorter as the cursor moves down the list.
+  const coverH = clampN(Math.round(CARD_W / project.cover.ratio), 172, 300);
+  const cardH = coverH + CARD_TEXT_H;
+
   // Trail the cursor through a soft spring so the card glides rather than
   // sticking to the pointer.
   const trail = { stiffness: 350, damping: 32, mass: 0.7 };
@@ -597,7 +640,7 @@ function FloatingPreview({
     clampN(x + off, 16, Math.max(16, vp.w - CARD_W - 16))
   );
   const top = useTransform(sy, (y) =>
-    clampN(y - CARD_H * 0.45, 16, Math.max(16, vp.h - CARD_H - 16))
+    clampN(y - cardH * 0.45, 16, Math.max(16, vp.h - cardH - 16))
   );
 
   return (
@@ -664,7 +707,10 @@ function FloatingPreview({
             }}
             className="relative w-full overflow-hidden rounded-2xl border border-[var(--ring)] bg-surface [transform-style:preserve-3d]"
           >
-            <div className="relative h-[188px] overflow-hidden">
+            <div
+              style={{ height: coverH }}
+              className="relative overflow-hidden transition-[height] duration-300 ease-out-expo"
+            >
               <motion.div
                 style={{ x: coverShift }}
                 className="absolute inset-0 scale-110"
@@ -673,6 +719,8 @@ function FloatingPreview({
                   index={index}
                   from={project.from}
                   to={project.to}
+                  src={project.cover.src}
+                  position={project.cover.position}
                   className="h-full w-full"
                 />
               </motion.div>
@@ -724,63 +772,165 @@ function FloatingPreview({
 /* Gallery view — asymmetric bento of the same covers                  */
 /* ------------------------------------------------------------------ */
 
-// Fixed placement on a 6-col x 3-row grid. Each tile keeps its area; only the
-// track SIZES change on hover (below), so cards can expand while the whole
-// thing stays a tidy bento — no overlaps, no gaps.
+// Fixed placement on a 6-col x 3-row grid, ordered so every piece lands in a
+// slot that already suits it: the widescreen Montana site leads, the portrait
+// illustration takes the tall column beside it, and the three app mockups run
+// along the bottom. Each tile keeps its area; only the track SIZES change on
+// hover (below), so cards can expand while the whole thing stays a tidy bento
+// — no overlaps, no gaps.
+const COLS = 6;
+const ROWS = 3;
+const GAP = 20; // gap-5, the gutter at the width where the bento switches on
 const TILE_AREA = [
-  { col: "1 / 5", row: "1 / 3" }, // Montana — tall lead
-  { col: "5 / 7", row: "1 / 2" }, // Firefly — top right
-  { col: "5 / 7", row: "2 / 3" }, // E-commerce — under Firefly
-  { col: "1 / 4", row: "3 / 4" }, // Journey — bottom left
-  { col: "4 / 7", row: "3 / 4" }, // Da Donut — bottom right
+  { col: [1, 5], row: [1, 3] }, // Montana — wide lead
+  { col: [5, 7], row: [1, 3] }, // Firefly — the tall slot, for the portrait art
+  { col: [1, 3], row: [3, 4] }, // DJ .instrument
+  { col: [3, 5], row: [3, 4] }, // Partly Cloudy
+  { col: [5, 7], row: [3, 4] }, // Paimon Eats
 ];
 
-// Column/row weights (fr). On hover, the hovered tile's tracks swell and the
-// others yield; a CSS transition on the grid template tweens between them.
-const BASE_TEMPLATE = { cols: [1, 1, 1, 1, 1, 1], rows: [1, 1, 1] };
-const GALLERY_TEMPLATES = [
-  { cols: [1.22, 1.22, 1.22, 1.22, 0.78, 0.78], rows: [1.12, 1.12, 0.76] }, // Montana
-  { cols: [0.86, 0.86, 0.86, 0.86, 1.55, 1.55], rows: [1.42, 0.82, 0.76] }, // Firefly
-  { cols: [0.86, 0.86, 0.86, 0.86, 1.55, 1.55], rows: [0.82, 1.42, 0.76] }, // E-commerce
-  { cols: [1.32, 1.32, 1.32, 0.78, 0.78, 0.78], rows: [0.8, 0.8, 1.4] }, // Journey
-  { cols: [0.78, 0.78, 0.78, 1.32, 1.32, 1.32], rows: [0.8, 0.8, 1.4] }, // Da Donut
-];
+// Legibility scrims, in pixels rather than percentages: the text block is
+// bottom-anchored and roughly the same height in every tile, so a percentage
+// ramp either left the captions floating over a white UI mockup or swallowed
+// the lead tile's artwork. The second one is a deeper wash for the focused
+// tile, whose description reaches further up the card than a resting title
+// does — it gets its own layer because background-image can't be transitioned.
+const SCRIM =
+  "linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.85) 96px, rgba(0,0,0,0.5) 150px, rgba(0,0,0,0.12) 220px, rgba(0,0,0,0) 280px)";
+const SCRIM_FOCUS =
+  "linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0.7) 170px, rgba(0,0,0,0.28) 270px, rgba(0,0,0,0) 350px)";
+
+// Hovering a tile hands it its own artwork's proportions: the grid solves for
+// the column and row weights that make that one box exactly `ratio` wide-to-
+// tall, and the other tracks yield whatever's left. A CSS transition on the
+// template tweens between the two states, so the bento reflows into the shape
+// of whatever you're looking at and the piece is finally shown whole.
+//
+// Two guards keep the yielding tiles usable: no track drops under a pixel floor
+// (a card thinner than that can't hold its own title), and no tile grows past
+// MAX_GROWTH of its resting share, which keeps the reflow a swell rather than a
+// takeover. The areas above are picked so each tile can still reach its ratio
+// inside those limits.
+const MIN_COL = 96;
+const MIN_ROW = 104;
+const MAX_GROWTH = 1.85;
+// …and a tile may give up this much of one axis to find its shape, as long as
+// it's growing on the other. Without the allowance a wide tile in a short grid
+// can't reach a squarer ratio at all; with more of one it would visibly recoil
+// from the cursor.
+const MAX_SHRINK = 0.93;
+
+function bentoGeometry(width: number, hovered: number | null, ratio?: number) {
+  // Shallower than the width would suggest — the bento sits mid-page, so it
+  // should never eat a whole tall viewport.
+  const height = Math.round(clampN(width * 0.58, 520, 720));
+  const availW = width - GAP * (COLS - 1);
+  const availH = height - GAP * (ROWS - 1);
+  const even = {
+    height,
+    cols: Array<number>(COLS).fill(1),
+    rows: Array<number>(ROWS).fill(1),
+  };
+  if (hovered === null || !ratio || availW <= 0 || availH <= 0) return even;
+
+  const area = TILE_AREA[hovered];
+  const cs = area.col[1] - area.col[0];
+  const rs = area.row[1] - area.row[0];
+  const baseX = cs / COLS;
+  const baseY = rs / ROWS;
+
+  // The most of each axis this tile may take, then the largest box of the right
+  // shape that fits inside that.
+  const maxX = Math.min(
+    baseX * MAX_GROWTH,
+    (availW - MIN_COL * (COLS - cs)) / availW
+  );
+  const maxY = Math.min(
+    baseY * MAX_GROWTH,
+    (availH - MIN_ROW * (ROWS - rs)) / availH
+  );
+  const maxW = availW * maxX + GAP * (cs - 1);
+  const maxH = availH * maxY + GAP * (rs - 1);
+  const [w, h] =
+    maxW / maxH > ratio ? [maxH * ratio, maxH] : [maxW, maxW / ratio];
+
+  const fx = clampN((w - GAP * (cs - 1)) / availW, baseX * MAX_SHRINK, maxX);
+  const fy = clampN((h - GAP * (rs - 1)) / availH, baseY * MAX_SHRINK, maxY);
+
+  // The hovered tile's tracks split its share; everything else splits the rest.
+  const spread = (n: number, start: number, span: number, share: number) =>
+    Array.from({ length: n }, (_, k) =>
+      k + 1 >= start && k + 1 < start + span
+        ? share / span
+        : (1 - share) / (n - span)
+    );
+
+  return {
+    height,
+    cols: spread(COLS, area.col[0], cs, fx),
+    rows: spread(ROWS, area.row[0], rs, fy),
+  };
+}
 
 function GalleryView({ show }: { show: boolean }) {
   const [hovered, setHovered] = useState<number | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  // The ratio solve needs real pixels, so the grid measures itself. Width is
+  // the only input — the height is derived from it, so this can't feed back.
+  const [width, setWidth] = useState(0);
   // The expanding template only applies once the bento is actually side-by-side
   // (lg+ — below that the 6-col template pinched the side tiles: ~90px columns
-  // at 640-767, and the fixed 620px height crammed a portrait tablet at
-  // 768-1023). On a single-column stack there's nothing to redistribute, and
-  // the hover-driven expansion is mouse-only anyway.
+  // at 640-767, and the fixed height crammed a portrait tablet at 768-1023). On
+  // a single-column stack there's nothing to redistribute, and the hover-driven
+  // expansion is mouse-only anyway.
   const [isWide, setIsWide] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
     const update = () => setIsWide(mq.matches);
     update(); // sync the real value on mount (avoids a missed-change race)
     mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
+
+    // Seeded here rather than in its own effect so the first wide render already
+    // knows its width — measure and breakpoint land in the same commit.
+    const el = gridRef.current;
+    if (el) setWidth(Math.round(el.getBoundingClientRect().width));
+    const ro = new ResizeObserver(([entry]) =>
+      setWidth(Math.round(entry.contentRect.width))
+    );
+    if (el) ro.observe(el);
+
+    return () => {
+      mq.removeEventListener("change", update);
+      ro.disconnect();
+    };
   }, []);
 
-  const tpl =
-    isWide && hovered !== null ? GALLERY_TEMPLATES[hovered] : BASE_TEMPLATE;
+  const geo =
+    isWide && width > 0
+      ? bentoGeometry(
+          width,
+          hovered,
+          hovered === null ? undefined : PROJECTS[hovered].cover.ratio
+        )
+      : null;
   // minmax(0, …) keeps tracks purely proportional so title text can't widen a
   // column past its share.
   const toFr = (a: number[]) => a.map((f) => `minmax(0, ${f}fr)`).join(" ");
 
   return (
     <motion.div
+      ref={gridRef}
       variants={listContainer}
       initial="hidden"
       animate={show ? "show" : "hidden"}
       onMouseLeave={() => setHovered(null)}
       className="grid grid-cols-1 gap-4 sm:gap-5"
       style={
-        isWide
+        geo
           ? {
-              gridTemplateColumns: toFr(tpl.cols),
-              gridTemplateRows: toFr(tpl.rows),
-              height: 620,
+              gridTemplateColumns: toFr(geo.cols),
+              gridTemplateRows: toFr(geo.rows),
+              height: geo.height,
               transition:
                 "grid-template-columns 0.55s cubic-bezier(0.16,1,0.3,1), grid-template-rows 0.55s cubic-bezier(0.16,1,0.3,1)",
             }
@@ -788,6 +938,7 @@ function GalleryView({ show }: { show: boolean }) {
       }
     >
       {PROJECTS.map((p, i) => {
+        const focused = isWide && hovered === i;
         const dim = isWide && hovered !== null && hovered !== i;
         return (
           <motion.div
@@ -796,32 +947,58 @@ function GalleryView({ show }: { show: boolean }) {
             onMouseEnter={() => setHovered(i)}
             className="group"
             style={
-              isWide
-                ? { gridColumn: TILE_AREA[i].col, gridRow: TILE_AREA[i].row }
+              geo
+                ? {
+                    gridColumn: `${TILE_AREA[i].col[0]} / ${TILE_AREA[i].col[1]}`,
+                    gridRow: `${TILE_AREA[i].row[0]} / ${TILE_AREA[i].row[1]}`,
+                  }
                 : undefined
             }
           >
             <div
               data-cursor-hover
-              style={{ opacity: dim ? 0.5 : 1 }}
+              style={{ opacity: dim ? 0.55 : 1 }}
               className="relative h-full min-h-[300px] overflow-hidden rounded-2xl border border-hairline transition-[border-color,opacity] duration-500 ease-out-expo group-hover:border-white/25 lg:min-h-0"
             >
-              {/* Cover slowly drifts in scale as the tile grows */}
-              <div className="absolute inset-0 transition-transform duration-[1200ms] ease-out-expo group-hover:scale-[1.07]">
+              {/* The cover rests slightly zoomed and settles back to 1 on hover
+                  — the reverse of the usual, because the tile has just taken
+                  the artwork's shape and any scale would crop it again. */}
+              <div className="absolute inset-0 scale-[1.06] transition-transform duration-[1200ms] ease-out-expo group-hover:scale-100">
                 <ProjectCover
                   index={i}
                   from={p.from}
                   to={p.to}
+                  src={p.cover.src}
+                  position={p.cover.position}
+                  flip={p.cover.flip}
+                  showFlip={focused}
                   className="h-full w-full"
                 />
               </div>
-              {/* Legibility scrim */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+              {/* Legibility scrim — it also lifts off a tile that isn't being
+                  read, so the ones giving up space are left as plain artwork. */}
+              <div
+                style={{ opacity: dim ? 0.4 : 1, background: SCRIM }}
+                className="absolute inset-0 transition-opacity duration-500 ease-out-expo"
+              />
+              <div
+                style={{ opacity: focused ? 1 : 0, background: SCRIM_FOCUS }}
+                className="absolute inset-0 transition-opacity duration-500 ease-out-expo"
+              />
 
-              <div className="relative flex h-full flex-col justify-end p-6">
+              {/* The text goes with it. A yielding tile can end up short enough
+                  that its caption and tags would spill past the card edge —
+                  fading them out is both the fix and the better reading. */}
+              <div
+                style={{
+                  opacity: dim ? 0 : 1,
+                  transform: dim ? "translateY(10px)" : "none",
+                }}
+                className="relative flex h-full flex-col justify-end p-6 transition-[opacity,transform] duration-300 ease-out-expo"
+              >
                 <div className="flex items-end justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-[0.3em] text-neutral-400">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-neutral-300">
                       {p.caption}
                     </p>
                     <h3 className="mt-2 font-serif text-2xl font-semibold text-white sm:text-3xl">
@@ -834,8 +1011,8 @@ function GalleryView({ show }: { show: boolean }) {
                     <div
                       className="grid transition-all duration-500 ease-out-expo"
                       style={{
-                        gridTemplateRows: !isWide || hovered === i ? "1fr" : "0fr",
-                        opacity: !isWide || hovered === i ? 1 : 0,
+                        gridTemplateRows: !isWide || focused ? "1fr" : "0fr",
+                        opacity: !isWide || focused ? 1 : 0,
                       }}
                     >
                       <p className="overflow-hidden text-sm leading-relaxed text-neutral-300/90">

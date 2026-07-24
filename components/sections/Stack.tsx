@@ -560,7 +560,7 @@ export default function Stack() {
       ref={sectionRef}
       className="relative overflow-hidden py-32 md:py-44"
     >
-      <SectionLabel index="03" caption="Skills" align="right" />
+      <SectionLabel index="03" caption="Skills" align="left" />
 
       <div className="relative mx-auto max-w-7xl px-6 sm:px-10">
         <div className="grid grid-cols-12 items-end gap-6">

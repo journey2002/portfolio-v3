@@ -49,7 +49,9 @@ function ViewToggleBase({
 
   // Knob position is a motion value so we can derive a squash from its speed:
   // the faster it travels, the more it stretches along X, then it settles.
-  const x = useMotionValue(0);
+  // Seeded at the current view's resting spot so it doesn't slide across on
+  // mount — the travel should only ever read as a response to a click.
+  const x = useMotionValue(isGallery ? 16 : 0);
   useEffect(() => {
     const controls = animate(x, isGallery ? 16 : 0, {
       type: "spring",

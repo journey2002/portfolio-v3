@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef } from "react";
-import Image from "next/image";
-import { motion, useInView, type Variants } from "framer-motion";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { motion, useInView, useReducedMotion, type Variants } from "framer-motion";
+import { Play } from "lucide-react";
 import SectionLabel from "@/components/ui/SectionLabel";
 import { RevealLine } from "@/components/ui/Reveal";
 
@@ -192,58 +192,33 @@ export default function About() {
 
 /* ── Plates ────────────────────────────────────────────────────────────────── */
 
-// The gradients are PLACEHOLDERS standing in for real pieces — to swap one in,
-// drop the file in /public/art and set `img` (e.g. img: "/art/vroid-stage.png");
-// the gradient stays behind it as the loading backdrop.
 type Plate = {
   id: string;
   caption: string;
   alt: string;
+  src: string;
+  poster: string;
+  /** Backdrop under the frame while the poster loads, toned from the footage so
+   *  a slow connection never flashes an empty box against the page. */
   bg: string;
-  img?: string;
 };
 
 const PLATES: Plate[] = [
   {
-    id: "vroid-stage",
-    caption: "VRoid idol — stage lights",
-    alt: "VRoid character glowing on a concert stage",
-    bg: [
-      "radial-gradient(circle at 26% 22%, rgba(255,255,255,0.95) 0 2px, transparent 3px)",
-      "radial-gradient(circle at 68% 12%, rgba(255,255,255,0.85) 0 1.5px, transparent 2.5px)",
-      "radial-gradient(circle at 82% 40%, rgba(255,255,255,0.7) 0 1px, transparent 2px)",
-      "radial-gradient(ellipse at 50% 104%, rgba(255,208,130,0.6) 0 24%, transparent 58%)",
-      "linear-gradient(165deg, #7fb7f7 0%, #b9c7fb 42%, #efe9ff 100%)",
-    ].join(", "),
+    id: "mesh",
+    caption: "Nodes, still talking",
+    alt: "Low-poly mesh of triangular panels wired together with glowing violet edges, drifting",
+    src: "/assets/move1.mp4",
+    poster: "/assets/posters/move1.jpg",
+    bg: "linear-gradient(160deg, #1b1420 0%, #0c0a0f 100%)",
   },
   {
-    id: "donut",
-    caption: "Everyone starts with the donut",
-    alt: "3D render of a pink-frosted donut with sprinkles",
-    bg: [
-      "radial-gradient(circle at 42% 38%, rgba(255,255,255,0.5) 0 2px, transparent 3px)",
-      "radial-gradient(circle at 60% 30%, rgba(126,222,255,0.9) 0 1.5px, transparent 2.5px)",
-      "radial-gradient(circle at 36% 52%, rgba(255,233,120,0.9) 0 1.5px, transparent 2.5px)",
-      "radial-gradient(circle at 50% 44%, #170b12 0 12%, #f795bd 13% 38%, #fbb7d2 39% 45%, #e97fae 46% 49%, #170b12 50%)",
-    ].join(", "),
-  },
-  {
-    id: "magenta",
-    caption: "Magenta mood, phone up",
-    alt: "Anime character raising a phone against a hot magenta backdrop",
-    bg: [
-      "radial-gradient(ellipse at 28% 16%, rgba(255,255,255,0.4) 0 12%, transparent 46%)",
-      "linear-gradient(150deg, #ff3ad9 0%, #e214be 55%, #8f0c9c 100%)",
-    ].join(", "),
-  },
-  {
-    id: "chair",
-    caption: "One honest chair",
-    alt: "Product render of a wooden chair on a dark backdrop",
-    bg: [
-      "radial-gradient(ellipse at 55% 42%, #d7b58e 0 16%, rgba(215,181,142,0.35) 34%, transparent 58%)",
-      "linear-gradient(165deg, #26211c 0%, #17130f 65%, #0e0c0a 100%)",
-    ].join(", "),
+    id: "grid",
+    caption: "Cyan cubes, magenta wiring",
+    alt: "Neon grid of cyan cubes strung together with magenta lines, panning",
+    src: "/assets/move2.mp4",
+    poster: "/assets/posters/move2.jpg",
+    bg: "linear-gradient(160deg, #120a1e 0%, #08060d 100%)",
   },
 ];
 
@@ -258,8 +233,11 @@ const PLATES: Plate[] = [
  * page is a physical surface. The work is the same work on a grid, and here it
  * is legible at a glance instead of piled at angles.
  *
+ * Where it used to be four gradient placeholders in four equal portrait cells,
+ * it is now two real clips at their own 16:9 — a matched pair, sharing a
+ * baseline, so the eye reads them as one spread rather than two exhibits.
  * What's left of the interaction is what a grid can honestly offer: the plate
- * you're pointing at brightens and takes an accent rule.
+ * you're pointing at plays, brightens, and takes an accent rule.
  */
 function Plates() {
   return (
@@ -271,64 +249,158 @@ function Plates() {
           Selected output
         </span>
         <span aria-hidden className="h-px flex-1 bg-hairline" />
+        <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.35em] text-ink-faint">
+          Silent · looping
+        </span>
       </div>
 
       <motion.div
         variants={{
           hidden: {},
-          show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+          show: { transition: { staggerChildren: 0.12, delayChildren: 0.05 } },
         }}
         initial="hidden"
         whileInView="show"
         viewport={{ once: true, margin: "-8%" }}
-        className="mt-10 grid grid-cols-1 border-l border-t border-hairline sm:grid-cols-2 lg:grid-cols-4"
+        className="mt-10 grid grid-cols-1 gap-y-12 md:grid-cols-2 md:gap-x-8 md:gap-y-0"
       >
         {PLATES.map((p, i) => (
-          <motion.figure
-            key={p.id}
-            variants={fadeUp}
-            className="group border-b border-r border-hairline"
-          >
-            <div
-              className="relative aspect-[4/5] overflow-hidden transition-[filter] duration-300 group-hover:brightness-110"
-              style={{ background: p.bg }}
-            >
-              {p.img && (
-                <Image
-                  src={p.img}
-                  alt={p.alt}
-                  fill
-                  sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-                  className="object-cover"
-                />
-              )}
-              <span
-                aria-hidden
-                className="noise-overlay pointer-events-none absolute inset-0"
-              />
-              {/* Accent rule that draws itself across the plate's foot on
-                  hover — the grid's one moving part. */}
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-x-0 bottom-0 h-px origin-left scale-x-0 bg-indigo-accent transition-transform duration-500 ease-out-expo group-hover:scale-x-100"
-              />
-            </div>
-
-            <figcaption className="flex items-baseline gap-2 px-4 py-3.5">
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted transition-colors duration-300 group-hover:text-ink-strong">
-                {p.caption}
-              </span>
-              <span
-                aria-hidden
-                className="mx-1 h-px flex-1 border-t border-dotted border-hairline"
-              />
-              <span className="shrink-0 font-numeral text-[10px] tabular-nums text-ink-faint">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-            </figcaption>
-          </motion.figure>
+          <motion.div key={p.id} variants={fadeUp}>
+            <Clip plate={p} index={i} />
+          </motion.div>
         ))}
       </motion.div>
     </div>
+  );
+}
+
+/**
+ * One clip, framed as a plate.
+ *
+ * Nothing is on the wire until it's asked for: `preload="none"` plus a poster
+ * cut from frame 0, so the resting state, the first frame of playback and the
+ * frame it rewinds to are all the same image and the handoff is invisible.
+ * A mouse plays it by pointing; touch and keyboard get the same behaviour from
+ * the button underneath, which is also what reduced-motion falls back to —
+ * nothing should start moving under a cursor that didn't ask for it.
+ */
+function Clip({ plate, index }: { plate: Plate; index: number }) {
+  const figRef = useRef<HTMLElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const reduced = useReducedMotion();
+  // No margin on purpose: the question here is only "is any of this still on
+  // screen", and a negative one would shrink the viewport enough that pointing
+  // at a clip just entering it would start and instantly rewind the thing.
+  const inView = useInView(figRef);
+
+  const [playing, setPlaying] = useState(false);
+
+  const play = useCallback(() => {
+    // Rejects when a leave interrupts the start; the pause event is the source
+    // of truth for state either way, so there is nothing to handle.
+    videoRef.current?.play().catch(() => {});
+  }, []);
+
+  const stop = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.pause();
+    v.currentTime = 0;
+  }, []);
+
+  // A clip left running on touch shouldn't keep decoding once it's scrolled
+  // off — stopping also rewinds it to the poster frame it started on.
+  useEffect(() => {
+    if (!inView && playing) stop();
+  }, [inView, playing, stop]);
+
+  return (
+    <figure
+      ref={figRef}
+      className="group"
+      onPointerEnter={(e) => {
+        if (e.pointerType === "mouse" && !reduced) play();
+      }}
+      onPointerLeave={(e) => {
+        if (e.pointerType === "mouse") stop();
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => (playing ? stop() : play())}
+        // The visible caption is a title, not a description — the button's
+        // label carries what's actually on screen, since this is the control a
+        // screen reader lands on.
+        aria-label={`${playing ? "Pause" : "Play"} clip — ${plate.alt}`}
+        className="block w-full outline-none"
+      >
+        <div
+          data-cursor-hover
+          style={{ background: plate.bg }}
+          className="relative aspect-video overflow-hidden border border-hairline transition-colors duration-500 group-hover:border-ink-strong/25 group-focus-within:border-indigo-accent"
+        >
+          <video
+            ref={videoRef}
+            src={plate.src}
+            poster={plate.poster}
+            muted
+            loop
+            playsInline
+            preload="none"
+            onPlay={() => setPlaying(true)}
+            onPause={() => setPlaying(false)}
+            className={`absolute inset-0 h-full w-full object-cover transition-[transform,filter] duration-[1200ms] ease-out-expo ${
+              playing
+                ? "brightness-100"
+                : "brightness-[0.78] group-hover:brightness-95"
+            } ${playing && !reduced ? "scale-[1.04]" : "scale-100"}`}
+          />
+          <span
+            aria-hidden
+            className="noise-overlay pointer-events-none absolute inset-0"
+          />
+
+          {/* Transport marker — a play glyph while the frame is a still, an
+              accent dot once it's running. The only chrome laid over the art. */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-3 top-3 flex h-3 w-3 items-center justify-center"
+          >
+            {playing ? (
+              <span className="h-1.5 w-1.5 bg-indigo-accent" />
+            ) : (
+              <Play
+                className="h-3 w-3 text-white/55 transition-colors duration-300 group-hover:text-white"
+                fill="currentColor"
+                strokeWidth={0}
+              />
+            )}
+          </span>
+
+          {/* Accent rule that draws itself across the plate's foot on hover —
+              the grid's one moving part. Held open while the clip runs, so a
+              tapped plate reads as live after the finger has gone. */}
+          <span
+            aria-hidden
+            className={`pointer-events-none absolute inset-x-0 bottom-0 h-px origin-left bg-indigo-accent transition-transform duration-500 ease-out-expo group-hover:scale-x-100 ${
+              playing ? "scale-x-100" : "scale-x-0"
+            }`}
+          />
+        </div>
+      </button>
+
+      <figcaption className="flex items-baseline gap-2 pt-3.5">
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted transition-colors duration-300 group-hover:text-ink-strong">
+          {plate.caption}
+        </span>
+        <span
+          aria-hidden
+          className="mx-1 h-px flex-1 border-t border-dotted border-hairline"
+        />
+        <span className="shrink-0 font-numeral text-[10px] tabular-nums text-ink-faint">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+      </figcaption>
+    </figure>
   );
 }

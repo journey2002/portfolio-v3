@@ -191,12 +191,22 @@ type GalleryItem = {
   popDelay: number;
   /** Filename-chip corner — must sit on the card's VISIBLE (outer) half. */
   chipClass: string;
+  /**
+   * CSS `transform-origin` (e.g. "69% 73%") pointing at a subject inside the
+   * image. When set, hovering the card slowly pushes `scale` in on that
+   * point — a punch-in rather than a static crop. Omit for cards that should
+   * just sit still.
+   */
+  zoomOrigin?: string;
+  /** Hover zoom amount (CSS scale). Only used alongside `zoomOrigin`. */
+  zoomScale?: number;
 };
 
 const GALLERY: GalleryItem[] = [
   {
     id: "idol",
-    label: "idol_01.png",
+    src: "/assets/posters/tube_ball_bounce.jpg",
+    label: "tube_ball_bounce.mp4",
     from: "#38bdf8",
     to: "#4f46e5",
     glow: "rgba(255,255,255,0.55)",
@@ -220,7 +230,8 @@ const GALLERY: GalleryItem[] = [
   },
   {
     id: "donut",
-    label: "donut.glb",
+    src: "/assets/donut.png",
+    label: "donut.png",
     from: "#fbcfe8",
     to: "#fb7185",
     glow: "rgba(255,255,255,0.6)",
@@ -248,7 +259,8 @@ const GALLERY: GalleryItem[] = [
   },
   {
     id: "muse",
-    label: "muse_02.png",
+    src: "/assets/0047.jpg",
+    label: "0047.jpg",
     from: "#e879f9",
     to: "#7c3aed",
     glow: "rgba(255,255,255,0.5)",
@@ -267,7 +279,8 @@ const GALLERY: GalleryItem[] = [
   },
   {
     id: "chair",
-    label: "chair.glb",
+    src: "/assets/chair.png",
+    label: "chair.png",
     from: "#fcd34d",
     to: "#6b7280",
     glow: "rgba(255,255,255,0.45)",
@@ -789,8 +802,7 @@ export default function Hero() {
 
       {/* ── Floating artwork cards — the digital-art half of the folio, tucked
              under the artboard's edges like prints under a sheet of paper.
-             Hovering the frame pops them out ("folder open"). Vivid placeholders
-             now; swap real images into GALLERY[].src later. Non-interactive, and
+             Hovering the frame pops them out ("folder open"). Non-interactive, and
              MUST render below the frame (no z → default, under the z-10 artboard)
              so the frosted panel veils the tucked halves. Fades out with the
              frame on scroll. Below md the phone wrapper underneath takes over. */}
@@ -1184,6 +1196,17 @@ function GalleryCard({
                   src={item.src}
                   alt=""
                   className="h-full w-full object-cover"
+                  style={
+                    item.zoomOrigin
+                      ? {
+                          transformOrigin: item.zoomOrigin,
+                          transform: `scale(${
+                            frameHovered ? item.zoomScale ?? 1.6 : 1
+                          })`,
+                          transition: "transform 1.4s cubic-bezier(0.16,1,0.3,1)",
+                        }
+                      : undefined
+                  }
                 />
               ) : (
                 <PlaceholderArt

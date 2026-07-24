@@ -249,7 +249,7 @@ export default function Contact() {
       ref={sectionRef}
       className="relative overflow-hidden border-t border-hairline bg-night"
     >
-      <SectionLabel index="04" caption="Contact" align="left" />
+      <SectionLabel index="04" caption="Contact" align="right" />
 
       <div
         aria-hidden

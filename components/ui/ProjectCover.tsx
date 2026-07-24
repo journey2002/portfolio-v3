@@ -1,19 +1,25 @@
 "use client";
 
 /**
- * A generative "cover" for a project — there are no real screenshots, so each
- * project gets a distinct, hand-tuned colour identity rendered entirely in CSS:
- * two soft colour blobs drifting over a near-black base, a faint grid, a giant
- * ghost numeral bleeding off the corner, and the shared film grain on top.
+ * A project's cover — the piece itself, sitting on the colour identity that
+ * used to stand in for it. The generated layer (two drifting blobs in the
+ * project's hues, a faint grid, the ghost numeral and the shared film grain)
+ * still renders underneath, so a cover that hasn't decoded yet reads as the
+ * project rather than as an empty box.
  *
  * This is purely the artwork panel; callers overlay their own text. It's reused
- * at two sizes — the cursor-following preview in the index, and the larger
- * tiles in the gallery — so the two views feel like the same world.
+ * at three sizes — the cursor-following preview, the index's expanded record
+ * and the gallery tiles — so the views feel like the same world.
  */
 export default function ProjectCover({
   index,
   from,
   to,
+  src,
+  alt = "",
+  position,
+  flip,
+  showFlip = false,
   className = "",
 }: {
   index: number;
@@ -21,6 +27,14 @@ export default function ProjectCover({
   from: string;
   /** Trailing accent colour (CSS colour string). */
   to: string;
+  /** The artwork. Decorative — every caller prints the title alongside it. */
+  src?: string;
+  alt?: string;
+  /** Crop anchor for the art, e.g. "center 28%" to hold a face in frame. */
+  position?: string;
+  /** A second frame, crossfaded over the cover while `showFlip` is true. */
+  flip?: string;
+  showFlip?: boolean;
   className?: string;
 }) {
   return (
@@ -37,8 +51,43 @@ export default function ProjectCover({
         style={{ background: `radial-gradient(circle at center, ${to}, transparent 70%)` }}
       />
 
-      {/* Faint structural grid — same vocabulary as the page background. */}
-      <div className="grid-lines absolute inset-0 opacity-50" />
+      {/* Faint structural grid — same vocabulary as the page background. Only
+          on a coverless panel; under artwork it just reads as dirt. */}
+      {!src && <div className="grid-lines absolute inset-0 opacity-50" />}
+
+      {src && (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src}
+            alt={alt}
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+            style={{ objectPosition: position }}
+            className="absolute inset-0 h-full w-full select-none object-cover"
+          />
+          {/* Second frame — a project with two shots turns over on hover. */}
+          {flip && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={flip}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              draggable={false}
+              style={{ objectPosition: position, opacity: showFlip ? 1 : 0 }}
+              className="absolute inset-0 h-full w-full select-none object-cover transition-opacity duration-700 ease-out-expo"
+            />
+          )}
+          {/* A breath of the project's own gradient over the art, so the cover
+              still carries its hue into the page. */}
+          <div
+            className="absolute inset-0 opacity-[0.18] mix-blend-soft-light"
+            style={{ background: `linear-gradient(140deg, ${from}, ${to})` }}
+          />
+        </>
+      )}
 
       {/* Ghost numeral bleeding off the bottom-right corner. */}
       <span className="pointer-events-none absolute -bottom-8 -right-2 select-none font-numeral text-[9rem] font-bold leading-none text-white/[0.07]">

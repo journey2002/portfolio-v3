@@ -5,7 +5,8 @@ import Hero from "@/components/sections/Hero";
 
 // Below-the-fold sections are code-split so Hero's JS stays lean. `loading`
 // is a zero-layout placeholder (no spinner) so the split is invisible.
-// Work owns both movements — client sites + off-the-clock personal work.
+// Work owns both movements — client sites + off-the-clock personal work
+// (which carries the reel as a sub-block).
 const About = dynamic(() => import("@/components/sections/About"), {
   loading: () => null,
 });
