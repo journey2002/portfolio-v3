@@ -15,12 +15,13 @@ import {
   type MotionValue,
   type Variants,
 } from "framer-motion";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Maximize2, Plus } from "lucide-react";
 import SectionLabel from "@/components/ui/SectionLabel";
 import SplitText from "@/components/ui/SplitText";
 import { RevealLine } from "@/components/ui/Reveal";
 import ProjectCover from "@/components/ui/ProjectCover";
 import ViewToggle, { type WorkView } from "@/components/ui/ViewToggle";
+import Lightbox from "@/components/ui/Lightbox";
 import { usePointer } from "@/components/ui/PointerProvider";
 import ClientWork from "@/components/sections/Clients";
 import Reel from "@/components/sections/Reel";
@@ -38,6 +39,13 @@ type Project = {
    *  hovered tile into exactly that shape, so the focused work is shown whole
    *  instead of cropped to whatever the bento happened to leave it. */
   cover: { src: string; ratio: number; position?: string; flip?: string };
+  /**
+   * Somewhere to send a visitor who wants the whole thing — a Figma file for
+   * the projects that have one. Set → the gallery tile is a link out (↗). Unset
+   * → the piece itself IS the deliverable (the illustration, the UI concepts),
+   * so the tile opens it full size in the viewer instead (see Lightbox).
+   */
+  href?: string;
 };
 
 // Titles stay short on purpose — they sit inside tiles that shrink, and a
@@ -52,6 +60,7 @@ const PROJECTS: Project[] = [
     from: "#6366f1",
     to: "#38bdf8",
     cover: { src: "/assets/work/montana.jpg", ratio: 1800 / 1280 },
+    href: "https://www.figma.com/design/0m3oJjrQnwboGATTENMYdB/parallax",
   },
   {
     title: "Firefly",
@@ -81,6 +90,7 @@ const PROJECTS: Project[] = [
       ratio: 1248 / 776,
       flip: "/assets/work/instrument-about.jpg",
     },
+    href: "https://www.figma.com/design/4jY997UGcKETv3vfQhtWab/instrument?node-id=0-1&p=f",
   },
   {
     title: "Partly Cloudy",
@@ -792,8 +802,8 @@ const TILE_AREA = [
 // Legibility scrims, in pixels rather than percentages: the text block is
 // bottom-anchored and roughly the same height in every tile, so a percentage
 // ramp either left the captions floating over a white UI mockup or swallowed
-// the lead tile's artwork. The second one is a deeper wash for the focused
-// tile, whose description reaches further up the card than a resting title
+// the lead tile's artwork. The second one is a deeper wash behind an open
+// description panel, which reaches further up the card than a resting title
 // does — it gets its own layer because background-image can't be transitioned.
 const SCRIM =
   "linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.85) 96px, rgba(0,0,0,0.5) 150px, rgba(0,0,0,0.12) 220px, rgba(0,0,0,0) 280px)";
@@ -874,6 +884,15 @@ function bentoGeometry(width: number, hovered: number | null, ratio?: number) {
 
 function GalleryView({ show }: { show: boolean }) {
   const [hovered, setHovered] = useState<number | null>(null);
+  // Which tile is showing its description, kept separate from `hovered` on
+  // purpose: the copy used to slide out from under the cursor, so crossing the
+  // bento fired five paragraphs in a row and the grid read as noise. Hover now
+  // only reshapes the tile — the words wait behind a button.
+  const [open, setOpen] = useState<number | null>(null);
+  // The project being viewed full size, for the work that has no file to link
+  // out to. Holds the project rather than an index so the viewer keeps showing
+  // the right piece regardless of what the grid does behind it.
+  const [zoomed, setZoomed] = useState<Project | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   // The ratio solve needs real pixels, so the grid measures itself. Width is
   // the only input — the height is derived from it, so this can't feed back.
@@ -905,6 +924,25 @@ function GalleryView({ show }: { show: boolean }) {
     };
   }, []);
 
+  // It's a popover, so it answers to what dismisses one: Escape, and a press
+  // anywhere outside the bento. (Moving to another tile closes it too — see the
+  // tile's onMouseEnter.)
+  useEffect(() => {
+    if (open === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(null);
+    };
+    const onDown = (e: PointerEvent) => {
+      if (!gridRef.current?.contains(e.target as Node)) setOpen(null);
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onDown);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onDown);
+    };
+  }, [open]);
+
   const geo =
     isWide && width > 0
       ? bentoGeometry(
@@ -918,12 +956,16 @@ function GalleryView({ show }: { show: boolean }) {
   const toFr = (a: number[]) => a.map((f) => `minmax(0, ${f}fr)`).join(" ");
 
   return (
+    <>
     <motion.div
       ref={gridRef}
       variants={listContainer}
       initial="hidden"
       animate={show ? "show" : "hidden"}
-      onMouseLeave={() => setHovered(null)}
+      onMouseLeave={() => {
+        setHovered(null);
+        setOpen(null);
+      }}
       className="grid grid-cols-1 gap-4 sm:gap-5"
       style={
         geo
@@ -940,11 +982,17 @@ function GalleryView({ show }: { show: boolean }) {
       {PROJECTS.map((p, i) => {
         const focused = isWide && hovered === i;
         const dim = isWide && hovered !== null && hovered !== i;
+        const showing = open === i;
         return (
           <motion.div
             key={p.title}
             variants={tileItem}
-            onMouseEnter={() => setHovered(i)}
+            onMouseEnter={() => {
+              setHovered(i);
+              // A panel left open on a tile that's now yielding space would be
+              // describing one project while the cursor points at another.
+              setOpen((cur) => (cur === i ? cur : null));
+            }}
             className="group"
             style={
               geo
@@ -982,9 +1030,34 @@ function GalleryView({ show }: { show: boolean }) {
                 className="absolute inset-0 transition-opacity duration-500 ease-out-expo"
               />
               <div
-                style={{ opacity: focused ? 1 : 0, background: SCRIM_FOCUS }}
+                style={{ opacity: showing ? 1 : 0, background: SCRIM_FOCUS }}
                 className="absolute inset-0 transition-opacity duration-500 ease-out-expo"
               />
+
+              {/* Whole-tile activation surface, stretched under the caption
+                  rather than wrapped around it: the details button lives inside
+                  that caption block, and interactive content nested in an <a>
+                  is invalid and unreachable by keyboard. So the card's click
+                  target is its own transparent layer, the caption above it is
+                  pointer-transparent, and the button re-enables just itself.
+                  A project with a file to show links out; one whose artwork IS
+                  the piece opens the viewer. */}
+              {p.href ? (
+                <a
+                  href={p.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`${p.title} — open the Figma file (opens in a new tab)`}
+                  className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setZoomed(p)}
+                  aria-label={`${p.title} — view full size`}
+                  className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70"
+                />
+              )}
 
               {/* The text goes with it. A yielding tile can end up short enough
                   that its caption and tags would spill past the card edge —
@@ -994,9 +1067,41 @@ function GalleryView({ show }: { show: boolean }) {
                   opacity: dim ? 0 : 1,
                   transform: dim ? "translateY(10px)" : "none",
                 }}
-                className="relative flex h-full flex-col justify-end p-6 transition-[opacity,transform] duration-300 ease-out-expo"
+                className="pointer-events-none relative z-20 flex h-full flex-col justify-end p-6 transition-[opacity,transform] duration-300 ease-out-expo"
               >
-                <div className="flex items-end justify-between gap-4">
+                <div className="relative flex items-end justify-between gap-4">
+                  {/* The description, on request. It floats above the standing
+                      caption block rather than pushing it down, so opening one
+                      doesn't shove the title the reader just aimed at. */}
+                  <AnimatePresence>
+                    {showing && (
+                      <motion.div
+                        key="panel"
+                        id={`gallery-panel-${i}`}
+                        initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                        transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+                        className="pointer-events-auto absolute bottom-full left-0 mb-4 w-full max-w-md origin-bottom overflow-hidden rounded-xl border border-white/15 bg-black/55 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.9)] backdrop-blur-xl"
+                      >
+                        {/* Same gradient seam the cursor-flown card uses — the
+                            panel is still this project speaking. */}
+                        <div
+                          className="h-px w-full"
+                          style={{
+                            background: `linear-gradient(90deg, ${p.from}, ${p.to})`,
+                          }}
+                        />
+                        {/* Slightly tighter below sm: a stacked tile is only
+                            300px tall, and the longest description at full
+                            size would push the panel past the card's top. */}
+                        <p className="p-3.5 text-[13px] leading-relaxed text-neutral-200 sm:p-4 sm:text-sm">
+                          {p.description}
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-[0.3em] text-neutral-300">
                       {p.caption}
@@ -1004,23 +1109,6 @@ function GalleryView({ show }: { show: boolean }) {
                     <h3 className="mt-2 font-serif text-2xl font-semibold text-white sm:text-3xl">
                       {p.title}
                     </h3>
-                    {/* Description expands on the focused tile. Only the wide
-                        bento hides it at rest — the stacked layout has room,
-                        and hover never fires there, so gating on hover alone
-                        made the copy unreachable on touch. */}
-                    <div
-                      className="grid transition-all duration-500 ease-out-expo"
-                      style={{
-                        gridTemplateRows: !isWide || focused ? "1fr" : "0fr",
-                        opacity: !isWide || focused ? 1 : 0,
-                      }}
-                    >
-                      <p className="overflow-hidden text-sm leading-relaxed text-neutral-300/90">
-                        <span className="mt-3 block max-w-md">
-                          {p.description}
-                        </span>
-                      </p>
-                    </div>
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {p.tags.slice(0, 3).map((t) => (
                         <span
@@ -1032,10 +1120,45 @@ function GalleryView({ show }: { show: boolean }) {
                       ))}
                     </div>
                   </div>
-                  <ArrowUpRight
-                    className="h-6 w-6 shrink-0 text-neutral-300 transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-white"
-                    strokeWidth={1.5}
-                  />
+
+                  <div className="flex shrink-0 items-center gap-2">
+                    {/* Only the wide bento hides the trigger until hover: below
+                        lg the pointer never enters a tile, so a hover-gated
+                        button would put the copy out of reach on touch. */}
+                    <button
+                      type="button"
+                      aria-expanded={showing}
+                      aria-controls={`gallery-panel-${i}`}
+                      aria-label={`${showing ? "Hide" : "Show"} details for ${p.title}`}
+                      onClick={() => setOpen(showing ? null : i)}
+                      className={`pointer-events-auto grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/20 bg-black/40 text-neutral-200 backdrop-blur-sm transition-[opacity,background-color,color,border-color] duration-300 ease-out-expo hover:border-white/40 hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/70 ${
+                        isWide
+                          ? "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                          : "opacity-100"
+                      }`}
+                    >
+                      <Plus
+                        className={`h-4 w-4 transition-transform duration-300 ease-out-expo ${
+                          showing ? "rotate-45" : ""
+                        }`}
+                        strokeWidth={1.5}
+                      />
+                    </button>
+                    {/* ↗ keeps its site-wide meaning of "go somewhere" — so a
+                        tile that opens the piece in place gets the expand glyph
+                        instead, and grows rather than flying off-corner. */}
+                    {p.href ? (
+                      <ArrowUpRight
+                        className="h-6 w-6 shrink-0 text-neutral-300 transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-white"
+                        strokeWidth={1.5}
+                      />
+                    ) : (
+                      <Maximize2
+                        className="h-5 w-5 shrink-0 text-neutral-300 transition-transform duration-300 group-hover:scale-110 group-hover:text-white"
+                        strokeWidth={1.5}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1043,5 +1166,28 @@ function GalleryView({ show }: { show: boolean }) {
         );
       })}
     </motion.div>
+
+    {/* The viewer for the tiles with no file to link out to. Rendered once for
+        the whole grid rather than per tile, and portalled to <body> from inside
+        (see Lightbox) so the section's overflow-hidden and the tiles' own
+        transforms can't clip or re-anchor it. `description` doubles as the
+        image's alt text — it's the only account of the piece a screen reader
+        gets once the artwork is the content. */}
+    <Lightbox
+      item={
+        zoomed
+          ? {
+              src: zoomed.cover.src,
+              alt: zoomed.description,
+              title: zoomed.title,
+              caption: zoomed.caption,
+              from: zoomed.from,
+              to: zoomed.to,
+            }
+          : null
+      }
+      onClose={() => setZoomed(null)}
+    />
+    </>
   );
 }
