@@ -87,7 +87,10 @@ function AccentSwitcherBase({
     <div
       role="group"
       aria-label="Accent color"
-      className={`flex items-center gap-1.5 ${chrome} ${className}`}
+      // Wider spacing on touch so the enlarged hit areas below can't overlap:
+      // 24px targets 10px apart keeps 34px between centres, where the desktop
+      // 14px/6px pairing would have them colliding into each other's taps.
+      className={`flex items-center gap-1.5 touch:gap-2.5 ${chrome} ${className}`}
     >
       {ACCENTS.map(({ id, label, swatch }) => {
         const active = accent === id;
@@ -103,11 +106,16 @@ function AccentSwitcherBase({
             whileTap={reduce ? undefined : { scale: 0.88 }}
             animate={reduce ? undefined : { scale: active ? 1.12 : 1 }}
             transition={{ type: "spring", stiffness: 420, damping: 26 }}
-            className="relative grid h-3.5 w-3.5 place-items-center rounded-full"
+            // 14px reads right beside the status bar's other chrome, but it's a
+            // real control and 14px is half the 24px minimum tap target — on a
+            // phone this picker (the Inspect panel's copy is desktop-only) was
+            // the smallest thing on the page. Touch pointers get a 24px button
+            // with a slightly larger dot inside; mouse widths are unchanged.
+            className="relative grid h-3.5 w-3.5 place-items-center rounded-full touch:h-6 touch:w-6"
           >
             {/* The swatch itself */}
             <span
-              className="h-3.5 w-3.5 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)]"
+              className="h-3.5 w-3.5 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)] touch:h-4 touch:w-4"
               style={{ backgroundImage: swatch }}
             />
             {/* Active ring + bloom, drawn from the swatch so it matches the hue */}

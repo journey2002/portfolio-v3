@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 
+// Edge, not Node — see the note in app/icon.tsx.
 export const runtime = "edge";
 export const alt =
   "Worapat Settapak — UX/UI Designer & Digital Artist";

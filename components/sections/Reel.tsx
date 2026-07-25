@@ -48,7 +48,15 @@ const CLIPS: Clip[] = [
     id: "forager",
     title: "Forager",
     caption: "3D · Stylised World",
-    src: "/assets/0001-0140.mkv",
+    // MP4/H.264, like every other clip here. This pointed at 0001-0140.mkv:
+    // Chromium happens to play Matroska, but Safari and Firefox don't support
+    // the container at all, so the reel's opener was dead on every iPhone, iPad,
+    // Mac and Firefox — stalled on its poster before the timeline could start.
+    // Squirrel.mp4 is also where posters/Squirrel.jpg was cut from, so the still
+    // and the first frame now match, and its 3.79s runtime is the "~3.8s" the
+    // note below assumes. If the .mkv is a newer render, transcode it to MP4
+    // (H.264/AAC) and repoint this src.
+    src: "/assets/Squirrel.mp4",
     poster: "/assets/posters/Squirrel.jpg",
     // Real file is ~3.8s; slowed to fill a 6s slot so it lingers as the opener.
     duration: 6,

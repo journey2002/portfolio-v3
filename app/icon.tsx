@@ -1,5 +1,9 @@
 import { ImageResponse } from "next/og";
 
+// Edge, not Node. Dropping this would let Next prerender the icon at build time
+// instead of per request, but next/og's Node path resolves its bundled font via
+// fileURLToPath on an already-file:// string, which throws ERR_INVALID_URL on
+// Windows and 500s the route in local dev. Keep edge until that's fixed upstream.
 export const runtime = "edge";
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";

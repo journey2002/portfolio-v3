@@ -93,7 +93,6 @@ const siteUrl =
 // Structured data for the person behind the site, so search engines tie the
 // name, role, location and profiles together instead of inferring them from
 // body copy. Mirrors the metadata below and the Contact section — keep in sync.
-// Instagram is deliberately absent until the placeholder link is replaced.
 const PERSON_LD = {
   "@context": "https://schema.org",
   "@type": "Person",
@@ -113,6 +112,7 @@ const PERSON_LD = {
   sameAs: [
     "https://github.com/journey2002",
     "https://www.linkedin.com/in/worapat-settapak-562192212",
+    "https://www.instagram.com/pun20202020/",
   ],
 };
 

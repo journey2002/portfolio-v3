@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 
+// Edge, not Node — see the note in app/icon.tsx.
 export const runtime = "edge";
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";

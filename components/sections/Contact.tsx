@@ -27,7 +27,7 @@ const SOCIALS = [
   {
     icon: Instagram,
     label: "Instagram",
-    href: "https://instagram.com", // TODO: real profile URL
+    href: "https://www.instagram.com/pun20202020/",
   },
 ];
 
@@ -275,8 +275,14 @@ export default function Contact() {
         {/* Heading — the sign-off gets the same marquee-selection reveal as
             every section headline, at its biggest scale. */}
         {/* text-8xl waits for lg: at 768-1023 a 96px "something good." nearly
-            filled the content column and wrapped ugly. */}
-        <h2 className="mt-8 font-serif text-5xl font-bold leading-[1.02] text-ink-strong sm:text-7xl lg:text-8xl">
+            filled the content column and wrapped ugly.
+            The base tier is fluid rather than a flat text-5xl: "something" is
+            one unbreakable 48px word, ~275px wide, and a 320px phone only
+            offers 272px of column — so it was being shaved by the footer's
+            overflow-hidden. The clamp holds 48px everywhere from ~400px up
+            (identical to before) and eases down to 40px on the narrowest
+            handsets. */}
+        <h2 className="mt-8 font-serif text-[clamp(2.5rem,12vw,3rem)] font-bold leading-[1.02] text-ink-strong sm:text-7xl lg:text-8xl">
           <RevealLine>
             <SplitText text="Let's make" as="span" className="block" />
           </RevealLine>

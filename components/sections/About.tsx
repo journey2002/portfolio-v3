@@ -243,10 +243,14 @@ function Plates() {
   return (
     <div className="mt-20 sm:mt-24">
       {/* Unnumbered on purpose: this is a sub-header inside section 01, and a
-          "02" here would read as the section index that Work already owns. */}
+          "02" here would read as the section index that Work already owns.
+          The left label names WHAT these are; the right one says how they
+          behave. Deliberately not motion-worded — Work below already carries
+          "Things that move" and "Also in motion", and the right label here
+          covers it, so a third mention just echoes. */}
       <div className="flex items-center gap-4 border-t border-ink-strong/20 pt-3 sm:gap-6">
         <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.35em] text-ink-subtle">
-          Selected output
+          Studies
         </span>
         <span aria-hidden className="h-px flex-1 bg-hairline" />
         <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.35em] text-ink-faint">
