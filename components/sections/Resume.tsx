@@ -32,9 +32,11 @@ import SectionLabel from "@/components/ui/SectionLabel";
 import SplitText from "@/components/ui/SplitText";
 
 // The downloadable PDF, served from public/assets/. Drop the real file at
-// public/assets/resume.pdf — until it exists this link 404s.
+// public/assets/resume_worapat.pdf — until it exists this link 404s.
+// The filename is what the visitor's browser saves, so it carries the name
+// rather than a bare "resume.pdf" in their downloads folder.
 // Set to null to hide both download buttons entirely.
-const RESUME_PDF: string | null = "/assets/resume.pdf";
+const RESUME_PDF: string | null = "/assets/resume_worapat.pdf";
 
 type TimelineItem = {
   date: string;
@@ -1460,13 +1462,19 @@ function ResumeFooter() {
           <p className="text-center text-xs sm:text-left sm:text-sm">
             © {new Date().getFullYear()} Worapat Settapak. All rights reserved.
           </p>
+          {/* `py-1 -my-1` on each link, here and below: at 14px these rows are
+              only 20px tall, under the 24px minimum tap target, and they're a
+              standalone link row rather than links inside a sentence. The
+              padding lifts the hit box to 28px while the matching negative
+              margin keeps the line box — and so the footer's height — exactly
+              where it was. */}
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
             {RESUME_PDF && (
               <a
                 href={RESUME_PDF}
                 download
                 data-cursor-hover
-                className="group inline-flex items-center gap-1.5 text-ink-muted transition-colors hover:text-ink-strong"
+                className="group -my-1 inline-flex items-center gap-1.5 py-1 text-ink-muted transition-colors hover:text-ink-strong"
               >
                 <Download
                   className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-y-0.5"
@@ -1478,7 +1486,7 @@ function ResumeFooter() {
             <a
               href="/#work"
               data-cursor-hover
-              className="group inline-flex items-center gap-1.5 text-ink-muted transition-colors hover:text-ink-strong"
+              className="group -my-1 inline-flex items-center gap-1.5 py-1 text-ink-muted transition-colors hover:text-ink-strong"
             >
               See my work
               <ArrowUpRight
@@ -1489,7 +1497,7 @@ function ResumeFooter() {
             <a
               href="/"
               data-cursor-hover
-              className="group inline-flex items-center gap-1.5 text-ink-muted transition-colors hover:text-ink-strong"
+              className="group -my-1 inline-flex items-center gap-1.5 py-1 text-ink-muted transition-colors hover:text-ink-strong"
             >
               <ArrowLeft
                 className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5"

@@ -28,3 +28,10 @@ next-env.d.ts
 
 # claude code
 .claude/
+
+# Source masters kept out of public/ on purpose. Anything under public/ is
+# deployed and publicly downloadable, so the .mkv/.tif originals of the shipped
+# .mp4s and JPGs live here instead: still on disk to re-export from, never
+# served. Earlier revisions of these files remain in git history if one is ever
+# needed back.
+/media-src/
