@@ -606,20 +606,34 @@ function LedgerRow({
         </div>
 
         {/* Peek — a near-artboard-height window onto the site. Opens at the
-            page's top and drifts slowly down while hovered, as if the page
-            were being scrolled. Mouse-only: rows are plain links on touch. */}
+            page's top and rides all the way down to the footer while hovered,
+            as if the page were being scrolled. Mouse-only: rows are plain
+            links on touch. */}
         <div
           className="hidden mouse:grid transition-[grid-template-rows] duration-500 ease-out-expo"
           style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
         >
           <div className="overflow-hidden">
-            {/* Same viewport rule as the artboard above — square. */}
-            <div className="relative mb-5 h-[30rem] overflow-hidden border border-hairline bg-[#0b0b0d]">
+            {/* Same viewport rule as the artboard above — square. A size
+                container so the pan below can measure it. */}
+            <div className="relative mb-5 h-[30rem] overflow-hidden border border-hairline bg-[#0b0b0d] [container-type:size]">
+              {/* Same rule as the featured frames' PAN: 100cqh is the window's
+                  own height and the transform's 100% is the page's, so
+                  calc(100cqh − 100%) lands exactly on the site's footer and
+                  never past it; min() guards pages shorter than the window.
+                  These ledger screenshots are far taller than the featured
+                  ones (Julia Paris alone is 1440 × 6369), which is why the old
+                  flat −520px read as barely moving. Linear the whole way down,
+                  and a short eased return so it glides back up on mouse-out. */}
               <div
-                className="absolute inset-x-0 top-0 will-change-transform"
+                className="absolute inset-x-0 top-0 w-full will-change-transform"
                 style={{
-                  transform: open ? "translateY(-520px)" : "translateY(0px)",
-                  transition: "transform 14s linear",
+                  transform: open
+                    ? "translateY(min(0px, calc(100cqh - 100%)))"
+                    : "translateY(0px)",
+                  transition: open
+                    ? "transform 20s linear"
+                    : "transform 1.1s cubic-bezier(0.16,1,0.3,1)",
                 }}
               >
                 {site.image ? (

@@ -210,8 +210,12 @@ const GALLERY: GalleryItem[] = [
     from: "#38bdf8",
     to: "#4f46e5",
     glow: "rgba(255,255,255,0.55)",
+    // top-20% (not 24%) levels this card's top edge with muse's on the opposite
+    // side — they're the upper pair, so a 4% stagger just read as one of them
+    // having slipped. It stays the taller card, so its lower edge still hangs
+    // below muse's and the pair keeps its asymmetry without looking dropped.
     className:
-      "left-3 top-[24%] w-24 lg:left-[max(-2rem,calc(50%_-_36rem))] lg:w-32 xl:w-40",
+      "left-3 top-[20%] w-24 lg:left-[max(-2rem,calc(50%_-_36rem))] lg:w-32 xl:w-40",
     // Phone minis: only the width — layout comes from the shelf wrapper's
     // centered flex row (see the phone-minis wrapper in the hero JSX).
     // Piled/scattered/edge-tucked absolute anchors were all tried and read as
@@ -630,7 +634,15 @@ export default function Hero() {
         ref={headlineRef}
         className="relative inline-block select-none"
         style={{
-          fontSize: "calc(clamp(2.75rem,8.5vw,6rem) * var(--hs,1))",
+          // Sized against BOTH axes. The `8.5vw` term alone passes the 6rem
+          // ceiling at ~1129px wide, so from there to 2560px the headline was a
+          // flat 96px — the hero stopped responding to anything on every
+          // desktop. `min(…, 10vh)` re-couples it to the axis that actually
+          // varies between a 2K monitor and a laptop: on a 1300px-tall viewport
+          // the vh term lands past the cap (unchanged 96px), on a ~720px laptop
+          // it takes over at ~72px. vw still wins on phones/tablets, so those
+          // tiers are untouched.
+          fontSize: "calc(clamp(2.75rem, min(8.5vw, 10vh), 6rem) * var(--hs,1))",
           width: "var(--bw, min-content)",
           lineHeight: "var(--lh, 0.94)",
         }}
@@ -763,7 +775,7 @@ export default function Hero() {
       // (pb much heavier than pt) lifts the flex-centred text block well above
       // viewport centre — the void under the nav pill reads worse than one
       // above the asset shelf, which fills the freed bottom band.
-      className="relative flex min-h-[100svh] items-center justify-center overflow-hidden px-6 pb-48 pt-24 sm:px-10 md:py-16"
+      className="relative flex min-h-[100svh] items-center justify-center overflow-hidden px-6 pb-48 pt-24 sm:px-10 md:py-[clamp(1.5rem,6vh,4rem)]"
     >
       {/* ── Background: dot grid (cursor glow + repel), aurora, accents, dust ──── */}
       <motion.div style={{ y: gridY }} className="absolute inset-0">
@@ -900,7 +912,9 @@ export default function Hero() {
         <Ruler />
 
         {/* Frame tab (top-left), riding the top edge */}
-        <div className="absolute -top-6 left-0 right-0 hidden items-center sm:flex">
+        {/* Rides the frame's top edge, so it shares the Ruler's height gate —
+            below ~700px it would sit level with the nav pill. */}
+        <div className="absolute -top-6 left-0 right-0 hidden items-center [@media(min-width:768px)_and_(min-height:700px)]:flex">
           <motion.span
             initial={{ opacity: 0, y: 6 }}
             animate={introDone ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
@@ -931,8 +945,11 @@ export default function Hero() {
           // On phones the artboard card is dropped entirely — the border+panel
           // just shrank the text column and added box-in-box chrome. Content
           // sits straight on the canvas (the section provides the gutter); the
-          // framed "design file" staging starts at sm with the tab and ruler.
-          className="relative flex flex-col justify-center sm:rounded-md sm:border sm:border-hairline sm:bg-panel-weak sm:px-12 sm:py-14 sm:backdrop-blur-[2px] lg:px-16 xl:px-48"
+          // framed "design file" card starts at sm. Its dressing (ruler, frame
+          // tab, dimension caption) comes in later, at md AND ≥700px tall —
+          // those hang outside the frame and need room the smaller tiers don't
+          // have; see the gate on Ruler.
+          className="relative flex flex-col justify-center sm:rounded-md sm:border sm:border-hairline sm:bg-panel-weak sm:px-12 sm:py-[clamp(1.25rem,5vh,3.5rem)] sm:backdrop-blur-[2px] lg:px-16 xl:px-48"
         >
           {/* Top sheen on the frame edge — no frame on phones, no sheen */}
           <span
@@ -948,7 +965,10 @@ export default function Hero() {
               `layout` motion.div so dragging the matching row in the layers panel
               animates the block to its new slot. `space-y` (not per-block margins)
               keeps the gaps identical no matter the order. */}
-          <motion.div style={{ y: contentY }} className="space-y-8 sm:space-y-10">
+          <motion.div
+            style={{ y: contentY }}
+            className="space-y-8 sm:space-y-[clamp(1.5rem,3.5vh,2.5rem)]"
+          >
             {layerOrder.map((id) => (
               <motion.div
                 key={id}
@@ -966,7 +986,10 @@ export default function Hero() {
           initial={{ opacity: 0 }}
           animate={introDone ? { opacity: 1 } : { opacity: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
-          className="mt-6 hidden items-center justify-center gap-2 text-[10px] uppercase tracking-[0.3em] text-ink-faint sm:flex"
+          // Same ~700px height gate as the ruler/tab above: below it this
+          // caption lands on top of the ScrollCue no matter how tight the
+          // margin gets, so it drops out instead.
+          className="mt-[clamp(0.75rem,2.5vh,1.5rem)] hidden items-center justify-center gap-2 text-[10px] uppercase tracking-[0.3em] text-ink-faint [@media(min-width:768px)_and_(min-height:700px)]:flex"
         >
           <span className="h-px w-6 bg-hairline" />
           Worapat Settapak · Portfolio 2026
@@ -1316,7 +1339,15 @@ function Ruler() {
       initial={{ opacity: 0 }}
       animate={introDone ? { opacity: 1 } : { opacity: 0 }}
       transition={{ duration: 0.8, delay: 0.4 }}
-      className="absolute -top-[3.2rem] left-0 right-0 hidden h-3 overflow-hidden sm:block"
+      // Gated on BOTH axes, and deliberately not on `sm:`.
+      // Height: it hangs 3.2rem above the frame, so under ~700px the frame's
+      // centred position puts that strip behind the nav pill (top 76px).
+      // Width: below `md` the section is still on the MOBILE padding tier
+      // (pb-48/pt-24, sized for the phone asset shelf), which leaves no room
+      // above the frame either — at 684x742 this collided with the nav by 27px
+      // even before the height clamps went in. Purely decorative, so on a short
+      // or narrow window it drops out rather than colliding.
+      className="absolute -top-[3.2rem] left-0 right-0 hidden h-3 overflow-hidden [@media(min-width:768px)_and_(min-height:700px)]:block"
       style={{
         maskImage:
           "linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)",
@@ -1562,7 +1593,10 @@ function ScrollCue() {
       href="#about"
       aria-label="Scroll to about"
       data-cursor-hover
-      className="pointer-events-auto absolute bottom-20 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.3em] text-ink-subtle transition-colors duration-200 hover:text-ink-strong"
+      // Offset is height-clamped so the cue tucks closer to the status bar on
+      // short viewports instead of colliding with the frame's dimension caption
+      // above it; on tall screens it stays at the original bottom-20 (5rem).
+      className="pointer-events-auto absolute bottom-[clamp(3.5rem,9vh,5rem)] left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.3em] text-ink-subtle transition-colors duration-200 hover:text-ink-strong"
     >
       <span className="flex flex-col items-center gap-3">
         Scroll
