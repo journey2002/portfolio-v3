@@ -55,7 +55,7 @@ const FEATURED: ClientSite[] = [
     from: "#1c1917",
     to: "#d6c3a8",
     size: "1440 × 3990",
-    image: "/clients/jijistudio.jpg",
+    image: "/clients/jijistudio.2a40f36a.jpg",
   },
   {
     name: "La Maison du Poké Bowl",
@@ -68,7 +68,7 @@ const FEATURED: ClientSite[] = [
     from: "#14b8a6",
     to: "#f97316",
     size: "1440 × 5024",
-    image: "/clients/pokebowl.jpg",
+    image: "/clients/pokebowl.2ab40c76.jpg",
   },
 ];
 
@@ -84,7 +84,7 @@ const MORE: ClientSite[] = [
     from: "#c4a484",
     to: "#8b5e4b",
     size: "1440 × 6369",
-    image: "/clients/juliaparis.jpg",
+    image: "/clients/juliaparis.47c01d95.jpg",
   },
   {
     name: "Olara",
@@ -97,7 +97,7 @@ const MORE: ClientSite[] = [
     from: "#4a1942",
     to: "#c9a227",
     size: "1440 × 5409",
-    image: "/clients/olara.jpg",
+    image: "/clients/olara.56658590.jpg",
   },
   {
     name: "Quatre-Quarts",
@@ -110,7 +110,7 @@ const MORE: ClientSite[] = [
     from: "#a16207",
     to: "#ea580c",
     size: "1440 × 4680",
-    image: "/clients/quatrequarts.jpg",
+    image: "/clients/quatrequarts.37b4fbac.jpg",
   },
 ];
 
@@ -159,6 +159,14 @@ export default function ClientWork() {
   const headingInView = useInView(headingRef, { once: true, margin: "-10%" });
   const boardInView = useInView(boardRef, { once: true, margin: "-12%" });
   const ledgerInView = useInView(ledgerRef, { once: true, margin: "-12%" });
+  // Warm the peek screenshots a screen ahead of the ledger arriving. They're
+  // the biggest images on the site and they live inside a collapsed row, so
+  // they can't be lazy-loaded the ordinary way (see LedgerRow) — this is what
+  // keeps ~1.5 MB off the initial load without risking a half-painted peek.
+  const ledgerNear = useInView(ledgerRef, {
+    once: true,
+    margin: "800px 0px 800px 0px",
+  });
 
   // Which ledger row is peeked open (mouse only) — the others dim, like the
   // off-the-clock index does.
@@ -288,6 +296,7 @@ export default function ClientWork() {
                 number={FEATURED.length + i + 1}
                 open={peeked === i}
                 dim={peeked !== null && peeked !== i}
+                warm={ledgerNear}
                 onEnter={() => setPeeked(i)}
               />
             ))}
@@ -556,12 +565,15 @@ function LedgerRow({
   number,
   open,
   dim,
+  warm,
   onEnter,
 }: {
   site: ClientSite;
   number: number;
   open: boolean;
   dim: boolean;
+  /** The ledger is close enough that the peek's screenshot should be fetched. */
+  warm: boolean;
   onEnter: () => void;
 }) {
   return (
@@ -626,7 +638,7 @@ function LedgerRow({
                   flat −520px read as barely moving. Linear the whole way down,
                   and a short eased return so it glides back up on mouse-out. */}
               <div
-                className="absolute inset-x-0 top-0 w-full will-change-transform"
+                className="absolute inset-x-0 top-0 w-full"
                 style={{
                   transform: open
                     ? "translateY(min(0px, calc(100cqh - 100%)))"
@@ -634,12 +646,26 @@ function LedgerRow({
                   transition: open
                     ? "transform 20s linear"
                     : "transform 1.1s cubic-bezier(0.16,1,0.3,1)",
+                  // Promoted only while the row is actually peeked. These are
+                  // 1440-wide full-page captures several thousand pixels tall,
+                  // so a permanent hint pinned three of them in compositor
+                  // memory for a hover that most visitors never perform. The
+                  // row's 500ms grid expansion runs before any of the pan is
+                  // visible, which is ample time to rasterise the layer.
+                  willChange: open ? "transform" : undefined,
                 }}
               >
                 {site.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={site.image}
+                    // `loading="lazy"` is no use here: the peek's container is
+                    // collapsed to zero height, and a zero-area image never
+                    // enters the lazy-loading viewport check — the browser
+                    // fetches it immediately regardless. Withholding the src
+                    // until the ledger is a screen away is the only thing that
+                    // actually defers it. Nothing renders either way while the
+                    // row is shut, so there's no visual difference.
+                    src={warm ? site.image : undefined}
                     alt=""
                     decoding="async"
                     className="w-full"

@@ -241,6 +241,12 @@ for (const site of sites) {
 
     const kb = Math.round(fs.statSync(file).size / 1024);
     console.log(`  OK ${site.id}.jpg (${kb}KB)`);
+    // These land as plain `<id>.jpg` masters at the canvas encoder's quality.
+    // They are NOT what ships: run `npm run optimize:media` afterwards, which
+    // re-encodes them with mozjpeg and gives each a content-hashed name — the
+    // name is what makes them safe to serve immutable (see next.config.mjs),
+    // so a recapture that skips that step would leave visitors on the old
+    // cached image. Point Clients.tsx at the hashed files and delete these.
   } catch (e) {
     console.error(`  FAIL ${site.id}:`, e.message);
   } finally {

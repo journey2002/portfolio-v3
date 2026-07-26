@@ -35,6 +35,7 @@ import DotGrid from "@/components/ui/DotGrid";
 import { useIntro } from "@/components/ui/IntroProvider";
 import { usePointer } from "@/components/ui/PointerProvider";
 import { useMarqueeSlowOnHover } from "@/components/ui/useMarqueeSlowOnHover";
+import { usePauseOffscreen } from "@/components/ui/usePauseOffscreen";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -234,7 +235,7 @@ const GALLERY: GalleryItem[] = [
   },
   {
     id: "donut",
-    src: "/assets/donut.png",
+    src: "/assets/donut.1a389655.webp",
     label: "donut.png",
     from: "#fbcfe8",
     to: "#fb7185",
@@ -283,7 +284,7 @@ const GALLERY: GalleryItem[] = [
   },
   {
     id: "chair",
-    src: "/assets/chair.png",
+    src: "/assets/chair.4d3a1a41.webp",
     label: "chair.png",
     from: "#fcd34d",
     to: "#6b7280",
@@ -574,6 +575,10 @@ export default function Hero() {
   const contentY = useTransform(heroProgress, [0, 1], [0, -110]);
   const auroraScale = useTransform(heroProgress, [0, 1], [1, 1.4]);
   const auroraY = useTransform(heroProgress, [0, 1], [0, 160]);
+  // The aurora is a 120vh × 120vh gradient on an 8s infinite scale loop. The
+  // scroll transforms above fade and push it away, but the keyframes kept
+  // running for the rest of the session on a layer nobody could see.
+  const auroraPause = usePauseOffscreen<HTMLDivElement>();
   const gridY = useTransform(heroProgress, [0, 1], [0, 80]);
 
   const marqueeHoverRef = useMarqueeSlowOnHover<HTMLDivElement>();
@@ -785,6 +790,7 @@ export default function Hero() {
       </motion.div>
 
       <motion.div
+        ref={auroraPause.ref}
         aria-hidden
         style={{ y: auroraY, scale: auroraScale }}
         className="pointer-events-none absolute inset-0"
@@ -799,6 +805,7 @@ export default function Hero() {
             initial={{ opacity: 0 }}
             animate={introDone ? { opacity: 0.5 } : { opacity: 0 }}
             transition={{ duration: 1.6, delay: 0.8, ease: "easeOut" }}
+            style={auroraPause.animation}
             className="bg-aurora animate-aurora-shift absolute left-1/2 top-1/2 h-[120vh] w-[120vh] -translate-x-1/2 -translate-y-1/2"
           />
         </MouseParallax>
@@ -1218,6 +1225,14 @@ function GalleryCard({
                 <img
                   src={item.src}
                   alt=""
+                  // On desktop these sit in the first viewport, so the fetch
+                  // starts immediately anyway and any scheduling difference is
+                  // hidden under the intro overlay. Below `md` the whole
+                  // desktop wrapper is display:none and the phone shelf omits
+                  // the cards that have no mobileClassName — lazy is what stops
+                  // a phone downloading art it will never paint.
+                  loading="lazy"
+                  decoding="async"
                   className="h-full w-full object-cover"
                   style={
                     item.zoomOrigin

@@ -1,5 +1,7 @@
 "use client";
 
+import { usePauseOffscreen } from "@/components/ui/usePauseOffscreen";
+
 /**
  * A project's cover — the piece itself, sitting on the colour identity that
  * used to stand in for it. The generated layer (two drifting blobs in the
@@ -37,18 +39,33 @@ export default function ProjectCover({
   showFlip?: boolean;
   className?: string;
 }) {
+  // The gallery renders one of these per project, and each carries two large
+  // blurred layers on infinite loops — so off screen that's a double-digit
+  // count of blur-3xl gradients being composited for nobody. Park them.
+  const { ref, animation } = usePauseOffscreen<HTMLDivElement>();
+
   return (
-    <div aria-hidden className={`relative overflow-hidden bg-[#0b0b0d] ${className}`}>
+    <div
+      ref={ref}
+      aria-hidden
+      className={`relative overflow-hidden bg-[#0b0b0d] ${className}`}
+    >
       {/* Two drifting colour blobs give the panel depth and motion. The
           animations are CSS keyframes, so prefers-reduced-motion freezes them
           via the global rule in globals.css. */}
       <div
         className="absolute -left-[20%] -top-[35%] h-[140%] w-[80%] rounded-full opacity-70 blur-3xl animate-float-card"
-        style={{ background: `radial-gradient(circle at center, ${from}, transparent 68%)` }}
+        style={{
+          background: `radial-gradient(circle at center, ${from}, transparent 68%)`,
+          ...animation,
+        }}
       />
       <div
         className="absolute -right-[25%] bottom-[-40%] h-[140%] w-[85%] rounded-full opacity-55 blur-3xl animate-drift-x"
-        style={{ background: `radial-gradient(circle at center, ${to}, transparent 70%)` }}
+        style={{
+          background: `radial-gradient(circle at center, ${to}, transparent 70%)`,
+          ...animation,
+        }}
       />
 
       {/* Faint structural grid — same vocabulary as the page background. Only

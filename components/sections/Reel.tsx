@@ -78,9 +78,13 @@ const CLIPS: Clip[] = [
     id: "topograph",
     title: "Topograph",
     caption: "3D · Procedural Terrain",
-    src: "/assets/turrain_map.mp4",
+    src: "/assets/turrain_map.cac59a2f.mp4",
     poster: "/assets/posters/turrain_map.jpg",
-    // Real file is ~20.9s; truncated to its first 10s so it doesn't dominate.
+    // Truncated to its first 10s so it doesn't dominate the reel. The file
+    // itself is now trimmed to 10.5s to match (it used to run 20.9s, and the
+    // unreachable tail was ~15 MB of the download) — still longer than the
+    // slot, which is what keeps the timeupdate cut below in charge rather
+    // than the native `ended` event.
     duration: 10,
     from: "#38bdf8",
     to: "#d946ef",
@@ -89,7 +93,7 @@ const CLIPS: Clip[] = [
     id: "kinetic",
     title: "Kinetic",
     caption: "Simulation · Rigid Body",
-    src: "/assets/tube_ball_bounce.mp4",
+    src: "/assets/tube_ball_bounce.2602cf1a.mp4",
     poster: "/assets/posters/tube_ball_bounce.jpg",
     duration: 10.4,
     from: "#22d3ee",
@@ -122,6 +126,17 @@ export default function Reel() {
   // Live (re-firing) visibility gates autoplay: the reel only runs while it's
   // on screen, and pauses the moment it scrolls away — no off-screen decode.
   const inView = useInView(sectionRef, { margin: "-20%" });
+  // Buffering gate, a long way ahead of the autoplay one. The reel sits several
+  // screens below the fold, but its <video> is server-rendered, so `preload`
+  // is whatever the markup says from the very first byte — `auto` had the
+  // opener downloading in full while the visitor was still reading the hero.
+  // Holding it at `metadata` until the section is roughly a screen and a half
+  // away keeps that off the initial load, then upgrades to `auto` early enough
+  // that the buffer is warm well before the -20% autoplay gate opens.
+  const nearby = useInView(sectionRef, {
+    once: true,
+    margin: "1200px 0px 1200px 0px",
+  });
 
   const reduced = useReducedMotion();
 
@@ -144,6 +159,30 @@ export default function Reel() {
   const trackRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const fillRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const rafRef = useRef<number | null>(null);
+
+  // Cached timeline-track geometry. paint() runs on every playback frame and
+  // on every scrub move, and it used to read offsetLeft/offsetWidth there —
+  // layout reads interleaved with the transform writes just above them, which
+  // is the pattern that forces a synchronous reflow per frame. The rail's
+  // geometry only moves on resize (offsetLeft is offsetParent-relative, so
+  // scrolling the mobile filmstrip doesn't touch it), so measure it there and
+  // read from the cache in the loop.
+  const geomRef = useRef<({ left: number; width: number } | null)[]>([]);
+  const measureTracks = useCallback(() => {
+    geomRef.current = trackRefs.current.map((el) =>
+      el ? { left: el.offsetLeft, width: el.offsetWidth } : null,
+    );
+  }, []);
+  const trackGeom = useCallback((i: number) => {
+    // Lazily fill a slot the measure pass hasn't reached yet (a track that
+    // mounted after the last resize), so the head can never sit at 0.
+    if (!geomRef.current[i]) {
+      const el = trackRefs.current[i];
+      if (!el) return null;
+      geomRef.current[i] = { left: el.offsetLeft, width: el.offsetWidth };
+    }
+    return geomRef.current[i];
+  }, []);
   const glitchTimers = useRef<number[]>([]);
 
   // Read current state inside imperative event handlers without re-binding them.
@@ -202,10 +241,10 @@ export default function Reel() {
     fillRefs.current.forEach((el, idx) => {
       if (el) el.style.transform = `scaleX(${idx < i ? 1 : idx === i ? p : 0})`;
     });
-    const track = trackRefs.current[i];
-    if (track && playheadRef.current) {
+    const geom = trackGeom(i);
+    if (geom && playheadRef.current) {
       playheadRef.current.style.transform = `translateX(${
-        track.offsetLeft + p * track.offsetWidth
+        geom.left + p * geom.width
       }px)`;
     }
     if (monBarRef.current) monBarRef.current.style.transform = `scaleX(${p})`;
@@ -213,7 +252,7 @@ export default function Reel() {
       const slot = CLIPS[i].duration;
       tcRef.current.textContent = `${tc(p * slot)} / ${tc(slot)}`;
     }
-  }, []);
+  }, [trackGeom]);
 
   // Seat the playhead + fills to the start of clip `i`.
   const seatActive = useCallback((i: number) => paint(i, 0), [paint]);
@@ -265,12 +304,12 @@ export default function Reel() {
       // cursor; a gap between tracks clamps to the end of the earlier clip.
       let i = 0;
       for (let k = 0; k < CLIPS.length; k++) {
-        const t = trackRefs.current[k];
-        if (t && x >= t.offsetLeft) i = k;
+        const g = trackGeom(k);
+        if (g && x >= g.left) i = k;
       }
-      const t = trackRefs.current[i];
-      const p = t
-        ? Math.max(0, Math.min(1, (x - t.offsetLeft) / t.offsetWidth))
+      const g = trackGeom(i);
+      const p = g
+        ? Math.max(0, Math.min(1, (x - g.left) / g.width))
         : 0;
       paint(i, p);
       if (i === activeRef.current) {
@@ -291,7 +330,7 @@ export default function Reel() {
         setActive(i);
       }
     },
-    [paint],
+    [paint, trackGeom],
   );
 
   // Coalesce pointer moves to one seek per frame — seeking on every raw move can
@@ -363,17 +402,30 @@ export default function Reel() {
   // Mid-scrub the head belongs to the pointer, so honour the carried fraction
   // instead of snapping the fresh clip back to its start.
   useEffect(() => {
+    measureTracks();
     if (scrubbingRef.current) {
       paint(activeRef.current, scrubSeekRef.current ?? 0);
     } else {
       seatActive(active);
     }
     const onResize = () => {
+      measureTracks();
       if (!scrubbingRef.current) seatActive(activeRef.current);
     };
+    // The track labels are set in the mono face, so the rail's widths shift
+    // when it swaps in. Re-measure once it has, or the cache would hold
+    // fallback-font geometry for the rest of the session.
+    let cancelled = false;
+    document.fonts?.ready.then(() => {
+      if (cancelled) return;
+      onResize();
+    });
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [active, seatActive, paint]);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("resize", onResize);
+    };
+  }, [active, seatActive, paint, measureTracks]);
 
   // Fit the rate to the new clip after commit. Media events don't bubble, so
   // React binds them directly at commit — a cached clip can fire loadedmetadata
@@ -594,7 +646,7 @@ export default function Reel() {
             poster={clip.poster}
             muted={muted}
             playsInline
-            preload="auto"
+            preload={nearby ? "auto" : "metadata"}
             onLoadedMetadata={onLoadedMetadata}
             onEnded={onEnded}
             onCanPlay={onCanPlay}
