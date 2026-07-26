@@ -109,11 +109,32 @@ function ProgressRing({ w, h }: { w: number; h: number }) {
 
   useEffect(() => {
     let scheduled = false;
+
+    // Scrollable distance, cached. Reading scrollHeight forces a layout flush,
+    // and doing that every scroll frame — right before writing 16 attributes
+    // back — is the expensive half of this handler. It only changes when the
+    // document resizes, so measure it there instead: window resize, plus a
+    // ResizeObserver on <body>, which is what catches the code-split sections
+    // mounting in and the images landing after first paint.
+    let max = 0;
+    const measure = () => {
+      max = document.documentElement.scrollHeight - window.innerHeight;
+    };
+
+    // Last painted progress, so an idle-but-still-firing scroll (Lenis keeps
+    // emitting as it settles) doesn't repaint identical geometry.
+    let painted = -1;
+
     const update = () => {
-      const max = document.documentElement.scrollHeight - window.innerHeight;
+      scheduled = false;
       const progress = max > 0 ? Math.min(1, window.scrollY / max) : 0;
 
       const p = Math.max(0, Math.min(100, progress * 100));
+      // A hair finer than one pixel of arc on the longest ring this renders,
+      // so nothing visible is ever skipped.
+      if (Math.abs(p - painted) < 0.01) return;
+      painted = p;
+
       const vis = Math.min(1, progress * 30); // invisible at the very top, fades in fast
 
       // Soft "comet tail": the leading edge fades out instead of ending in a
@@ -141,16 +162,32 @@ function ProgressRing({ w, h }: { w: number; h: number }) {
           len > 0 ? `0 ${body} ${len} 100` : "0 100"
         );
       }
-      scheduled = false;
     };
     const onScroll = () => {
       if (scheduled) return;
       scheduled = true;
       requestAnimationFrame(update);
     };
+    // A resize changes the scrollable distance, so the cached max is stale
+    // before the next frame — remeasure and repaint together.
+    const onResize = () => {
+      measure();
+      painted = -1;
+      onScroll();
+    };
+
+    measure();
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("resize", onResize, { passive: true });
+    const ro =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(onResize) : null;
+    ro?.observe(document.body);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+      ro?.disconnect();
+    };
   }, [segs]);
 
   if (w <= 0 || h <= 0) return null;
