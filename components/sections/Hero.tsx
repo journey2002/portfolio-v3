@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   motion,
   Reorder,
@@ -575,10 +575,13 @@ export default function Hero() {
   const contentY = useTransform(heroProgress, [0, 1], [0, -110]);
   const auroraScale = useTransform(heroProgress, [0, 1], [1, 1.4]);
   const auroraY = useTransform(heroProgress, [0, 1], [0, 160]);
-  // The aurora is a 120vh × 120vh gradient on an 8s infinite scale loop. The
-  // scroll transforms above fade and push it away, but the keyframes kept
-  // running for the rest of the session on a layer nobody could see.
-  const auroraPause = usePauseOffscreen<HTMLDivElement>();
+  // One gate for every ambient loop in the hero: the 120vh × 120vh aurora on
+  // its 8s scale cycle, the eight floating artwork cards, the headline caret
+  // and the scroll cue. All of them are `infinite` and none of them stopped
+  // when the hero scrolled away — the scroll transforms only faded the aurora
+  // out, they didn't halt its keyframes. Watching the section itself means a
+  // single IntersectionObserver covers the lot.
+  const heroPause = usePauseOffscreen({ target: sectionRef });
   const gridY = useTransform(heroProgress, [0, 1], [0, 80]);
 
   const marqueeHoverRef = useMarqueeSlowOnHover<HTMLDivElement>();
@@ -680,6 +683,7 @@ export default function Hero() {
               initial={{ opacity: 0 }}
               animate={introDone ? { opacity: 1 } : { opacity: 0 }}
               transition={{ delay: 1.5 }}
+              style={heroPause.animation}
               className="animate-caret-blink mb-[0.3em] ml-1 h-[0.72em] w-[3px] rounded-full bg-accent-gradient sm:w-1"
             />
           </span>
@@ -790,7 +794,6 @@ export default function Hero() {
       </motion.div>
 
       <motion.div
-        ref={auroraPause.ref}
         aria-hidden
         style={{ y: auroraY, scale: auroraScale }}
         className="pointer-events-none absolute inset-0"
@@ -805,7 +808,7 @@ export default function Hero() {
             initial={{ opacity: 0 }}
             animate={introDone ? { opacity: 0.5 } : { opacity: 0 }}
             transition={{ duration: 1.6, delay: 0.8, ease: "easeOut" }}
-            style={auroraPause.animation}
+            style={heroPause.animation}
             className="bg-aurora animate-aurora-shift absolute left-1/2 top-1/2 h-[120vh] w-[120vh] -translate-x-1/2 -translate-y-1/2"
           />
         </MouseParallax>
@@ -836,6 +839,7 @@ export default function Hero() {
             item={item}
             frameHovered={frameHover}
             enabled={enabled}
+            animation={heroPause.animation}
           />
         ))}
       </motion.div>
@@ -862,6 +866,7 @@ export default function Hero() {
             frameHovered={false}
             enabled={false}
             mini
+            animation={heroPause.animation}
           />
         ))}
       </motion.div>
@@ -884,7 +889,7 @@ export default function Hero() {
         style={{ opacity: chromeOpacity, visibility: cueVisibility }}
         className="pointer-events-none absolute inset-0 z-20 hidden lg:block"
       >
-        <ScrollCue />
+        <ScrollCue animation={heroPause.animation} />
       </motion.div>
 
       {/* ── Interactive layers panel (own wrapper so it isn't aria-hidden) ──── */}
@@ -1142,9 +1147,12 @@ function GalleryCard({
   frameHovered,
   enabled,
   mini = false,
+  animation,
 }: {
   item: GalleryItem;
   frameHovered: boolean;
+  /** Offscreen play-state for the card's float loop — see usePauseOffscreen. */
+  animation?: CSSProperties;
   /**
    * Fine-pointer present → the side panels can render. Gates chair's
    * `panelClassName` pull-back; the `xl:` inside it self-limits to the widths
@@ -1218,7 +1226,11 @@ function GalleryCard({
           >
             <div
               className="animate-float-card overflow-hidden rounded-2xl border border-white/[0.12] shadow-[0_28px_55px_-24px_rgba(0,0,0,0.75)]"
-              style={{ animationDelay: `${item.floatDelay}s`, aspectRatio: "3 / 4" }}
+              style={{
+                animationDelay: `${item.floatDelay}s`,
+                aspectRatio: "3 / 4",
+                ...animation,
+              }}
             >
               {item.src ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -1602,7 +1614,7 @@ function LiveCoord({ axis }: { axis: "x" | "y" }) {
 }
 
 /** Minimal scroll affordance, bottom-centre above the status bar. */
-function ScrollCue() {
+function ScrollCue({ animation }: { animation?: CSSProperties }) {
   return (
     <a
       href="#about"
@@ -1616,7 +1628,10 @@ function ScrollCue() {
       <span className="flex flex-col items-center gap-3">
         Scroll
         <span className="relative h-8 w-px overflow-hidden bg-ink-faint/40">
-          <span className="animate-scroll-line absolute inset-x-0 top-0 h-full bg-gradient-to-b from-transparent via-ink-strong to-transparent" />
+          <span
+            style={animation}
+            className="animate-scroll-line absolute inset-x-0 top-0 h-full bg-gradient-to-b from-transparent via-ink-strong to-transparent"
+          />
         </span>
       </span>
     </a>

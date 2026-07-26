@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useInView, useReducedMotion, type Variants } from "framer-motion";
 import { Play } from "lucide-react";
+import { usePauseOffscreen } from "@/components/ui/usePauseOffscreen";
 import SectionLabel from "@/components/ui/SectionLabel";
 import { RevealLine } from "@/components/ui/Reveal";
 
@@ -65,9 +66,16 @@ const INTERESTS = [
 export default function About() {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-12%" });
+  // The record's live-status dots pulse on an infinite loop; stop them while
+  // the section is off screen.
+  const pause = usePauseOffscreen<HTMLElement>();
 
   return (
-    <section id="about" className="relative overflow-hidden py-28 md:py-36">
+    <section
+      id="about"
+      ref={pause.ref}
+      className="relative overflow-hidden py-28 md:py-36"
+    >
       {/* The section's index, kept as the giant drifting numeral the rest of
           the site uses — Work and Stack carry theirs, and About reads as a
           stray without it. It sits on z-0 behind the content, so the numeral
@@ -173,7 +181,10 @@ export default function About() {
                 <dd className="flex shrink-0 items-center gap-2 text-right font-mono text-[11px] leading-relaxed text-ink">
                   {live && (
                     <span className="relative flex h-1.5 w-1.5 shrink-0 translate-y-[-1px]">
-                      <span className="absolute inset-0 animate-pulse-dot bg-violet-accent" />
+                      <span
+                        style={pause.animation}
+                        className="absolute inset-0 animate-pulse-dot bg-violet-accent"
+                      />
                       <span className="relative h-1.5 w-1.5 bg-violet-accent" />
                     </span>
                   )}

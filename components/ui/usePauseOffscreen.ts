@@ -1,37 +1,44 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 
 /**
  * Freezes CSS animations inside a subtree while it's off screen.
  *
- * The site has several ambient loops — the hero's aurora drift, the project
- * covers' floating blobs — that are `infinite` and mounted for the whole
- * session. The compositor keeps animating them long after they've scrolled
- * away, and the blob layers in particular are large `blur-3xl` gradients, so
- * they're not cheap frames to keep painting for nobody.
+ * The site runs a lot of ambient loops — the hero's aurora and its floating
+ * artwork cards, the project covers' blobs, the resume's aurora — and all of
+ * them are `infinite` and mounted for the whole session. The compositor keeps
+ * animating them long after they've scrolled away, and the big blurred
+ * gradient layers are not cheap frames to keep painting for nobody.
  *
- * Returns a ref to attach to the container and a `paused` flag; spread the
- * returned style onto each animated element:
+ * One observer can gate a whole section: point it at the section and spread
+ * `animation` onto every animated element inside it.
  *
- *     const { ref, animation } = usePauseOffscreen();
- *     <div ref={ref}>
- *       <div className="animate-float-card" style={{ ...animation }} />
- *     </div>
+ *     const pause = usePauseOffscreen();
+ *     <section ref={pause.ref}>
+ *       <div className="animate-float-card" style={{ ...pause.animation }} />
+ *       <div className="animate-aurora-shift" style={{ ...pause.animation }} />
+ *     </section>
+ *
+ * Pass `target` when the element you want to watch already owns a ref:
+ *
+ *     const pause = usePauseOffscreen({ target: sectionRef });
  *
  * Same idea as the marquee's WAAPI pause in useMarqueeSlowOnHover, but for
- * decorative loops that no hook already owns. It only ever pauses ambient
- * drift, where a resumed loop picks up at a different phase than it would
- * have — invisible for a slow ambient wander, so don't reach for this on
- * anything whose phase carries meaning.
+ * decorative loops that no hook already owns. Pausing shifts where a loop
+ * resumes in its cycle, which is invisible for ambient drift and a blinking
+ * caret but would be wrong for anything whose phase carries meaning — so
+ * don't reach for this on progress or state indicators.
  *
- * The generous rootMargin means the loop is already running well before the
- * element can be seen, so nothing is ever caught mid-freeze.
+ * The generous rootMargin means a loop is running well before its element can
+ * be seen, so nothing is ever caught mid-freeze on the way in.
  */
-export function usePauseOffscreen<T extends HTMLElement = HTMLDivElement>(
+export function usePauseOffscreen<T extends HTMLElement = HTMLDivElement>({
   rootMargin = "200px",
-) {
-  const ref = useRef<T>(null);
+  target,
+}: { rootMargin?: string; target?: RefObject<T> } = {}) {
+  const ownRef = useRef<T>(null);
+  const ref: RefObject<T> = target ?? ownRef;
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
@@ -46,7 +53,7 @@ export function usePauseOffscreen<T extends HTMLElement = HTMLDivElement>(
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [rootMargin]);
+  }, [ref, rootMargin]);
 
   return {
     ref,

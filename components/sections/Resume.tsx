@@ -30,6 +30,7 @@ import DownloadButton from "@/components/ui/DownloadButton";
 import MagneticButton from "@/components/ui/MagneticButton";
 import SectionLabel from "@/components/ui/SectionLabel";
 import SplitText from "@/components/ui/SplitText";
+import { usePauseOffscreen } from "@/components/ui/usePauseOffscreen";
 
 // The downloadable PDF, served from public/assets/. Drop the real file at
 // public/assets/resume_worapat.pdf — until it exists this link 404s.
@@ -259,9 +260,13 @@ export default function Resume() {
 /* ------------------------------------------------------------------ */
 function ResumeHero() {
   const reduce = useReducedMotion();
+  // A 120vh × 120vh blurred aurora on an infinite 8s scale loop — the most
+  // expensive ambient layer on this route, and it ran the whole session.
+  const pause = usePauseOffscreen<HTMLElement>();
   return (
     <section
       id="top"
+      ref={pause.ref}
       className="relative overflow-hidden pb-12 pt-32 sm:pt-36 md:pt-40"
     >
       {/* Faint grid lines layered behind content for depth */}
@@ -283,6 +288,7 @@ function ResumeHero() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.5 }}
         transition={{ duration: 1.6, delay: 0.4, ease: "easeOut" }}
+        style={pause.animation}
         className="bg-aurora animate-aurora-shift pointer-events-none absolute left-1/2 top-[42vh] h-[120vh] w-[120vh] -translate-x-1/2 -translate-y-1/2 blur-3xl"
       />
 
@@ -943,6 +949,9 @@ function TimelineSection({
   const sectionRef = useRef<HTMLElement>(null);
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-12%" });
+  // Each entry's beacon ping loops forever; one observer on the section stops
+  // all of them once it's off screen.
+  const pause = usePauseOffscreen({ target: sectionRef });
 
   return (
     <section
@@ -1001,6 +1010,7 @@ function TimelineSection({
               total={items.length}
               icon={ItemIcon}
               inView={inView}
+              animation={pause.animation}
               delay={i * 0.12}
             />
           ))}
@@ -1024,6 +1034,7 @@ function TimelineEntry({
   icon: ItemIcon,
   inView,
   delay,
+  animation,
 }: {
   item: TimelineItem;
   index: number;
@@ -1031,6 +1042,8 @@ function TimelineEntry({
   icon: LucideIcon;
   inView: boolean;
   delay: number;
+  /** Offscreen play-state for the beacon ping — see usePauseOffscreen. */
+  animation?: CSSProperties;
 }) {
   const ease = [0.16, 1, 0.3, 1] as const;
   const isFirst = index === 0;
@@ -1101,7 +1114,10 @@ function TimelineEntry({
           className="relative block h-4 w-4"
         >
           {/* radar ping — a ring that swells out and fades, like a live beacon */}
-          <span className="absolute inset-0 animate-ping rounded-full border border-violet-accent/40 [animation-duration:2.8s]" />
+          <span
+            style={animation}
+            className="absolute inset-0 animate-ping rounded-full border border-violet-accent/40 [animation-duration:2.8s]"
+          />
           {/* core — inset behind a canvas-colored gap (first shadow) so the
               orbit ring reads as a separate orbit; second shadow is the glow */}
           <span className="absolute inset-1 rounded-full bg-accent-gradient shadow-[0_0_0_3px_rgb(var(--canvas)),0_0_14px_3px_rgb(var(--accent-2)/0.5)]" />
