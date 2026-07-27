@@ -72,7 +72,7 @@ const EXPERIENCE: TimelineItem[] = [
     ],
   },
   {
-    date: "Jun 2023 — May 2024",
+    date: "Jun 2023 — Sep 2023",
     location: "Bangkok, TH",
     headline: "Applicad Public Co., Ltd.",
     subhead: "3D & General Designer · Internship",
