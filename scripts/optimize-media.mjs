@@ -95,6 +95,34 @@ const VIDEO_JOBS = [
 ];
 
 /**
+ * Phone-sized video. This is the one case where re-encoding DOES pay, because
+ * it isn't a re-encode at the same size — it's a downscale, and the numbers
+ * above (which killed same-resolution CRF sweeps) don't apply to it. Dropping
+ * to a quarter of the pixels gives the encoder far less to carry, so the bytes
+ * come down steeply while the result is still oversampled at the size a phone
+ * paints it.
+ *
+ * Sizing: the reel monitor is `aspect-video` in a max-w-7xl column, so it never
+ * exceeds ~1240 CSS px; at the ≤767px widths these serve, it is at most ~700
+ * CSS px. 720p is still ~1.8x that in CSS terms, which lands right for a DPR 2-3
+ * phone — 480p would have been visibly soft on exactly the devices this targets.
+ *
+ * Only the 1080p clips are here. move1/move2 are already 720p, so a "mobile
+ * variant" of them would be a pure generation-loss re-encode for no pixels
+ * saved — precisely the trade the header warns about.
+ *
+ * Sources are the SHIPPED (already hashed//trimmed) files, not the pre-optimise
+ * originals: those were deleted once their outputs landed, and the shipped file
+ * is the best remaining copy.
+ */
+const MOBILE_VIDEO_JOBS = [
+  "assets/turrain_map.cac59a2f.mp4",
+  "assets/tube_ball_bounce.2602cf1a.mp4",
+  "assets/Donut.mp4",
+  "assets/Forager.mp4",
+].map((file) => ({ file, height: 720, crf: 23, renderWidth: 768 }));
+
+/**
  * Images. `renderWidth` is the widest CSS pixel width the asset is ever
  * painted at, taken from the class lists at the call site; outputs are sized
  * to 2x that (retina) and quality is measured after downscaling both sides to
@@ -134,6 +162,25 @@ const IMAGE_JOBS = [
       jpeg: { mozjpeg: true, quality: 78 },
     }),
   ),
+  // Phone-width copies of the two FEATURED shots, offered through srcset. The
+  // frame is ~327 CSS px on a phone, so 1024 still covers a DPR 2 screen with
+  // room over; DPR 3 asks for more and the browser picks the 1440 by itself,
+  // which is the correct answer there rather than a miss.
+  //
+  // Only these two: the other three appear solely in the ledger peek, which is
+  // `hidden mouse:grid` AND now pointer-gated before its src is set, so a phone
+  // never requests them at any size — a mobile variant would be dead weight.
+  //
+  // Sourced from the SHIPPED (hashed) copies, like the mobile video jobs: the
+  // pre-optimise originals were deleted once their outputs landed.
+  ...["jijistudio.2a40f36a", "pokebowl.2ab40c76"].map((id) => ({
+    file: `clients/${id}.jpg`,
+    suffix: ".m1024",
+    renderWidth: 768,
+    width: 1024,
+    format: "jpeg",
+    jpeg: { mozjpeg: true, quality: 76 },
+  })),
 ];
 
 /* ------------------------------------------------------------------ */
@@ -247,6 +294,76 @@ for (const job of VIDEO_JOBS) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Mobile video variants                                               */
+/* ------------------------------------------------------------------ */
+
+for (const job of MOBILE_VIDEO_JOBS) {
+  if (!wanted(job.file)) continue;
+  const src = path.join(publicDir, job.file);
+  if (!fs.existsSync(src)) {
+    failures.push(`${job.file}: source missing`);
+    continue;
+  }
+
+  const recipe = { kind: "mobile", height: job.height, crf: job.crf, v: 1 };
+  // `.m720` in the name so the two variants of a clip are never mistaken for
+  // each other in public/ — the hash alone doesn't say which is which.
+  const outName = hashedName(src, recipe, `.m${job.height}.mp4`);
+  const out = path.join(path.dirname(src), outName);
+
+  if (fs.existsSync(out) && !FORCE) {
+    console.log(`· ${job.file} → ${outName} (up to date)`);
+    results.push({ from: job.file, to: outName, before: size(src), after: size(out) });
+    continue;
+  }
+
+  console.log(`▸ downscaling ${job.file} → ${job.height}p …`);
+  const enc = ff([
+    "-y",
+    "-i",
+    src,
+    "-an",
+    "-vf",
+    `scale=-2:${job.height}:flags=lanczos`,
+    "-c:v",
+    "libx264",
+    "-crf",
+    String(job.crf),
+    "-preset",
+    "slow",
+    // 4:2:0 + High profile: the combination every mobile browser decodes in
+    // hardware. A 4:4:4 or High 10 stream falls back to software decoding on
+    // phones, which costs more battery than the bytes ever saved.
+    "-pix_fmt",
+    "yuv420p",
+    "-profile:v",
+    "high",
+    "-movflags",
+    "+faststart",
+    out,
+  ]);
+  if (enc.status !== 0) {
+    failures.push(`${job.file}: ffmpeg exited ${enc.status}\n${enc.stderr.slice(-800)}`);
+    continue;
+  }
+
+  // Judged at the width a phone actually paints it, not at the source's size —
+  // comparing a 720p file against a 1080p master at 1080p would measure the
+  // downscale itself, which is the intended change, not a defect.
+  const score = ssim(src, out, { width: job.renderWidth });
+  const line = { from: job.file, to: outName, before: size(src), after: size(out), ssim: score };
+  results.push(line);
+  if (!(score >= SSIM_FLOOR)) {
+    failures.push(
+      `${job.file}: SSIM ${score} below floor ${SSIM_FLOOR} at ${job.renderWidth}px`,
+    );
+  }
+  console.log(
+    `  ${mb(line.before)} → ${mb(line.after)}  (SSIM ${score.toFixed(4)} @ ${job.renderWidth}px)`,
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Images                                                              */
 /* ------------------------------------------------------------------ */
 
@@ -258,7 +375,11 @@ for (const job of IMAGE_JOBS) {
     continue;
   }
 
-  const ext = job.format === "webp" ? ".webp" : job.format === "png" ? ".png" : ".jpg";
+  const baseExt =
+    job.format === "webp" ? ".webp" : job.format === "png" ? ".png" : ".jpg";
+  // `suffix` marks a variant (e.g. ".m1024") so two encodes of the same source
+  // are told apart in public/ by name, not just by an opaque hash.
+  const ext = `${job.suffix ?? ""}${baseExt}`;
   const recipe = {
     kind: job.format,
     width: job.width ?? null,

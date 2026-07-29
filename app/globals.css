@@ -437,19 +437,6 @@ body {
   animation-fill-mode: backwards;
 }
 
-/* The Reel timeline rail scrolls horizontally on narrow screens; hide its
-   scrollbar to match the rest of the site (the global scrollbar is hidden too,
-   but an overflow-x element grows its own). Progress is obvious from the tracks
-   and playhead. */
-.reel-rail {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.reel-rail::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
 /* ── Reel "tune-in" — a short CRT channel-change burst held over the monitor
    whenever the reel cuts to a DIFFERENT clip, just before the new footage rolls
    (auto-advance or a keyboard clip jump; a manual scrub never triggers it).

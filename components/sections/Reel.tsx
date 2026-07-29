@@ -24,6 +24,10 @@ type Clip = {
   title: string;
   caption: string;
   src: string;
+  /** 720p downscale offered to ≤767px viewports ahead of `src` (see the
+   *  <source> pair in the monitor). Roughly half the bytes, and still
+   *  oversampled at the ~700 CSS px a phone paints the monitor at. */
+  srcMobile?: string;
   poster: string;
   /** How long the clip occupies the reel, in seconds — its share of the timeline
    *  width, the runtime total and the timecode. When this is SHORTER than the
@@ -58,6 +62,7 @@ const CLIPS: Clip[] = [
     // container every browser supports. The .mkv master stays out of public/
     // per a398612; recover it from commit 66976dd if a re-render is ever needed.
     src: "/assets/Forager.mp4",
+    srcMobile: "/assets/Forager.118238b5.m720.mp4",
     poster: "/assets/posters/Forager.jpg",
     // Real file is 5.83s in a 6s slot → plays at ~0.97x, i.e. effectively 1x.
     duration: 6,
@@ -69,6 +74,7 @@ const CLIPS: Clip[] = [
     title: "Sprinkle Studio",
     caption: "3D · Modeling & Lighting",
     src: "/assets/Donut.mp4",
+    srcMobile: "/assets/Donut.a86e90d2.m720.mp4",
     poster: "/assets/posters/Donut.jpg",
     duration: 6.7,
     from: "#f9a8d4",
@@ -79,6 +85,7 @@ const CLIPS: Clip[] = [
     title: "Topograph",
     caption: "3D · Procedural Terrain",
     src: "/assets/turrain_map.cac59a2f.mp4",
+    srcMobile: "/assets/turrain_map.cac59a2f.e0b9dfff.m720.mp4",
     poster: "/assets/posters/turrain_map.jpg",
     // Truncated to its first 10s so it doesn't dominate the reel. The file
     // itself is now trimmed to 10.5s to match (it used to run 20.9s, and the
@@ -94,6 +101,7 @@ const CLIPS: Clip[] = [
     title: "Kinetic",
     caption: "Simulation · Rigid Body",
     src: "/assets/tube_ball_bounce.2602cf1a.mp4",
+    srcMobile: "/assets/tube_ball_bounce.2602cf1a.e94e15dc.m720.mp4",
     poster: "/assets/posters/tube_ball_bounce.jpg",
     duration: 10.4,
     from: "#22d3ee",
@@ -102,6 +110,13 @@ const CLIPS: Clip[] = [
 ];
 
 const TOTAL = CLIPS.reduce((s, c) => s + c.duration, 0);
+
+// Where each clip sits in the finished reel. The cut sheet lists real in/out
+// points rather than per-clip lengths, so a row reads as a position in the 0:33
+// programme the way an edit decision list does.
+const STARTS = CLIPS.map((_, i) =>
+  CLIPS.slice(0, i).reduce((s, c) => s + c.duration, 0),
+);
 
 // Minutes:seconds, monospace-friendly. The section reads timecode in font-mono
 // so it lands like a real editor readout (the same face the site uses for live
@@ -152,37 +167,61 @@ export default function Reel() {
   // track fill, timecode, monitor bar) — writing them straight to the DOM keeps
   // a 60fps readout from re-rendering the section on every tick.
   const videoRef = useRef<HTMLVideoElement>(null);
+  // The strip itself — the coordinate space all segment geometry is measured
+  // in, and the box a scrub x maps across.
   const railRef = useRef<HTMLDivElement>(null);
+  // Ruler + strip together. The strip has to clip (overflow-hidden, for the
+  // stills), so the playhead lives out here instead: that lets its marker sit
+  // in the ruler band above the footage rather than being sliced by the strip's
+  // top edge. It shares the strip's left edge, so the same x works for both.
+  // It is also the scrub surface, which means pressing the ruler seeks too.
+  const surfaceRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
   const monBarRef = useRef<HTMLDivElement>(null);
   const tcRef = useRef<HTMLSpanElement>(null);
+  // One per clip: its segment of the strip. Segments tile the full width with
+  // flex-grow set to runtime, so a segment's width IS its share of the reel —
+  // which makes it both the thing a scrub fraction maps across and the span the
+  // playhead crosses.
   const trackRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const fillRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const rafRef = useRef<number | null>(null);
 
   // Cached timeline-track geometry. paint() runs on every playback frame and
-  // on every scrub move, and it used to read offsetLeft/offsetWidth there —
-  // layout reads interleaved with the transform writes just above them, which
-  // is the pattern that forces a synchronous reflow per frame. The rail's
-  // geometry only moves on resize (offsetLeft is offsetParent-relative, so
-  // scrolling the mobile filmstrip doesn't touch it), so measure it there and
-  // read from the cache in the loop.
-  const geomRef = useRef<({ left: number; width: number } | null)[]>([]);
+  // on every scrub move, and reading layout there — interleaved with the
+  // transform writes just above it — is the pattern that forces a synchronous
+  // reflow per frame. It only moves on resize, so measure there and read the
+  // cache in the loop.
+  //
+  // Measured as a delta against the rail's own rect rather than offsetLeft:
+  // offsetLeft is offsetParent-relative, which ties the numbers to whatever
+  // happens to be positioned above a segment. A rect delta is in the rail's
+  // coordinate space whatever the nesting, and both rects move together on
+  // scroll, so the delta is scroll-invariant either way.
+  type Geom = { left: number; width: number };
+  const geomRef = useRef<(Geom | null)[]>([]);
+  const measureOne = useCallback((el: HTMLButtonElement | null): Geom | null => {
+    const rail = railRef.current;
+    if (!el || !rail) return null;
+    const r = el.getBoundingClientRect();
+    const rr = rail.getBoundingClientRect();
+    if (!r.width) return null;
+    return { left: r.left - rr.left, width: r.width };
+  }, []);
   const measureTracks = useCallback(() => {
-    geomRef.current = trackRefs.current.map((el) =>
-      el ? { left: el.offsetLeft, width: el.offsetWidth } : null,
-    );
-  }, []);
-  const trackGeom = useCallback((i: number) => {
-    // Lazily fill a slot the measure pass hasn't reached yet (a track that
-    // mounted after the last resize), so the head can never sit at 0.
-    if (!geomRef.current[i]) {
-      const el = trackRefs.current[i];
-      if (!el) return null;
-      geomRef.current[i] = { left: el.offsetLeft, width: el.offsetWidth };
-    }
-    return geomRef.current[i];
-  }, []);
+    geomRef.current = trackRefs.current.map(measureOne);
+  }, [measureOne]);
+  const trackGeom = useCallback(
+    (i: number) => {
+      // Lazily fill a slot the measure pass hasn't reached yet (a segment that
+      // mounted after the last resize), so the head can never sit at 0.
+      if (!geomRef.current[i]) {
+        geomRef.current[i] = measureOne(trackRefs.current[i]);
+      }
+      return geomRef.current[i];
+    },
+    [measureOne],
+  );
   const glitchTimers = useRef<number[]>([]);
 
   // Read current state inside imperative event handlers without re-binding them.
@@ -291,26 +330,27 @@ export default function Reel() {
     if (clearIt) scrubSeekRef.current = null;
   }, []);
 
-  // Map a viewport x onto (clip, fraction) using the tracks' real geometry, then
-  // move the head there. Within the active clip we seek the live element; across
-  // a boundary we cue the new clip and carry the fraction to its metadata.
+  // Map a viewport x onto (clip, fraction) using the segments' real geometry,
+  // then move the head there. Within the active clip we seek the live element;
+  // across a boundary we cue the new clip and carry the fraction to its
+  // metadata. The segments butt together with no gaps, so every x on the strip
+  // lands inside exactly one clip — dragging the length of the strip scrubs the
+  // whole 0:33 programme in one gesture.
   const scrubTo = useCallback(
     (clientX: number) => {
       const rail = railRef.current;
       if (!rail) return;
       const rect = rail.getBoundingClientRect();
-      const x = clientX - rect.left + rail.scrollLeft;
-      // The last track whose start sits at/left of x is the one under the
-      // cursor; a gap between tracks clamps to the end of the earlier clip.
+      const x = clientX - rect.left;
+      // The last segment whose start sits at/left of x is the one under the
+      // cursor.
       let i = 0;
       for (let k = 0; k < CLIPS.length; k++) {
         const g = trackGeom(k);
         if (g && x >= g.left) i = k;
       }
       const g = trackGeom(i);
-      const p = g
-        ? Math.max(0, Math.min(1, (x - g.left) / g.width))
-        : 0;
+      const p = g ? Math.max(0, Math.min(1, (x - g.left) / g.width)) : 0;
       paint(i, p);
       if (i === activeRef.current) {
         const v = videoRef.current;
@@ -358,7 +398,7 @@ export default function Reel() {
       if (v) v.pause();
       setPlaying(false);
       try {
-        railRef.current?.setPointerCapture(pointerId);
+        surfaceRef.current?.setPointerCapture(pointerId);
       } catch {
         /* capture is best-effort */
       }
@@ -568,24 +608,21 @@ export default function Reel() {
     }
     shouldPlayRef.current = true;
     setActive(i);
-    // Bring the newly cued clip into view on the mobile scroll rail.
-    trackRefs.current[i]?.scrollIntoView({
-      behavior: reduced ? "auto" : "smooth",
-      inline: "center",
-      block: "nearest",
-    });
+    // No scrollIntoView any more: the cut sheet stacks, so every row is on
+    // screen whenever the reel is. The old call existed to chase the active
+    // track along a horizontally scrolling filmstrip, and left where it was it
+    // would yank the PAGE each time a clip auto-advanced.
   };
 
-  // Pointer scrubbing on the rail. Mouse always scrubs (click-to-seek + drag);
-  // on touch the filmstrip keeps its horizontal scroll, so a scrub only starts
-  // from the playhead handle — a plain tap on a track still cues it.
+  // Pointer scrubbing on the strip. Mouse always scrubs (press-to-seek + drag).
+  // On touch a press has to stay ambiguous — the page still needs to scroll
+  // past this section — so a touch scrub only starts from the playhead handle;
+  // a tap on a segment falls through to the click handler and cues that clip.
   const onRailPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const rail = railRef.current;
-    if (!rail) return;
+    if (!railRef.current || !surfaceRef.current) return;
     suppressClickRef.current = false;
     const onHandle = !!(e.target as HTMLElement).closest("[data-playhead]");
-    const scrollable = rail.scrollWidth > rail.clientWidth + 1;
-    if (e.pointerType !== "mouse" && scrollable && !onHandle) return;
+    if (e.pointerType !== "mouse" && !onHandle) return;
     startScrub(e.clientX, e.pointerId);
   };
 
@@ -643,16 +680,35 @@ export default function Reel() {
           <video
             key={clip.id}
             ref={videoRef}
-            poster={clip.poster}
+            // Both the poster and the preload wait on `nearby`. A `poster` is
+            // always fetched eagerly — it is not subject to lazy-loading — and
+            // `preload="metadata"` still opens a range request against the
+            // file, so between them the opener was pulling its still AND the
+            // head of a multi-megabyte MP4 while the visitor was on the hero.
+            // `nearby` has a screen-and-a-half of margin, so both land well
+            // before the monitor is on screen; the black bg stands in until.
+            poster={nearby ? clip.poster : undefined}
             muted={muted}
             playsInline
-            preload={nearby ? "auto" : "metadata"}
+            preload={nearby ? "auto" : "none"}
             onLoadedMetadata={onLoadedMetadata}
             onEnded={onEnded}
             onCanPlay={onCanPlay}
             onTimeUpdate={onTimeUpdate}
             className="absolute inset-0 h-full w-full object-cover"
           >
+            {/* Phone-sized cut first: <source> is matched in order and the
+                first `media` that applies wins, so ≤767px takes the 720p and
+                everything else falls through to the master. Evaluated once at
+                load, which is the right granularity here — a clip already
+                playing shouldn't restart because a window got dragged. */}
+            {clip.srcMobile && (
+              <source
+                src={clip.srcMobile}
+                media="(max-width: 767px)"
+                type="video/mp4"
+              />
+            )}
             <source src={clip.src} type="video/mp4" />
           </video>
 
@@ -783,31 +839,71 @@ export default function Reel() {
         transition={{ duration: 0.8, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
         className="mt-8"
       >
-        {/* Ruler row */}
-        <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.35em] text-ink-faint">
+        <div className="flex items-baseline justify-between gap-4 text-[10px] uppercase tracking-[0.3em] text-ink-faint">
           <span>Timeline</span>
-          <span className="font-mono tracking-normal">
+          <span className="font-mono tabular-nums tracking-normal">
             {tc(TOTAL)} · {CLIPS.length} clips
           </span>
         </div>
 
-        {/* The track rail. Widths grow with each clip's runtime (a real cut
-            list), floored so a short clip stays readable; on narrow screens
-            the row scrolls instead of pinching. The playhead is an absolute
-            child of the rail's content, so it scrolls and lays out in the same
-            coordinate space as the tracks. The rail is also the scrub surface:
-            press/drag anywhere (mouse) or grab the head (touch) to seek, and it
-            rolls again on release. */}
+        {/* Timecode ruler — a tick on every cut, labelled with that clip's
+            in-point, so the strip below reads as one 0:33 programme rather than
+            four separate lengths.
+
+            Ticks are placed by PERCENTAGE OF THE REEL, not as flex cells: a
+            flex row needs a trailing cell for the final out-point, that cell is
+            content-sized, and the width it takes comes out of the growing cells
+            — which walked every tick progressively left of its own cut (‑3px by
+            the second, ‑31px by the last). A percentage is the same number the
+            segment widths are derived from, so the two cannot drift apart. */}
+        {/* Ruler + strip share one positioned box so the playhead can span
+            both: its marker parks in the ruler band, its line runs down the
+            footage. This box is also the scrub surface — pressing the ruler
+            seeks, the way it does in an editor. */}
         <div
-          ref={railRef}
+          ref={surfaceRef}
           onPointerDown={onRailPointerDown}
           onPointerMove={onRailPointerMove}
           onPointerUp={endScrub}
           onPointerCancel={endScrub}
           onLostPointerCapture={endScrub}
-          className={`reel-rail relative flex select-none gap-1.5 overflow-x-auto pb-1 md:overflow-x-visible ${
-            scrubbing ? "cursor-grabbing" : "cursor-grab"
+          className={`relative mt-3 select-none ${
+            scrubbing ? "cursor-grabbing" : "mouse:cursor-grab"
           }`}
+        >
+        <div
+          aria-hidden
+          className="relative h-4 font-mono text-[9px] tabular-nums text-ink-faint sm:text-[10px]"
+        >
+          {CLIPS.map((c, i) => (
+            <span
+              key={c.id}
+              style={{ left: `${(STARTS[i] / TOTAL) * 100}%` }}
+              className="absolute bottom-0 whitespace-nowrap border-l border-hairline pb-0.5 pl-1.5"
+            >
+              {tc(STARTS[i])}
+            </span>
+          ))}
+          {/* Out-point of the reel: tick on the right edge, label to its left. */}
+          <span className="absolute bottom-0 right-0 whitespace-nowrap border-r border-hairline pb-0.5 pr-1.5">
+            {tc(TOTAL)}
+          </span>
+        </div>
+
+        {/* The strip. One unbroken ribbon rather than four cards: segments butt
+            together with no gaps and no rounded corners of their own, so the
+            widths — flex-grow set to each clip's runtime — actually read as a
+            cut list, and the played fill sweeps the whole 0:33 in one motion.
+            Only the outer edge is rounded and stroked.
+
+            The rail is the scrub surface: press and drag anywhere (mouse) or
+            grab the head (touch) to seek, and it rolls again on release. */}
+        {/* mt-2.5, not mt-1.5: the 10px band this opens between the ruler and
+            the strip is where the playhead's marker sits, clear of both the
+            tick labels above and the footage below. */}
+        <div
+          ref={railRef}
+          className="relative mt-2.5 flex h-20 overflow-hidden rounded-md border border-hairline sm:h-24"
         >
           {CLIPS.map((c, i) => {
             const isActive = i === active;
@@ -831,25 +927,31 @@ export default function Reel() {
                 }}
                 aria-label={`${isActive ? "Playing" : "Play"} ${c.title} — ${c.caption}`}
                 aria-pressed={isActive}
-                style={{ flexGrow: c.duration, flexBasis: 0, minWidth: 128 }}
-                className={`group/track relative h-20 shrink-0 overflow-hidden rounded-lg border text-left outline-none transition-[opacity,border-color] duration-300 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-indigo-accent sm:h-24 ${
-                  isActive
-                    ? "border-white/25 opacity-100"
-                    : "border-hairline opacity-55 hover:opacity-90"
-                }`}
+                style={{ flexGrow: c.duration, flexBasis: 0 }}
+                // The cut between clips is a single hairline, not a gap: a gap
+                // would break the ribbon and put the proportional widths back
+                // out of reach. first:border-l-0 keeps the strip's own edge
+                // from doubling up with the outer border.
+                className="group/seg relative min-w-0 overflow-hidden border-l border-hairline text-left outline-none first:border-l-0 focus-visible:z-10 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-indigo-accent"
               >
-                {/* Poster still — the timeline reads as a filmstrip. Pointer
-                    events pass through to the rail so the whole strip scrubs. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={c.poster}
                   alt=""
                   loading="lazy"
                   draggable={false}
-                  className="pointer-events-none absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out-expo group-hover/track:scale-105"
+                  // Idle segments sit desaturated and dark so the ACTIVE clip is
+                  // the only full-colour frame on the strip — the old version
+                  // laid a flat black/45 scrim over every still equally, which
+                  // muddied all four and made none of them the subject.
+                  className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-[opacity,filter,transform] duration-500 ease-out-expo ${
+                    isActive
+                      ? "scale-100 opacity-100 saturate-100"
+                      : "opacity-40 saturate-[0.25] group-hover/seg:scale-[1.04] group-hover/seg:opacity-75 group-hover/seg:saturate-100"
+                  }`}
                 />
-                <span className="pointer-events-none absolute inset-0 bg-black/45" />
-                {/* Played fill — brightens the elapsed portion of the track. */}
+
+                {/* Played fill — brightens the elapsed part of this segment. */}
                 <span
                   ref={(el) => {
                     fillRefs.current[i] = el;
@@ -858,73 +960,108 @@ export default function Reel() {
                   className="pointer-events-none absolute inset-y-0 left-0 w-full origin-left mix-blend-screen"
                   style={{
                     transform: "scaleX(0)",
-                    background: `linear-gradient(90deg, ${c.from}66, ${c.to}66)`,
+                    background: `linear-gradient(90deg, ${c.from}44, ${c.to}44)`,
                   }}
                 />
-                {/* Legibility scrim + labels */}
-                <span className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/85 to-transparent" />
-                <span className="pointer-events-none absolute left-2 top-2 font-numeral text-[9px] tabular-nums tracking-[0.2em] text-white/80">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 p-2">
-                  <span className="truncate font-serif text-xs font-semibold text-white sm:text-[13px]">
+
+                {/* Label plate, bottom-left. Only a short gradient behind it
+                    instead of a full-tile scrim, so it carries the text without
+                    dimming the frame above it. The title hides on the narrowest
+                    segments, where the index alone is the honest amount of
+                    information the space can hold. */}
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-baseline gap-1.5 p-2">
+                  <span
+                    className={`font-numeral text-[9px] tabular-nums tracking-[0.2em] transition-colors duration-300 ${
+                      isActive ? "text-white" : "text-white/60"
+                    }`}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span
+                    className={`hidden truncate font-serif text-[13px] font-semibold leading-none transition-colors duration-300 sm:block ${
+                      isActive ? "text-white" : "text-white/70"
+                    }`}
+                  >
                     {c.title}
                   </span>
-                  <span className="shrink-0 font-mono text-[9px] tabular-nums text-white/70">
-                    {tc(c.duration)}
-                  </span>
                 </span>
-                {/* Active clip's coloured rim */}
-                {isActive && (
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 rounded-lg"
-                    style={{ boxShadow: `inset 0 0 0 1.5px ${c.from}` }}
-                  />
-                )}
+
+                {/* Active segment's coloured underline — a lit edge on the cut
+                    rather than a rim around a card. */}
+                <span
+                  aria-hidden
+                  className={`pointer-events-none absolute inset-x-0 bottom-0 h-[2px] origin-left transition-transform duration-500 ease-out-expo ${
+                    isActive ? "scale-x-100" : "scale-x-0"
+                  }`}
+                  style={{
+                    background: `linear-gradient(90deg, ${c.from}, ${c.to})`,
+                  }}
+                />
               </button>
             );
           })}
 
-          {/* Playhead — a bright vertical line with a diamond head, moved by
-              transform each frame. z-above the tracks; the thin line ignores
-              pointer, but a wider invisible handle around it is grabbable (and
-              is the scrub grip on touch, where the rail itself scrolls). */}
-          <div
-            ref={playheadRef}
-            aria-hidden
-            className="pointer-events-none absolute left-0 top-0 z-20 h-20 will-change-transform sm:h-24"
-            style={{ transform: "translateX(0)" }}
-          >
-            <span
-              data-playhead
-              data-cursor-hover
-              className={`pointer-events-auto absolute -left-2.5 top-0 h-full w-5 touch-none ${
-                scrubbing ? "cursor-grabbing" : "cursor-grab"
-              }`}
-            />
-            <span
-              className={`absolute top-0 left-0 h-full w-px bg-white transition-shadow ${
-                scrubbing
-                  ? "shadow-[0_0_12px_3px_rgba(255,255,255,0.8)]"
-                  : "shadow-[0_0_8px_2px_rgba(255,255,255,0.55)]"
-              }`}
-            />
-            <span
-              className={`absolute -left-[3px] h-2 w-2 rotate-45 bg-white shadow-[0_0_6px_rgba(255,255,255,0.7)] transition-transform ${
-                scrubbing ? "-top-[5px] scale-150" : "-top-1 scale-100"
-              }`}
-            />
-          </div>
         </div>
 
-        {/* Now-playing caption — mirrors the active clip beneath the rail. */}
-        <div className="mt-4 flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-ink-faint">
+        {/* Playhead — moved by transform each frame. Anchored to the strip's
+            top (1.625rem = the h-4 ruler plus the strip's mt-2.5) and run to
+            the bottom, so the line covers exactly the footage while the marker
+            hangs above it in the open band. Living out here rather than inside
+            the strip is what lets that marker exist at all: the strip clips,
+            and any head placed on its top edge loses half itself to the crop.
+            The line ignores pointer; a wider invisible handle around it is
+            grabbable, and is the scrub grip on touch. */}
+        <div
+          ref={playheadRef}
+          aria-hidden
+          className="pointer-events-none absolute bottom-0 left-0 top-[1.625rem] z-20 will-change-transform"
+          style={{ transform: "translateX(0)" }}
+        >
           <span
-            className="h-1.5 w-1.5 rotate-45"
-            style={{ background: `linear-gradient(135deg, ${clip.from}, ${clip.to})` }}
+            data-playhead
+            data-cursor-hover
+            className={`pointer-events-auto absolute -left-2.5 -top-2.5 h-[calc(100%+0.625rem)] w-5 touch-none ${
+              scrubbing ? "cursor-grabbing" : "cursor-grab"
+            }`}
           />
-          <span className="text-ink-subtle">{clip.caption}</span>
+          {/* A DARK soft shadow, not a white halo. The line only struggles
+              where it crosses a bright frame, and there a dark spread separates
+              it cleanly; over dark footage the same shadow is simply invisible,
+              so the line stays a clean 1px hairline instead of the permanent
+              white smear the original glow left on every still. White glow is
+              reserved for the scrubbing state, where it means "live". */}
+          <span
+            className={`absolute inset-y-0 left-0 w-px bg-white transition-shadow duration-200 ${
+              scrubbing
+                ? "shadow-[0_0_4px_rgba(0,0,0,0.7),0_0_10px_2px_rgba(255,255,255,0.45)]"
+                : "shadow-[0_0_4px_rgba(0,0,0,0.7)]"
+            }`}
+          />
+          {/* Marker: a flat-topped wedge seated in the ruler band, its tip on
+              the strip's top edge. Scales from the bottom so the tip stays
+              pinned to that edge while it grows. */}
+          <span
+            className={`absolute -left-[6.5px] -top-2 h-2 w-[13px] origin-bottom bg-white transition-transform duration-200 ease-out-expo [clip-path:polygon(0_0,100%_0,50%_100%)] ${
+              scrubbing ? "scale-125" : "scale-100"
+            }`}
+          />
+        </div>
+        </div>
+
+        {/* Now playing — carries the active clip's title on phones, where the
+            segments are too narrow to label, and its register everywhere. */}
+        <div className="mt-3 flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-ink-faint">
+          <span
+            className="h-1.5 w-1.5 shrink-0 rotate-45"
+            style={{
+              background: `linear-gradient(135deg, ${clip.from}, ${clip.to})`,
+            }}
+          />
+          <span className="truncate">
+            <span className="text-ink-subtle sm:hidden">{clip.title} · </span>
+            <span className="text-ink-subtle">{clip.caption}</span>
+          </span>
         </div>
       </motion.div>
     </div>

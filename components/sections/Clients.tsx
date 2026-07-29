@@ -11,6 +11,7 @@ import { ArrowUpRight } from "lucide-react";
 import SplitText from "@/components/ui/SplitText";
 import { Handwrite, RevealLine } from "@/components/ui/Reveal";
 import Parallax from "@/components/ui/Parallax";
+import { usePointer } from "@/components/ui/PointerProvider";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -35,6 +36,12 @@ type ClientSite = {
    * When set it replaces the generative wireframe cover and pans the same way.
    */
   image?: string;
+  /**
+   * 1024-wide copy of `image`, offered alongside it through srcset on the
+   * FEATURED frames only. Set for the two featured sites; the ledger's peek is
+   * desktop-only, so its screenshots never need a phone size.
+   */
+  imageMobile?: string;
 };
 
 /* ────────────────────────────────────────────────────────────────────
@@ -56,6 +63,7 @@ const FEATURED: ClientSite[] = [
     to: "#d6c3a8",
     size: "1440 × 3990",
     image: "/clients/jijistudio.2a40f36a.jpg",
+    imageMobile: "/clients/jijistudio.2a40f36a.a4b5d1f7.m1024.jpg",
   },
   {
     name: "La Maison du Poké Bowl",
@@ -69,6 +77,7 @@ const FEATURED: ClientSite[] = [
     to: "#f97316",
     size: "1440 × 5024",
     image: "/clients/pokebowl.2ab40c76.jpg",
+    imageMobile: "/clients/pokebowl.2ab40c76.7737450a.m1024.jpg",
   },
 ];
 
@@ -159,11 +168,25 @@ export default function ClientWork() {
   const headingInView = useInView(headingRef, { once: true, margin: "-10%" });
   const boardInView = useInView(boardRef, { once: true, margin: "-12%" });
   const ledgerInView = useInView(ledgerRef, { once: true, margin: "-12%" });
+  // The peek is `hidden mouse:grid` — on a coarse pointer it never renders at
+  // all, so warming its screenshots there spends ~1.4 MB of a phone's data on
+  // markup that device can't reach. Fine pointers still get the full warm.
+  const pointer = usePointer();
+  const canPeek = pointer?.enabled ?? false;
   // Warm the peek screenshots a screen ahead of the ledger arriving. They're
   // the biggest images on the site and they live inside a collapsed row, so
   // they can't be lazy-loaded the ordinary way (see LedgerRow) — this is what
   // keeps ~1.5 MB off the initial load without risking a half-painted peek.
   const ledgerNear = useInView(ledgerRef, {
+    once: true,
+    margin: "800px 0px 800px 0px",
+  });
+  // Same trick for the two featured screenshots: their reveal wrapper is
+  // clipped to zero height until the board animates in, so `loading="lazy"`
+  // never fires and both (~957 KB) landed during the initial page load,
+  // competing with the hero. A screen and a half of margin is far more than
+  // the reveal needs to have them decoded before it runs.
+  const boardNear = useInView(boardRef, {
     once: true,
     margin: "800px 0px 800px 0px",
   });
@@ -244,6 +267,7 @@ export default function ClientWork() {
               site={FEATURED[0]}
               index={0}
               show={boardInView}
+              warm={boardNear}
               delay={0}
               aspect="aspect-[16/9]"
             />
@@ -259,14 +283,19 @@ export default function ClientWork() {
             </span>
           </div>
 
+          {/* mt-16, not mt-6: the hand note hangs 2rem below JIJI's frame and
+              this row drifts up to 40px upward on its parallax, so a 24px gap
+              put Poké Bowl's frame straight through the note's lower half —
+              the one thing the stagger above is documented to avoid. */}
           <Parallax
             offset={40}
-            className="md:col-span-9 md:col-start-4 md:row-start-2 md:mt-6"
+            className="md:col-span-9 md:col-start-4 md:row-start-2 md:mt-16"
           >
             <FeaturedFrame
               site={FEATURED[1]}
               index={1}
               show={boardInView}
+              warm={boardNear}
               delay={0.15}
               aspect="aspect-[16/9]"
             />
@@ -296,7 +325,7 @@ export default function ClientWork() {
                 number={FEATURED.length + i + 1}
                 open={peeked === i}
                 dim={peeked !== null && peeked !== i}
-                warm={ledgerNear}
+                warm={ledgerNear && canPeek}
                 onEnter={() => setPeeked(i)}
               />
             ))}
@@ -322,19 +351,27 @@ export default function ClientWork() {
 // frame. Linear easing keeps the speed constant the whole way down — an eased
 // curve over a multi-thousand-px travel is what read as a mid-pan speed-up —
 // and the short base duration glides the page back up quickly on mouse-out.
+// No permanent will-change: these are 1440-wide full-page captures several
+// thousand pixels tall, and hinting them pinned both in compositor memory for
+// a hover most visitors never perform (the ledger's identical pan learned this
+// first — see its willChange note). The 1100ms base transition is plenty of
+// time to promote the layer on hover instead.
 const PAN =
-  "absolute inset-x-0 top-0 w-full will-change-transform transition-transform duration-[1100ms] ease-out mouse:group-hover:duration-[14000ms] mouse:group-hover:ease-linear mouse:group-hover:translate-y-[min(0px,calc(100cqh_-_100%))]";
+  "absolute inset-x-0 top-0 w-full transition-transform duration-[1100ms] ease-out mouse:group-hover:duration-[14000ms] mouse:group-hover:ease-linear mouse:group-hover:translate-y-[min(0px,calc(100cqh_-_100%))] mouse:group-hover:will-change-transform";
 
 function FeaturedFrame({
   site,
   index,
   show,
+  warm,
   delay,
   aspect,
 }: {
   site: ClientSite;
   index: number;
   show: boolean;
+  /** Screenshot is within a screen-and-a-half — safe to put on the wire. */
+  warm: boolean;
   delay: number;
   aspect: string;
 }) {
@@ -398,13 +435,33 @@ function FeaturedFrame({
             transition={{ duration: 1.0, delay: delay + 0.45, ease: EASE }}
           >
             {site.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={site.image}
-                alt={`${site.name} — website`}
-                decoding="async"
-                className={PAN}
-              />
+              // <picture> with an explicit media query rather than a srcset of
+              // width descriptors: the frame renders at ~894 CSS px, so on a
+              // DPR 1 desktop a `w`-descriptor set would have picked the 1024
+              // copy and quietly changed what desktop receives. A media rule
+              // draws the line exactly where it was meant to be — phones take
+              // the 1024, every other viewport keeps the master untouched.
+              <picture>
+                {warm && site.imageMobile && (
+                  <source
+                    srcSet={site.imageMobile}
+                    media="(max-width: 767px)"
+                    type="image/jpeg"
+                  />
+                )}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  // Same reasoning as the ledger peek: this wrapper is clipped
+                  // to `inset(0 0 101% 0)` until the reveal runs, so the image
+                  // has no area for `loading="lazy"` to test and the browser
+                  // fetched it during the initial load. `warm` fires 800px out,
+                  // long before the reveal, so nothing arrives late.
+                  src={warm ? site.image : undefined}
+                  alt={`${site.name} — website`}
+                  decoding="async"
+                  className={PAN}
+                />
+              </picture>
             ) : (
               <SiteCover from={site.from} to={site.to} variant={index} className={PAN} />
             )}
