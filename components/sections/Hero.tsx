@@ -48,12 +48,14 @@ const SCALE_MAX = 1.5;
 // to this max, which still leaves gutters for the layers + inspector panels.
 const FRAME_MAX_W = 1376;
 
-// Narrowest the frame can be dragged (px). Below ~56rem two things fall apart:
-// the content column collapses (the actions grid wraps word-by-word once the
-// xl padding eats the width), and the frame edge retreats past the artwork
-// cards tucked under it — chair's right edge sits 28rem from centre, so a
-// narrower frame slices the cards mid-body with the glass seam and leaves the
-// corner handles floating on top of them.
+// Narrowest the frame can be DRAGGED (px). Below ~56rem the content column
+// collapses — the actions grid wraps word-by-word once the xl padding eats the
+// width. (The cards used to be the other reason: a narrower frame would
+// retreat past them and slice them mid-body. They now anchor off the frame's
+// live edge via --fhw, so they follow it down instead.) This is a floor on the
+// drag only — the resting default legitimately sits below it on viewports
+// under ~1176px wide, which is why every clamp that uses it also takes the
+// current width into account.
 const FRAME_MIN_W = 896;
 
 const MARQUEE_TAGS = [
@@ -127,10 +129,12 @@ const RESIZE_ANGLE: Record<string, number> = {
 // like prints slipped under a sheet of paper on the desk. Each renders a vivid
 // PLACEHOLDER for now; drop a real file path into `src` to swap it in (object-cover
 // keeps the 3:4 crop, no other change needed). Positions are anchored to the
-// ARTBOARD: the 64rem frame's edge sits at 32rem from centre, so e.g.
-// `calc(50% - 36rem)` with a 10rem card leaves ~60% of it hidden beneath the
-// frame's frosted glass (panel-weak + backdrop-blur) and ~40% peeking out; the
-// `max(…)` floor keeps a slice on-screen below ~1200px. Hovering the artboard
+// ARTBOARD EDGE, not to centre: `calc(50% - var(--fhw) - 4rem)` hangs the card
+// 4rem past wherever the frame's edge currently is, so with a 10rem card ~60%
+// stays hidden beneath the frosted glass (panel-weak + backdrop-blur) and ~40%
+// peeks out — at every width, not just at the 64rem resting size. The overhang
+// per card is what its peek measures; idol's 4rem is the deepest, so it's the
+// number --fwd reserves a gutter for. Hovering the artboard
 // "opens the folder": every card springs OUT along its `pop` vector — an X-fan
 // toward the four open viewport corners, aimed to clear the side panels and
 // status bar so they land in empty canvas, not back under the UI (see
@@ -150,21 +154,22 @@ type GalleryItem = {
   glow: string;
   /**
    * Absolute position + responsive width (rotation is applied separately).
-   * Rendered inside a md+ wrapper: the base tier is the TABLET anchor
-   * (768-1023, fully on-canvas), the lg: tier the original desktop anchor
-   * (edge-clamped `max(…)` floors that tuck under the frame).
+   * Rendered inside the lg+ wrapper, so there is a single tier: the anchor is
+   * expressed against the frame's live edge via --fhw and holds its designed
+   * overhang all the way down to 1024. Below that the shelf takes over.
    */
   className: string;
   /**
-   * Phone-only mini variant (position + width) for the `md:hidden` wrapper —
-   * omit to keep the card off phones entirely.
+   * Mini variant (width only) for the shelf wrapper that covers phone AND
+   * tablet — omit to keep the card off the shelf entirely.
    */
   mobileClassName?: string;
   /**
    * Extra classes layered on ONLY when the side panels are actually rendered
-   * (enabled && xl). Used by chair to pull its right anchor back off the
-   * Inspector; a plain `xl:` in `className` can't express this because the
-   * panels also depend on `enabled`, not width alone.
+   * (enabled && ≥1440). Used to pull a card's anchor back off the Inspector;
+   * a plain width variant in `className` can't express this because the panels
+   * also depend on `enabled`, not width alone. Currently unused — the cards
+   * clear the panels on their own at the widths where the panels render.
    */
   panelClassName?: string;
   rotate: number;
@@ -215,8 +220,10 @@ const GALLERY: GalleryItem[] = [
     // side — they're the upper pair, so a 4% stagger just read as one of them
     // having slipped. It stays the taller card, so its lower edge still hangs
     // below muse's and the pair keeps its asymmetry without looking dropped.
+    // 4rem is the deepest overhang in the set — it's what sets the gutter the
+    // frame reserves for the whole gallery (see --fhw / --fwd).
     className:
-      "left-3 top-[20%] w-24 lg:left-[max(-2rem,calc(50%_-_36rem))] lg:w-32 xl:w-40",
+      "left-[calc(50%_-_var(--fhw)_-_4rem)] top-[20%] w-32 xl:w-40",
     // Phone minis: only the width — layout comes from the shelf wrapper's
     // centered flex row (see the phone-minis wrapper in the hero JSX).
     // Piled/scattered/edge-tucked absolute anchors were all tried and read as
@@ -244,10 +251,12 @@ const GALLERY: GalleryItem[] = [
     // fixed and vertically centred, so a viewport-% anchor descends faster than
     // the frame's underside and slides the card out from under it on tall windows.
     // The +9.5rem drop levels it with chair on the opposite side so the two read
-    // as a matched bottom pair, while still clearing the status bar at normal
-    // window heights.
+    // as a matched bottom pair. The min() only bites below ~700px of viewport:
+    // 50vh - 12.25rem is the lowest this card can sit and still clear the status
+    // bar (196px = the xl card's 149px height + the bar's 44px + a hair), so on
+    // short windows the pair rides up instead of tucking behind the bar.
     className:
-      "left-4 top-[calc(50%_+_8rem)] w-20 lg:left-[max(-1.5rem,calc(50%_-_34.5rem))] lg:top-[calc(50%_+_9.5rem)] lg:w-24 xl:w-28",
+      "left-[calc(50%_-_var(--fhw)_-_2.5rem)] top-[calc(50%_+_min(9.5rem,50vh_-_12.25rem))] w-24 xl:w-28",
     // Middle of the shelf — one step larger, so the row reads as a featured
     // asset flanked by two supports rather than three identical tiles.
     mobileClassName: "w-24",
@@ -270,7 +279,7 @@ const GALLERY: GalleryItem[] = [
     to: "#7c3aed",
     glow: "rgba(255,255,255,0.5)",
     className:
-      "right-3 top-[20%] w-24 lg:right-[max(-2rem,calc(50%_-_35.5rem))] lg:w-28 xl:w-36",
+      "right-[calc(50%_-_var(--fhw)_-_3.5rem)] top-[20%] w-28 xl:w-36",
     mobileClassName: "w-20",
     rotate: 9,
     strength: 34,
@@ -299,7 +308,7 @@ const GALLERY: GalleryItem[] = [
     // behind the Inspector at narrow widths — the intended "reference tucked
     // under a panel" look); no width-specific pull-back needed.
     className:
-      "right-4 top-[calc(50%_+_8rem)] w-20 lg:right-[max(-1.5rem,calc(50%_-_34.5rem))] lg:top-[calc(50%_+_9.5rem)] lg:w-24 xl:w-28",
+      "right-[calc(50%_-_var(--fhw)_-_2.5rem)] top-[calc(50%_+_min(9.5rem,50vh_-_12.25rem))] w-24 xl:w-28",
     rotate: -7,
     strength: 24,
     delay: 0.54,
@@ -385,7 +394,13 @@ export default function Hero() {
     const startDX = e.clientX - cx || 1;
     const startDY = e.clientY - cy || 1;
     const startDist = Math.hypot(e.clientX - cx, e.clientY - cy) || 1;
-    const maxFW = Math.min(window.innerWidth - 48, FRAME_MAX_W); // cap to artboard max
+    // clientWidth, not innerWidth: the latter counts the classic scrollbar, so
+    // the cap ran ~17px wide on Windows and let the frame reach past the
+    // section's padding onto the viewport edge.
+    const maxFW = Math.min(
+      document.documentElement.clientWidth - 48,
+      FRAME_MAX_W,
+    ); // cap to artboard max
     // Frame floor while it follows the box. `startFW` guards small viewports:
     // if the frame already sits below FRAME_MIN_W there, clamping to the bigger
     // number would snap it wider the moment a handle is grabbed.
@@ -471,7 +486,7 @@ export default function Hero() {
     // than its natural content height (measured with --fh removed). On
     // viewports too small for the floor, the current width IS the floor, so
     // grabbing a corner never snaps the frame wider than it already is.
-    const maxW = Math.min(window.innerWidth - 48, FRAME_MAX_W);
+    const maxW = Math.min(document.documentElement.clientWidth - 48, FRAME_MAX_W);
     const minW = Math.min(
       maxW,
       startW,
@@ -780,11 +795,13 @@ export default function Hero() {
       ref={sectionRef}
       // Full-viewport at every width. svh, not dvh: dvh resizes live when the
       // iOS URL bar collapses, which would jolt the per-frame heroProgress read
-      // (-rect.top / rect.height) mid-scroll. The asymmetric mobile padding
-      // (pb much heavier than pt) lifts the flex-centred text block well above
-      // viewport centre — the void under the nav pill reads worse than one
-      // above the asset shelf, which fills the freed bottom band.
-      className="relative flex min-h-[100svh] items-center justify-center overflow-hidden px-6 pb-48 pt-24 sm:px-10 md:py-[clamp(1.5rem,6vh,4rem)]"
+      // (-rect.top / rect.height) mid-scroll. The asymmetric padding (pb much
+      // heavier than pt) lifts the flex-centred text block well above viewport
+      // centre — the void under the nav pill reads worse than one above the
+      // asset shelf, which fills the freed bottom band. It runs to lg, not md,
+      // because that's how far the shelf runs: symmetric padding would centre
+      // the frame straight down onto the shelf cards on a short tablet.
+      className="relative flex min-h-[100svh] items-center justify-center overflow-hidden px-6 pb-48 pt-24 sm:px-10 lg:py-[clamp(1.5rem,6vh,4rem)]"
     >
       {/* ── Background: dot grid (cursor glow + repel), aurora, accents, dust ──── */}
       <motion.div style={{ y: gridY }} className="absolute inset-0">
@@ -827,11 +844,21 @@ export default function Hero() {
              Hovering the frame pops them out ("folder open"). Non-interactive, and
              MUST render below the frame (no z → default, under the z-10 artboard)
              so the frosted panel veils the tucked halves. Fades out with the
-             frame on scroll. Below md the phone wrapper underneath takes over. */}
+             frame on scroll. Below lg the shelf wrapper underneath takes over —
+             the tuck needs gutters this tier doesn't have, so tablets get the
+             docked row instead of four cards buried under the glass. */}
+      {/* --fhw is the frame's resting HALF-width, restated in this wrapper's
+          coordinate space so each card can anchor off the frame's edge rather
+          than off a hard-coded distance from centre. The frame's own % resolves
+          against the section's content box; this wrapper is inset-0, so its %
+          resolves against the full section width — 80px (px-10) wider. Hence
+          4.75rem here against the frame's 4.5rem: (72px + 80px) / 2 = 76px.
+          If the frame's --fwd or the section's horizontal padding changes,
+          this must change with it or the cards drift off the frame edge. */}
       <motion.div
         aria-hidden
         style={{ opacity: exitOpacity }}
-        className="pointer-events-none absolute inset-0 hidden md:block"
+        className="pointer-events-none absolute inset-0 hidden lg:block [--fhw:min(32rem,50%_-_4.75rem)]"
       >
         {GALLERY.map((item) => (
           <GalleryCard
@@ -844,20 +871,23 @@ export default function Hero() {
         ))}
       </motion.div>
 
-      {/* Phone minis — the three artworks docked as a centered "asset shelf"
+      {/* Shelf minis — the three artworks docked as a centered "asset shelf"
           row floating above the status bar, so the design-canvas personality
           survives without the artboard frame. A flex row (cards are relative,
           not absolute — see GalleryCard's mini branch) because symmetric even
           spacing is what makes decor read deliberate at this size; absolute
           scatters/piles read as clipping bugs. Static by design — entrance
-          slide + float bob run, hover pop never fires on touch. The compound
-          media gate (phone width AND ≥680px of height) keeps the shelf off
+          slide + float bob run, hover pop never fires on touch. Runs to 1023,
+          not 767: a tablet has no room for the side gutters the tuck needs, so
+          the desktop treatment there buried all four cards completely under the
+          glass — visible only as dim ghosts, which read as a rendering bug. The
+          compound media gate (≥680px of height) keeps the shelf off
           short/landscape viewports where the text stack needs the room; its
           bottom-20 also keeps card bottoms above the SectionMenu FABs' tops. */}
       <motion.div
         aria-hidden
         style={{ opacity: exitOpacity }}
-        className="pointer-events-none absolute inset-x-0 bottom-20 hidden items-end justify-center gap-5 [@media(min-height:680px)_and_(max-width:767.98px)]:flex"
+        className="pointer-events-none absolute inset-x-0 bottom-20 hidden items-end justify-center gap-5 [@media(min-height:680px)_and_(max-width:1023.98px)]:flex"
       >
         {GALLERY.filter((item) => item.mobileClassName).map((item) => (
           <GalleryCard
@@ -884,10 +914,16 @@ export default function Hero() {
       {/* Scroll cue is bottom-anchored — it sweeps up with the hero, so it rides
           the earlier `chromeOpacity` curve to clear before it re-enters view.
           Not aria-hidden (it holds a real link); the wrapper blocks pointer
-          events across the viewport while the anchor re-enables its own. */}
+          events across the viewport while the anchor re-enables its own.
+
+          Height gate, like the ruler and dimension caption above it: under
+          ~620px the frame's underside reaches the cue's own floor (which can't
+          drop any further without sitting behind the status bar), so the two
+          collide. Decorative and duplicated by the nav, so on a short window it
+          drops out rather than overlapping the artboard. */}
       <motion.div
         style={{ opacity: chromeOpacity, visibility: cueVisibility }}
-        className="pointer-events-none absolute inset-0 z-20 hidden lg:block"
+        className="pointer-events-none absolute inset-0 z-20 hidden [@media(min-width:1024px)_and_(min-height:620px)]:block"
       >
         <ScrollCue animation={heroPause.animation} />
       </motion.div>
@@ -913,20 +949,30 @@ export default function Hero() {
       {/* ── The artboard frame + its content (interactive) ─────────────────── */}
       {/* Width tracks the headline box via --fw (set while dragging a handle),
           so the big frame stays responsive to the small text box inside it.
-          Default is a centred artboard (64rem, capped at the viewport on small
-          screens); dragging a frame corner expands --fw out to FRAME_MAX_W. */}
+          Dragging a frame corner expands --fw out to FRAME_MAX_W.
+
+          --fwd is the resting default. From lg up it reserves a 4.5rem gutter
+          (72px of content box = 76px of viewport once px-10 is added back) so
+          the artwork cards tucked under the edges always have somewhere to
+          peek out. 64rem still wins the min() at any content box ≥ 1096px —
+          i.e. every viewport ≥ 1176 — so the artboard is byte-identical to a
+          flat 64rem everywhere it used to be, and only narrows below that,
+          where the alternative is the frame eating the artwork entirely.
+          The gallery wrapper mirrors this as --fhw; the two MUST move
+          together (see the note there). */}
       <motion.div
         ref={frameWrapRef}
-        style={{ opacity: exitOpacity, width: "var(--fw, min(64rem, 100%))" }}
-        className="relative z-10"
+        style={{ opacity: exitOpacity, width: "var(--fw, var(--fwd))" }}
+        className="relative z-10 [--fwd:min(64rem,100%)] lg:[--fwd:min(64rem,100%_-_4.5rem)]"
       >
         {/* Top ruler — sits above the frame, spanning its width */}
         <Ruler />
 
         {/* Frame tab (top-left), riding the top edge */}
-        {/* Rides the frame's top edge, so it shares the Ruler's height gate —
-            below ~700px it would sit level with the nav pill. */}
-        <div className="absolute -top-6 left-0 right-0 hidden items-center [@media(min-width:768px)_and_(min-height:700px)]:flex">
+        {/* Rides the frame's top edge, so it shares the Ruler's gates — below
+            ~700px tall it would sit level with the nav pill, and below lg the
+            frame isn't presented as an artboard at all. */}
+        <div className="absolute -top-6 left-0 right-0 hidden items-center [@media(min-width:1024px)_and_(min-height:700px)]:flex">
           <motion.span
             initial={{ opacity: 0, y: 6 }}
             animate={introDone ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
@@ -1001,7 +1047,7 @@ export default function Hero() {
           // Same ~700px height gate as the ruler/tab above: below it this
           // caption lands on top of the ScrollCue no matter how tight the
           // margin gets, so it drops out instead.
-          className="mt-[clamp(0.75rem,2.5vh,1.5rem)] hidden items-center justify-center gap-2 text-[10px] uppercase tracking-[0.3em] text-ink-faint [@media(min-width:768px)_and_(min-height:700px)]:flex"
+          className="mt-[clamp(0.75rem,2.5vh,1.5rem)] hidden items-center justify-center gap-2 text-[10px] uppercase tracking-[0.3em] text-ink-faint [@media(min-width:1024px)_and_(min-height:700px)]:flex"
         >
           <span className="h-px w-6 bg-hairline" />
           Worapat Settapak · Portfolio 2026
@@ -1030,12 +1076,14 @@ export default function Hero() {
         className="border-t border-hairline bg-panel backdrop-blur"
        >
         <div className="flex h-10 items-center justify-between gap-4 pl-2 pr-3 sm:h-11">
-          {/* Left — accent swatches + tool dock + zoom (sm+). On xl with a fine
-              pointer the picker lives in the Inspect panel's Fill row instead,
-              so it's hidden here to avoid two copies; every other context
-              (touch, or below xl) keeps it in the status bar. */}
+          {/* Left — accent swatches + tool dock + zoom (sm+). At ≥1440 with a
+              fine pointer the picker lives in the Inspect panel's Fill row
+              instead, so it's hidden here to avoid two copies; every other
+              context (touch, or narrower) keeps it in the status bar. The
+              width must track the Inspector's own gate — if this hides where
+              the panel doesn't render, there's no picker anywhere. */}
           <div className="flex shrink-0 items-center gap-2">
-            <AccentSwitcher className={enabled ? "xl:hidden" : ""} />
+            <AccentSwitcher className={enabled ? "min-[1440px]:hidden" : ""} />
             <div className="hidden items-center gap-1 sm:flex">
               <div className="flex items-center gap-0.5">
                 {[
@@ -1369,12 +1417,12 @@ function Ruler() {
       // Gated on BOTH axes, and deliberately not on `sm:`.
       // Height: it hangs 3.2rem above the frame, so under ~700px the frame's
       // centred position puts that strip behind the nav pill (top 76px).
-      // Width: below `md` the section is still on the MOBILE padding tier
-      // (pb-48/pt-24, sized for the phone asset shelf), which leaves no room
-      // above the frame either — at 684x742 this collided with the nav by 27px
-      // even before the height clamps went in. Purely decorative, so on a short
-      // or narrow window it drops out rather than colliding.
-      className="absolute -top-[3.2rem] left-0 right-0 hidden h-3 overflow-hidden [@media(min-width:768px)_and_(min-height:700px)]:block"
+      // Width: below `lg` the section is still on the SHELF padding tier
+      // (pb-48/pt-24, sized for the asset shelf), which leaves no room above
+      // the frame either — at 684x742 this collided with the nav by 27px even
+      // before the height clamps went in. Purely decorative, so on a short or
+      // narrow window it drops out rather than colliding.
+      className="absolute -top-[3.2rem] left-0 right-0 hidden h-3 overflow-hidden [@media(min-width:1024px)_and_(min-height:700px)]:block"
       style={{
         maskImage:
           "linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)",
@@ -1457,7 +1505,11 @@ function LayersPanel({
       initial={{ opacity: 0, x: -16 }}
       animate={introDone ? { opacity: 1, x: 0 } : { opacity: 0, x: -16 }}
       transition={{ duration: 0.7, delay: 0.7, ease: EASE }}
-      className="pointer-events-auto absolute left-6 top-1/2 hidden w-44 -translate-y-1/2 select-none rounded-lg border border-hairline bg-panel p-2.5 backdrop-blur xl:block"
+      // 1440, not xl: the panel is pinned to the viewport edge and is 200px
+      // deep, so it only clears the frame's edge once the gutter is that wide.
+      // At xl it sat directly on top of the artwork peeking out from under the
+      // frame — the one strip of the composition that has to stay visible.
+      className="pointer-events-auto absolute left-6 top-1/2 hidden w-44 -translate-y-1/2 select-none rounded-lg border border-hairline bg-panel p-2.5 backdrop-blur min-[1440px]:block"
     >
       <div className="mb-2 flex items-center justify-between px-1 text-[10px] uppercase tracking-[0.25em] text-ink-subtle">
         Layers
@@ -1551,7 +1603,9 @@ function InspectorPanel() {
       initial={{ opacity: 0, x: 16 }}
       animate={introDone ? { opacity: 1, x: 0 } : { opacity: 0, x: 16 }}
       transition={{ duration: 0.7, delay: 0.8, ease: EASE }}
-      className="absolute right-6 top-1/2 hidden w-44 -translate-y-1/2 select-none rounded-lg border border-hairline bg-panel p-3 backdrop-blur xl:block"
+      // Mirrors LayersPanel's 1440 gate — same viewport-pinned geometry, same
+      // reason (it covered the artwork strip at xl).
+      className="absolute right-6 top-1/2 hidden w-44 -translate-y-1/2 select-none rounded-lg border border-hairline bg-panel p-3 backdrop-blur min-[1440px]:block"
     >
       <div className="mb-3 text-[10px] uppercase tracking-[0.25em] text-ink-subtle">
         Inspect
@@ -1623,7 +1677,10 @@ function ScrollCue({ animation }: { animation?: CSSProperties }) {
       // Offset is height-clamped so the cue tucks closer to the status bar on
       // short viewports instead of colliding with the frame's dimension caption
       // above it; on tall screens it stays at the original bottom-20 (5rem).
-      className="pointer-events-auto absolute bottom-[clamp(3.5rem,9vh,5rem)] left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.3em] text-ink-subtle transition-colors duration-200 hover:text-ink-strong"
+      // The 2.75rem floor is the status bar's own height — the cue can sink to
+      // rest on the bar but never behind it — and only engages under ~620px,
+      // where the frame's underside was otherwise landing on the cue.
+      className="pointer-events-auto absolute bottom-[clamp(2.75rem,9vh,5rem)] left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.3em] text-ink-subtle transition-colors duration-200 hover:text-ink-strong"
     >
       <span className="flex flex-col items-center gap-3">
         Scroll
