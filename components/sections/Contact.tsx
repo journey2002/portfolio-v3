@@ -401,13 +401,15 @@ export default function Contact() {
                   } satisfies Variants}
                   whileHover={{ y: -6 }}
                   transition={{ type: "spring", stiffness: 320, damping: 22 }}
-                  className="group relative flex aspect-square flex-col justify-between rounded-2xl border border-hairline bg-surface/40 p-4 text-ink-muted backdrop-blur transition-colors duration-300 hover:border-indigo-accent/40 hover:text-ink-strong sm:p-5"
+                  className="group relative flex aspect-square flex-col justify-between rounded-2xl border border-hairline bg-surface/40 p-4 text-ink-muted backdrop-blur transition-colors duration-300 hover:border-indigo-accent/40 hover:text-ink-strong max-[359px]:p-3 sm:p-5"
                 >
                   <social.icon className="h-6 w-6" strokeWidth={1.5} />
                   <div className="flex items-end justify-between">
                     {/* Compact type below sm — a ~100px tile can't carry 10px
-                        glyphs at 0.3em tracking ("INSTAGRAM" clipped). */}
-                    <span className="text-[9px] uppercase tracking-[0.14em] sm:text-[10px] sm:tracking-[0.3em]">
+                        glyphs at 0.3em tracking ("INSTAGRAM" clipped). Below
+                        360px the tile is only ~87px and even 0.14em still
+                        clipped it, hence the second step down. */}
+                    <span className="text-[9px] uppercase tracking-[0.14em] max-[359px]:tracking-[0.02em] sm:text-[10px] sm:tracking-[0.3em]">
                       {social.label}
                     </span>
                     <ArrowUpRight

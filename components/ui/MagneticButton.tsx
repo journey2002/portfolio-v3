@@ -6,7 +6,7 @@ import {
   useSpring,
   animate,
 } from "framer-motion";
-import { type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 type MagneticButtonProps = {
   children: ReactNode;
@@ -33,15 +33,46 @@ export default function MagneticButton({
   const x = useSpring(rawX, SPRING);
   const y = useSpring(rawY, SPRING);
 
+  // Centre of the button, measured once per hover instead of per mousemove.
+  // Reading it inside the move handler forced a layout on every event; the
+  // button can't move under a stationary cursor mid-hover, so the entry
+  // measurement stays correct for the whole gesture. A scroll during the hover
+  // clears it, and the next move re-measures.
+  const centre = useRef<{ x: number; y: number } | null>(null);
+
+  const measure = (el: HTMLElement) => {
+    const rect = el.getBoundingClientRect();
+    centre.current = {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    };
+    return centre.current;
+  };
+
+  useEffect(() => {
+    const invalidate = () => {
+      centre.current = null;
+    };
+    window.addEventListener("scroll", invalidate, { passive: true });
+    window.addEventListener("resize", invalidate, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", invalidate);
+      window.removeEventListener("resize", invalidate);
+    };
+  }, []);
+
+  const handleEnter = (e: React.MouseEvent<HTMLElement>) => {
+    measure(e.currentTarget);
+  };
+
   const handleMove = (e: React.MouseEvent<HTMLElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    rawX.set(Math.max(-strength, Math.min(strength, (e.clientX - cx) * 0.4)));
-    rawY.set(Math.max(-strength, Math.min(strength, (e.clientY - cy) * 0.4)));
+    const c = centre.current ?? measure(e.currentTarget);
+    rawX.set(Math.max(-strength, Math.min(strength, (e.clientX - c.x) * 0.4)));
+    rawY.set(Math.max(-strength, Math.min(strength, (e.clientY - c.y) * 0.4)));
   };
 
   const handleLeave = () => {
+    centre.current = null;
     animate(rawX, 0, { type: "spring", ...SPRING });
     animate(rawY, 0, { type: "spring", ...SPRING });
   };
@@ -49,6 +80,7 @@ export default function MagneticButton({
   if (glow) {
     const glowMotionProps = {
       style: { x, y },
+      onMouseEnter: handleEnter,
       onMouseMove: handleMove,
       onMouseLeave: handleLeave,
       whileTap: { scale: 0.97 },
@@ -106,6 +138,7 @@ export default function MagneticButton({
   // Default (no glow)
   const motionProps = {
     style: { x, y },
+    onMouseEnter: handleEnter,
     onMouseMove: handleMove,
     onMouseLeave: handleLeave,
     whileHover: { scale: 1.05 },

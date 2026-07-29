@@ -124,9 +124,16 @@ function ProgressRing({ w, h }: { w: number; h: number }) {
     // Last painted progress, so an idle-but-still-firing scroll (Lenis keeps
     // emitting as it settles) doesn't repaint identical geometry.
     let painted = -1;
+    // Set by onResize, consumed inside the rAF — see the note there.
+    let resizePending = false;
 
     const update = () => {
       scheduled = false;
+      if (resizePending) {
+        resizePending = false;
+        measure();
+        painted = -1;
+      }
       const progress = max > 0 ? Math.min(1, window.scrollY / max) : 0;
 
       const p = Math.max(0, Math.min(100, progress * 100));
@@ -169,10 +176,14 @@ function ProgressRing({ w, h }: { w: number; h: number }) {
       requestAnimationFrame(update);
     };
     // A resize changes the scrollable distance, so the cached max is stale
-    // before the next frame — remeasure and repaint together.
+    // before the next frame — remeasure and repaint together. Both halves are
+    // deferred into the same rAF as the scroll path: the ResizeObserver below
+    // watches <body>, so this fires on every frame of any height animation
+    // (the Work index panel expanding, the ledger peek opening), and calling
+    // measure() straight from the callback put a synchronous scrollHeight read
+    // — a forced layout — inside each of those frames.
     const onResize = () => {
-      measure();
-      painted = -1;
+      resizePending = true;
       onScroll();
     };
 

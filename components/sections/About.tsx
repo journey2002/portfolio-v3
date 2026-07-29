@@ -178,7 +178,13 @@ export default function About() {
                   aria-hidden
                   className="mx-1 h-px flex-1 border-t border-dotted border-hairline"
                 />
-                <dd className="flex shrink-0 items-center gap-2 text-right font-mono text-[11px] leading-relaxed text-ink">
+                {/* min-w-0 + a wrappable value: the longest entry ("Thai-Nichi
+                    Institute, Class of 2020") is wider than the column on a
+                    360px phone, and with everything shrink-0 the overflow was
+                    silently cropped by the section's overflow-hidden rather
+                    than wrapping. The leader above already flexes, so the row
+                    still reads as a ledger line on wider screens. */}
+                <dd className="flex min-w-0 items-center gap-2 text-right font-mono text-[11px] leading-relaxed text-ink">
                   {live && (
                     <span className="relative flex h-1.5 w-1.5 shrink-0 translate-y-[-1px]">
                       <span
@@ -292,9 +298,11 @@ function Plates() {
 /**
  * One clip, framed as a plate.
  *
- * Nothing is on the wire until it's asked for: `preload="none"` plus a poster
- * cut from frame 0, so the resting state, the first frame of playback and the
- * frame it rewinds to are all the same image and the handoff is invisible.
+ * Nothing is on the wire until it's asked for: `preload="none"`, plus a poster
+ * cut from frame 0 that is itself withheld until the plate is near (posters
+ * ignore lazy-loading and were landing on the initial page load). The resting
+ * state, the first frame of playback and the frame it rewinds to are all the
+ * same image, so the handoff is invisible; `plate.bg` covers the gap before.
  * A mouse plays it by pointing; touch and keyboard get the same behaviour from
  * the button underneath, which is also what reduced-motion falls back to —
  * nothing should start moving under a cursor that didn't ask for it.
@@ -307,6 +315,14 @@ function Clip({ plate, index }: { plate: Plate; index: number }) {
   // screen", and a negative one would shrink the viewport enough that pointing
   // at a clip just entering it would start and instantly rewind the thing.
   const inView = useInView(figRef);
+  // Separate, generous gate for the poster alone. `preload="none"` keeps the
+  // footage off the wire, but a `poster` is fetched eagerly regardless of any
+  // lazy-loading — both plates' stills were landing during the initial page
+  // load. 800px out is far enough that the plate is never seen without it.
+  const posterNear = useInView(figRef, {
+    once: true,
+    margin: "800px 0px 800px 0px",
+  });
 
   const [playing, setPlaying] = useState(false);
 
@@ -357,7 +373,7 @@ function Clip({ plate, index }: { plate: Plate; index: number }) {
           <video
             ref={videoRef}
             src={plate.src}
-            poster={plate.poster}
+            poster={posterNear ? plate.poster : undefined}
             muted
             loop
             playsInline

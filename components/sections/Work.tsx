@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import {
   animate,
   AnimatePresence,
@@ -25,6 +25,14 @@ import Lightbox from "@/components/ui/Lightbox";
 import { usePointer } from "@/components/ui/PointerProvider";
 import ClientWork from "@/components/sections/Clients";
 import Reel from "@/components/sections/Reel";
+
+// Both take no props, and both are heavy — Reel alone owns a keyed <video>, a
+// scrub rail and ~25 hooks. Work re-renders on every `hovered` change as the
+// pointer moves down the index list, which was reconciling both of these
+// subtrees on each row. Memoising makes those re-renders stop at this boundary;
+// the rendered output is identical either way.
+const MemoClientWork = memo(ClientWork);
+const MemoReel = memo(Reel);
 
 type Project = {
   title: string;
@@ -178,7 +186,7 @@ export default function Work() {
       <SectionLabel index="02" caption="Work" align="left" />
 
       {/* Movement I — client work: the live, shipped websites lead the section. */}
-      <ClientWork />
+      <MemoClientWork />
 
       {/* Break into the second movement — same section, a different register:
           paid-and-shipped gives way to the off-the-clock personal work. */}
@@ -287,7 +295,7 @@ export default function Work() {
         {/* The same off-the-clock work, in motion — 3D and animation pieces on
             an editor timeline. A sub-block of this movement rather than its own
             stop, so it shares this container's width and padding. */}
-        <Reel />
+        <MemoReel />
       </div>
 
       {/* Cursor-flown preview — desktop, index view only. Lives at the section
@@ -561,10 +569,22 @@ function FloatingPreview({
     h: typeof window === "undefined" ? 800 : window.innerHeight,
   }));
   useEffect(() => {
-    const onResize = () =>
-      setVp({ w: window.innerWidth, h: window.innerHeight });
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    // rAF-coalesced: a window drag fires resize far faster than it can matter
+    // here, and each raw event was a setState that re-rendered this 3D card
+    // mid-hover. One update per frame reads the same numbers.
+    let frame = 0;
+    const onResize = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        setVp({ w: window.innerWidth, h: window.innerHeight });
+      });
+    };
+    window.addEventListener("resize", onResize, { passive: true });
+    return () => {
+      window.removeEventListener("resize", onResize);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, []);
 
   // Which side of the cursor the card rides on. Offset is a motion value so the
@@ -1121,7 +1141,12 @@ function GalleryView({ show }: { show: boolean }) {
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 items-center gap-2">
+                  {/* gap-4, not gap-2: the toggle is a bordered, filled circle
+                      and the glyph beside it is bare strokes, so 8px of space
+                      between a hard edge and a loose outline read as the two
+                      touching. The extra 8px comes out of the caption block
+                      next to it, which is min-w-0 and already wraps. */}
+                  <div className="flex shrink-0 items-center gap-4">
                     {/* Only the wide bento hides the trigger until hover: below
                         lg the pointer never enters a tile, so a hover-gated
                         button would put the copy out of reach on touch. */}

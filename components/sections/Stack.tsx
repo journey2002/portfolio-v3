@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   motion,
   useInView,
@@ -281,10 +281,28 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
     ? "linear-gradient(116deg, transparent 34%, rgba(139,92,246,0.16) 50%, transparent 66%)"
     : "linear-gradient(116deg, transparent 34%, rgba(255,255,255,0.12) 50%, transparent 66%)";
 
+  // Card box, measured on entry rather than on every pointermove — the rect
+  // read was forcing a layout per event, and the card cannot move under the
+  // cursor mid-hover. Cleared on leave, and on scroll/resize, which are the
+  // only things that can shift it while a hover is live.
+  const box = useRef<DOMRect | null>(null);
+
+  useEffect(() => {
+    const invalidate = () => {
+      box.current = null;
+    };
+    window.addEventListener("scroll", invalidate, { passive: true });
+    window.addEventListener("resize", invalidate, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", invalidate);
+      window.removeEventListener("resize", invalidate);
+    };
+  }, []);
+
   function handleMove(e: React.PointerEvent<HTMLDivElement>) {
     const el = ref.current;
     if (!el || !tiltEnabled) return;
-    const r = el.getBoundingClientRect();
+    const r = (box.current ??= el.getBoundingClientRect());
     const nx = (e.clientX - r.left) / r.width;
     const ny = (e.clientY - r.top) / r.height;
     px.set(nx - 0.5);
@@ -292,6 +310,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   }
 
   function handleLeave() {
+    box.current = null;
     px.set(0);
     py.set(0);
   }
@@ -630,8 +649,12 @@ export default function Stack() {
           transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
           className="relative flex overflow-hidden border-y border-hairline py-8"
         >
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-40 bg-gradient-to-r from-night via-night/80 to-transparent" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-40 bg-gradient-to-l from-night via-night/80 to-transparent" />
+          {/* Narrower scrims on phones: two 10rem fades on a 375px screen left
+              a ~55px unfaded slot — narrower than a single ticker word, so the
+              whole strip read as a dim smear instead of a marquee running
+              behind a vignette. */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-night via-night/80 to-transparent sm:w-40" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-night via-night/80 to-transparent sm:w-40" />
           <motion.div
             style={{ skewX: skew, x: marqueeX }}
             className="flex w-full origin-center"

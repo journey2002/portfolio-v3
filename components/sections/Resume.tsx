@@ -283,13 +283,18 @@ function ResumeHero() {
           jumped upward a beat after load, when the title/subtitle reflowed (font
           swap, Balancer re-wrap, hydration) and the section shrank. A vh anchor
           is independent of that reflow, so the glow stays put. */}
+      {/* No blur filter, same as the hero's copy of this layer: --aurora's
+          8-stop gradient is already this smooth on its own (a pixel-diff
+          against a blurred render measured under 2% max channel delta), so
+          blur-3xl was only forcing a large-kernel GPU blur pass over a
+          permanently animated 120vh layer for no visible gain. */}
       <motion.div
         aria-hidden
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.5 }}
         transition={{ duration: 1.6, delay: 0.4, ease: "easeOut" }}
         style={pause.animation}
-        className="bg-aurora animate-aurora-shift pointer-events-none absolute left-1/2 top-[42vh] h-[120vh] w-[120vh] -translate-x-1/2 -translate-y-1/2 blur-3xl"
+        className="bg-aurora animate-aurora-shift pointer-events-none absolute left-1/2 top-[42vh] h-[120vh] w-[120vh] -translate-x-1/2 -translate-y-1/2"
       />
 
       {/* Accent orbs — indigo + violet, plus a pink pop up top for the
