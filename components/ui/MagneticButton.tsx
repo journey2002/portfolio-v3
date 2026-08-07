@@ -94,15 +94,26 @@ export default function MagneticButton({
     // it retints the instant the accent swaps — no JS. Driving it through framer's
     // `animate`, or a transitioned var-composed box-shadow, both proved unreliable:
     // the shadow kept a stale accent colour when the accent changed at rest.
-    // `overflow-hidden` alone doesn't reliably clip the gradient to the pill:
-    // the parent's `will-change: transform` promotes this to its own GPU layer,
-    // and Chromium's rounded-rect overflow clip leaves a few stray pixels of the
-    // background bleeding out at the caps' 3-/9-o'clock extremes — small nubs on
-    // the button's left/right edges. A `clip-path` pill is rasterised accurately
-    // on the composited layer, so it trims those nubs (rest and mid-magnetic).
+    //
+    // `bg-origin-border` is load-bearing. Once an element has a border, a gradient
+    // background is sized to the PADDING box (background-origin's default) but
+    // still painted across the BORDER box, and background-repeat fills the 1px
+    // ring left over with the wrapped end of the gradient — so the border carries
+    // a sliver of the first stop hard against the last: emerald down the blue
+    // right cap, blue down the emerald left cap. It's worst at the caps'
+    // 3-/9-o'clock extremes, the only place that ring runs vertically for a few
+    // pixels instead of turning, which is why it read as a pair of small nubs.
+    // Sizing the tile to the border box leaves no ring to wrap into.
+    //
+    // It looks like a clipping fault and isn't — the stray pixels are INSIDE the
+    // pill's silhouette. That's why the `clip-path: inset(0 round 9999px)` pill
+    // that used to sit here never touched them; it's gone rather than left in as
+    // cargo. Same for `will-change: transform` on the wrapper: it bought nothing
+    // but a permanent compositor layer, and framer writes `transform` per frame
+    // anyway, which Chromium promotes for the duration of the movement.
     const glowEl = (
       <span
-        className={`relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-white/10 bg-accent-gradient-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] transition-[filter] duration-300 [clip-path:inset(0_round_9999px)] group-hover:brightness-110 ${className}`}
+        className={`relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-white/10 bg-accent-gradient-3 bg-origin-border shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] transition-[filter] duration-300 group-hover:brightness-110 ${className}`}
       >
         {/* Subtle top sheen — keeps it from feeling flat without being noisy */}
         <span
@@ -118,7 +129,7 @@ export default function MagneticButton({
         <motion.a
           href={href}
           {...glowMotionProps}
-          className="btn-glow-halo group relative inline-flex rounded-full will-change-transform"
+          className="btn-glow-halo group relative inline-flex rounded-full"
         >
           {glowEl}
         </motion.a>
@@ -128,7 +139,7 @@ export default function MagneticButton({
       <motion.button
         type="button"
         {...glowMotionProps}
-        className="btn-glow-halo group relative inline-flex rounded-full will-change-transform"
+        className="btn-glow-halo group relative inline-flex rounded-full"
       >
         {glowEl}
       </motion.button>

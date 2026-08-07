@@ -72,7 +72,12 @@ export default function DownloadButton({
       {/* Circle assembly — plain wrapper so positioning classes never sit on
           an animated element (framer drops Tailwind transforms). */}
       <span className="relative h-[38px] w-[38px] shrink-0">
-        <span className="absolute inset-0 overflow-hidden rounded-full border border-white/10 bg-accent-gradient">
+        {/* bg-origin-border for the same reason as the primary button: with a
+            border in play the gradient is sized to the padding box but painted
+            across the border box, and the 1px ring left over repeats the wrapped
+            end of the gradient onto the rim. (The overflow clip here is real —
+            the arrow animates out of the circle and is meant to be cut off.) */}
+        <span className="absolute inset-0 overflow-hidden rounded-full border border-white/10 bg-accent-gradient bg-origin-border">
           {/* Arrow — drops out the bottom on save, re-enters from the top on
               reset. ±28px clears the 38px circle, so the teleport between the
               two happens fully clipped. */}
