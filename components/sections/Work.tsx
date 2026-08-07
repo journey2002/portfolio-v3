@@ -299,17 +299,25 @@ export default function Work() {
       </div>
 
       {/* Cursor-flown preview — desktop, index view only. Lives at the section
-          root (fixed positioning) so it can float anywhere over the list. */}
+          root (fixed positioning) so it can float anywhere over the list.
+          Not for the row that's already open: the card carries the same cover,
+          title, description and tags as the expanded record, so it was landing
+          on top of the very thing the click just revealed. Opening a row hands
+          the reading over to the record; the card bows out. */}
       <AnimatePresence>
-        {enabled && view === "index" && hovered !== null && pointer && (
-          <FloatingPreview
-            key="floating-preview"
-            project={PROJECTS[hovered]}
-            index={hovered}
-            pointerX={pointer.x}
-            pointerY={pointer.y}
-          />
-        )}
+        {enabled &&
+          view === "index" &&
+          hovered !== null &&
+          hovered !== open &&
+          pointer && (
+            <FloatingPreview
+              key="floating-preview"
+              project={PROJECTS[hovered]}
+              index={hovered}
+              pointerX={pointer.x}
+              pointerY={pointer.y}
+            />
+          )}
       </AnimatePresence>
     </section>
   );
@@ -334,8 +342,27 @@ function IndexView({
   enabled: boolean;
   show: boolean;
 }) {
+  const listRef = useRef<HTMLUListElement>(null);
+  const pointer = usePointer();
+
+  // A record opening or closing moves every row below it while the cursor sits
+  // perfectly still — so the row under the pointer changes without a mouseenter
+  // ever firing, and the list goes on lighting whichever row used to be there
+  // (click a row, then click one below it: the first collapses, the second
+  // jumps up out from under the cursor, and the highlight is left behind).
+  // Ask the document who's actually under the cursor once the panel has landed.
+  const resyncHovered = () => {
+    if (!enabled || !pointer) return;
+    const el = document.elementFromPoint(pointer.x.get(), pointer.y.get());
+    const row = el?.closest<HTMLElement>("[data-work-row]");
+    setHovered(
+      row && listRef.current?.contains(row) ? Number(row.dataset.workRow) : null
+    );
+  };
+
   return (
     <motion.ul
+      ref={listRef}
       variants={listContainer}
       initial="hidden"
       animate={show ? "show" : "hidden"}
@@ -344,16 +371,21 @@ function IndexView({
     >
       {PROJECTS.map((p, i) => {
         const isActive = enabled && hovered === i;
-        const dim = enabled && hovered !== null && hovered !== i;
         // Was gated to touch. The expanded panel is the only way to read a
         // project's description, so it has to answer to click and keyboard on
         // every device — on desktop the cursor-flown preview rides alongside.
         const isOpen = open === i;
+        // An open record is exempt: its panel doesn't dim with the header (they
+        // animate separately), so dimming left a 32% title sitting above a
+        // full-strength description. It's also the one row the reader asked
+        // for — it stays legible while the cursor wanders.
+        const dim = enabled && hovered !== null && hovered !== i && !isOpen;
         const lit = isActive || isOpen;
 
         return (
           <motion.li
             key={p.title}
+            data-work-row={i}
             variants={rowItem}
             className="border-b border-hairline"
           >
@@ -453,7 +485,7 @@ function IndexView({
             </motion.div>
 
             {/* Expanded record — the open row's cover + full description */}
-            <AnimatePresence initial={false}>
+            <AnimatePresence initial={false} onExitComplete={resyncHovered}>
               {isOpen && (
                 <motion.div
                   key="panel"
@@ -462,6 +494,7 @@ function IndexView({
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                  onAnimationComplete={resyncHovered}
                   className="overflow-hidden"
                 >
                   <div className="flex flex-col gap-4 pb-7 sm:flex-row">
