@@ -308,13 +308,23 @@ export default function SectionLabel({
       {/* Giant numeral — drifts + fades as a unit; the stroke lights up within.
           Offset from its near edge with a font-relative value (so the distance
           stays consistent across breakpoints rather than gapping at large sizes
-          and bleeding at small ones). The value is mirrored per side: raising it
-          pushes each digit toward its screen edge (left one left, right one
-          right); lowering it pulls them toward the center. */}
+          and bleeding at small ones). The two sides deliberately don't mirror,
+          because the sidebearing each one eats into isn't symmetric: every index
+          leads with "0", whose 0.047em left bearing swallows -0.04em and lands
+          the ink flush with the edge, but the trailing digits vary and "4"
+          carries only 0.016em — the mirrored negative pushed its stroke past
+          this box's overflow clip and sheared the numeral. So the right side
+          insets instead, and by a flat px rather than an em: what it has to
+          clear is half the text-stroke, which is itself a constant width, so an
+          em value would over-inset the large breakpoints and still pinch the
+          small ones. 1px is about as tight as this goes — at 28vw it leaves the
+          "4" under a pixel of air, so lowering it further starts shaving the
+          stroke on phones again. Raising either value pulls that digit toward
+          the center; lowering it drives it into the clip. */}
       <motion.span
         style={{ y: numeralY, opacity: numeralOpacity }}
         className={`absolute top-0 block select-none font-numeral font-bold ${
-          align === "left" ? "-left-[0.04em]" : "-right-[0.04em]"
+          align === "left" ? "-left-[0.04em]" : "right-[1px]"
         } ${numeralSize}`}
       >
         {/* Reveal tops off early (0.68 of entry) so the tube is already lit
