@@ -1,17 +1,26 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import {
+  AnimatePresence,
   motion,
   Reorder,
   useMotionValue,
   useSpring,
   useTransform,
+  type MotionValue,
 } from "framer-motion";
 import {
   ArrowDown,
   ArrowUpRight,
   Eye,
+  EyeOff,
   Frame as FrameIcon,
   GripVertical,
   Hand,
@@ -38,6 +47,14 @@ import { useMarqueeSlowOnHover } from "@/components/ui/useMarqueeSlowOnHover";
 import { usePauseOffscreen } from "@/components/ui/usePauseOffscreen";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
+
+// Measuring has to land before the browser paints, or picking a row in the
+// Layers panel shows the PREVIOUS layer's dimensions for a frame: the readout
+// renders from the values it already holds, and a plain effect writes the new
+// ones only after that render is on screen. Aliased away on the server, where
+// React warns that a layout effect does nothing.
+const useMeasureEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 // Smallest / largest font scale any resize handle can reach (--hs bounds).
 const SCALE_MIN = 0.4;
@@ -86,6 +103,24 @@ const DEFAULT_LAYER_ORDER: LayerId[] = ["presence", "statement", "actions"];
 // wrap is pixel-seamless; each half must be wide enough to cover the container,
 // hence three copies. Speed is held constant by scaling the duration to match.
 const MARQUEE_REPEAT = 3;
+
+/**
+ * Everything the status bar's readout reports about the artboard, carried as
+ * MotionValues rather than state: a resize drag rewrites these on every frame,
+ * and they're written straight into the DOM, so the numbers stay live without
+ * re-rendering the hero mid-gesture.
+ */
+type Geometry = {
+  /** Artboard border box, live through both its own drag and the headline's. */
+  frameW: MotionValue<number>;
+  frameH: MotionValue<number>;
+  /** Border box of whichever layer is currently selected. */
+  selW: MotionValue<number>;
+  selH: MotionValue<number>;
+  /** Headline --hs / --lh, mirrored so a drag can name the value it's changing. */
+  scale: MotionValue<number>;
+  leading: MotionValue<number>;
+};
 
 // 8 selection handles (4 corners + 4 edge midpoints) with their resize cursors
 // and the behaviour each one drives:
@@ -160,10 +195,19 @@ type GalleryItem = {
    */
   className: string;
   /**
-   * Mini variant (width only) for the shelf wrapper that covers phone AND
-   * tablet — omit to keep the card off the shelf entirely.
+   * Mini variant for the shelf wrapper that covers phone AND tablet — omit to
+   * keep the card off the shelf entirely. Carries the card's width plus its
+   * place in the fan: the negative margin it overlaps its neighbour by, and
+   * `z-10` on whichever card is meant to sit on top of the pile.
    */
   mobileClassName?: string;
+  /**
+   * Shelf tilt (deg). The desktop scatter angles are tuned for cards strewn
+   * around a frame; the fan needs its own set — the outer pair splaying away
+   * from centre, the featured card near upright so the pile has an anchor.
+   * Falls back to half the desktop angle.
+   */
+  mobileRotate?: number;
   /**
    * Extra classes layered on ONLY when the side panels are actually rendered
    * (enabled && ≥1440). Used to pull a card's anchor back off the Inspector;
@@ -224,12 +268,13 @@ const GALLERY: GalleryItem[] = [
     // frame reserves for the whole gallery (see --fhw / --fwd).
     className:
       "left-[calc(50%_-_var(--fhw)_-_4rem)] top-[20%] w-32 xl:w-40",
-    // Phone minis: only the width — layout comes from the shelf wrapper's
-    // centered flex row (see the phone-minis wrapper in the hero JSX).
-    // Piled/scattered/edge-tucked absolute anchors were all tried and read as
-    // clipping bugs or dropped stickers; a symmetric docked row is the one
-    // arrangement that reads deliberate without the artboard frame.
-    mobileClassName: "w-20",
+    // Left of the shelf fan, tucked a quarter-inch under the featured card.
+    // Absolute piles/scatters were tried here and read as clipping bugs, but
+    // that was the anchoring, not the overlap — in the flex row the negative
+    // margin overlaps the pair by a fixed 16px, which no viewport can turn
+    // into a crop. See the phone-minis wrapper in the hero JSX.
+    mobileClassName: "w-20 -mr-4",
+    mobileRotate: -6,
     rotate: -8,
     strength: 30,
     delay: 0.3,
@@ -257,9 +302,14 @@ const GALLERY: GalleryItem[] = [
     // short windows the pair rides up instead of tucking behind the bar.
     className:
       "left-[calc(50%_-_var(--fhw)_-_2.5rem)] top-[calc(50%_+_min(9.5rem,50vh_-_12.25rem))] w-24 xl:w-28",
-    // Middle of the shelf — one step larger, so the row reads as a featured
-    // asset flanked by two supports rather than three identical tiles.
-    mobileClassName: "w-24",
+    // Top of the pile: two steps larger than its flanks and the only card with
+    // a z-index, so the fan reads as one featured asset with two references
+    // slid underneath rather than three tiles in a row. w-28 is the ceiling —
+    // at 3/4 it stands 149px tall, and anything more closes the gap to the
+    // copy above on a 375x812 screen.
+    mobileClassName: "w-28 z-10",
+    // Near upright against the splayed pair — the still point of the fan.
+    mobileRotate: -2,
     rotate: 7,
     strength: 46,
     delay: 0.46,
@@ -280,7 +330,9 @@ const GALLERY: GalleryItem[] = [
     glow: "rgba(255,255,255,0.5)",
     className:
       "right-[calc(50%_-_var(--fhw)_-_3.5rem)] top-[20%] w-28 xl:w-36",
-    mobileClassName: "w-20",
+    // idol's opposite number — same width, same overlap, mirrored splay.
+    mobileClassName: "w-20 -ml-4",
+    mobileRotate: 6,
     rotate: 9,
     strength: 34,
     delay: 0.38,
@@ -381,6 +433,16 @@ export default function Hero() {
     const startHS = parseFloat(cs.getPropertyValue("--hs")) || 1;
     const startLH = parseFloat(cs.getPropertyValue("--lh")) || 0.94;
 
+    // Grabbing a handle IS selecting the text box, so the Layers panel
+    // highlights `statement` and the status bar names it for the whole drag.
+    // Seed both live values from the rendered state for the same reason the
+    // geometry above is seeded: the readout must be right before the first move.
+    setSelectedLayer("statement");
+    setDragging(role);
+    setEdited(true);
+    boxScale.set(startHS);
+    boxLeading.set(startLH);
+
     // Longest-word width at the current font — the floor for the box so a single
     // word can never clip. Measured by briefly forcing the box to min-content.
     const prevWidth = box.style.width;
@@ -439,22 +501,26 @@ export default function Hero() {
         if (hs < SCALE_MIN) hs = SCALE_MIN;
         bw = Math.max(bw, baseMin * hs); // never let the word clip
         box.style.setProperty("--hs", hs.toFixed(3));
+        boxScale.set(hs);
         applyWidth(bw, baseMin * hs);
       } else if (role === "v") {
         // Edge T/B → vertical leading only. The box grows taller, glyphs don't.
         const r = (ev.clientY - cy) / startDY;
         const lh = Math.max(0.85, Math.min(1.6, startLH * r));
         box.style.setProperty("--lh", lh.toFixed(3));
+        boxLeading.set(lh);
       } else {
         // Corner → scale text AND box together, preserving the wrap pattern.
         const r = Math.hypot(ev.clientX - cx, ev.clientY - cy) / startDist;
         const hs = Math.max(SCALE_MIN, Math.min(SCALE_MAX, startHS * r));
         const k = hs / startHS;
         box.style.setProperty("--hs", hs.toFixed(3));
+        boxScale.set(hs);
         applyWidth(startBW * k, minBW * k);
       }
     };
     const onUp = () => {
+      setDragging(null);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
@@ -480,6 +546,9 @@ export default function Hero() {
     const cy = rect.top + rect.height / 2;
     const startW = rect.width;
     const startH = rect.height;
+
+    setDragging("frame");
+    setEdited(true);
 
     // Floors: the frame can't go narrower than FRAME_MIN_W — or the headline
     // (+ breathing room) if that box has been scaled up past it — nor shorter
@@ -528,6 +597,7 @@ export default function Hero() {
       }
     };
     const onUp = () => {
+      setDragging(null);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
@@ -605,11 +675,87 @@ export default function Hero() {
   // content (rendered in this sequence). Reordering one reorders the other.
   const [layerOrder, setLayerOrder] = useState<LayerId[]>(DEFAULT_LAYER_ORDER);
   const [selectedLayer, setSelectedLayer] = useState<LayerId>("statement");
+  // Layers the eye toggles have switched off. They keep their slot in
+  // `layerOrder` (and their row, and the layer count) — only the matching block
+  // stops rendering, so the stack closes over the gap the way it would in the
+  // tool this is imitating.
+  const [hiddenLayers, setHiddenLayers] = useState<LayerId[]>([]);
+  const visibleLayers = layerOrder.filter((id) => !hiddenLayers.includes(id));
+  const selectedHidden = hiddenLayers.includes(selectedLayer);
+
+  // ── What the status bar reports ──────────────────────────────────────────
+  const frameW = useMotionValue(0);
+  const frameH = useMotionValue(0);
+  const selW = useMotionValue(0);
+  const selH = useMotionValue(0);
+  const boxScale = useMotionValue(1);
+  const boxLeading = useMotionValue(0.94);
+  const geom: Geometry = {
+    frameW,
+    frameH,
+    selW,
+    selH,
+    scale: boxScale,
+    leading: boxLeading,
+  };
+  // Which handle is under the pointer right now, if any. The readout swaps to
+  // the parameter that gesture actually drives — leading for a top/bottom edge,
+  // scale for a corner — and drops back to plain dimensions on release.
+  const [dragging, setDragging] = useState<HandleRole | "frame" | null>(null);
+  // Flips the first time a visitor changes something Reset can undo, so the bar
+  // reports an unsaved document the way the app it's imitating would.
+  const [edited, setEdited] = useState(false);
+
+  // offsetWidth/Height, not getBoundingClientRect: the frame body carries an
+  // entrance `scale`, and a rect read while that tween is still running would
+  // report the artboard ~1.5% small and then never correct itself (a transform
+  // doesn't re-fire the observer). The offset pair is the untransformed border
+  // box, which is also what the drag code clamps against.
+  useMeasureEffect(() => {
+    const body = frameBodyRef.current;
+    if (!body) return;
+    const read = () => {
+      frameW.set(body.offsetWidth);
+      frameH.set(body.offsetHeight);
+    };
+    read();
+    const observer = new ResizeObserver(read);
+    observer.observe(body);
+    return () => observer.disconnect();
+  }, [frameW, frameH]);
+
+  // Re-subscribes on every selection change, so the readout follows the row a
+  // visitor picks in the Layers panel — and keeps following it while a handle
+  // drag reflows that block.
+  //
+  // `selectedHidden` is in the deps because hiding a layer unmounts its block:
+  // the numbers freeze at the last measured box (which is what a hidden layer
+  // keeps in a design tool, and the readout dims to say so), and switching it
+  // back on has to re-attach the observer to the NEW node — without the re-run
+  // the readout would stay frozen for good.
+  useMeasureEffect(() => {
+    const el = frameBodyRef.current?.querySelector<HTMLElement>(
+      `[data-layer="${selectedLayer}"]`,
+    );
+    if (!el) return;
+    const read = () => {
+      selW.set(el.offsetWidth);
+      selH.set(el.offsetHeight);
+    };
+    read();
+    const observer = new ResizeObserver(read);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [selectedLayer, selectedHidden, selW, selH]);
 
   // Hovering the artboard "opens the folder": the artwork cards tucked under
   // its edges spring outward (see GalleryCard). framer's hover events only
   // fire for real pointers, so touch devices simply keep the resting tuck.
   const [frameHover, setFrameHover] = useState(false);
+
+  // True while a hidden layer is the only thing holding --fh (see toggleLayer),
+  // so releasing it can't throw away a height set by dragging a frame corner.
+  const heightPinnedByHide = useRef(false);
 
   // Back to the shipped layout: clear every drag-set CSS var (text box width /
   // scale / leading, frame width / height — removal falls back to the defaults
@@ -624,19 +770,80 @@ export default function Hero() {
     }
     frameWrapRef.current?.style.removeProperty("--fw");
     frameBodyRef.current?.style.removeProperty("--fh");
+    heightPinnedByHide.current = false;
     setLayerOrder(DEFAULT_LAYER_ORDER);
+    setHiddenLayers([]);
     setSelectedLayer("statement");
+    // The two vars the status bar mirrors have no observer to correct them —
+    // they're read off the box at drag start, not measured — so removing the
+    // properties above has to be matched by hand here or the readout keeps
+    // reporting the scale the visitor just discarded.
+    boxScale.set(1);
+    boxLeading.set(0.94);
+    setEdited(false);
   };
+
+  const toggleLayer = (id: LayerId) => {
+    setHiddenLayers((prev) =>
+      prev.includes(id) ? prev.filter((l) => l !== id) : [...prev, id],
+    );
+    setEdited(true);
+  };
+
+  // Switching a layer off must NOT resize the artboard. An artboard keeps its
+  // box when a layer goes dark — and letting the frame snap shut around the
+  // shorter stack would fight the blocks still gliding to their new slots: the
+  // border would land 220px up the instant the block unmounts while they take
+  // 0.55s to follow, so they'd spill outside it for the whole animation. So the
+  // first hide pins the frame at the height it has right now — the same --fh a
+  // corner drag writes — and the last unhide lets go of it again.
+  //
+  // Reading the hidden set here rather than inside the click handler keeps the
+  // pin honest when several rows are toggled before a render lands: the effect
+  // sees the settled set, and frameH is still the height the frame had before
+  // this commit (a ResizeObserver can't have re-measured yet).
+  useMeasureEffect(() => {
+    const body = frameBodyRef.current;
+    if (!body) return;
+    if (hiddenLayers.length > 0) {
+      if (!body.style.getPropertyValue("--fh")) {
+        body.style.setProperty("--fh", `${Math.round(frameH.get())}px`);
+        heightPinnedByHide.current = true;
+      }
+    } else if (heightPinnedByHide.current) {
+      body.style.removeProperty("--fh");
+      heightPinnedByHide.current = false;
+    }
+  }, [hiddenLayers, frameH]);
+
+  // The delays below stagger the hero's entrance on FIRST paint. A block that
+  // mounts LATER — an eye toggle switching a hidden layer back on — has to
+  // arrive at once instead: replaying the actions block's 1.45s wait would read
+  // as a dead switch, not a reveal. So the delays retire once they've played.
+  const [introSettled, setIntroSettled] = useState(false);
+  useEffect(() => {
+    if (!introDone) return;
+    // Past the last delay (1.5s) plus its duration.
+    const done = setTimeout(() => setIntroSettled(true), 2200);
+    return () => clearTimeout(done);
+  }, [introDone]);
+  const cue = (delay: number) => (introSettled ? 0 : delay);
 
   // The hero content blocks, keyed by layer id. Rendered through `layerOrder`
   // below so the panel's drag-to-reorder physically restacks them, with a
   // `layout` transition animating each block to its new slot.
   const blocks: Record<LayerId, React.ReactNode> = {
     presence: (
+      // data-layer marks the block the status bar measures when this row is the
+      // selection. It sits on the block's own root, not on the ordering wrapper
+      // outside it: for `statement` those two differ — the wrapper is a
+      // full-width block, the box inside it is the inline-block that a width
+      // drag actually resizes — and the readout has to report the latter.
       <motion.div
+        data-layer="presence"
         initial={{ opacity: 0, y: 16 }}
         animate={introDone ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
-        transition={{ duration: 0.7, delay: 0.5, ease: EASE }}
+        transition={{ duration: 0.7, delay: cue(0.5), ease: EASE }}
         className="flex flex-wrap items-center gap-3"
       >
         <span className="inline-flex items-center rounded-full border border-hairline bg-glass px-3.5 py-1.5 text-[11px] uppercase tracking-[0.18em] text-ink-muted backdrop-blur">
@@ -655,6 +862,7 @@ export default function Hero() {
       // ride the same container.
       <div
         ref={headlineRef}
+        data-layer="statement"
         className="relative inline-block select-none"
         style={{
           // Sized against BOTH axes. The `8.5vw` term alone passes the 6rem
@@ -697,7 +905,7 @@ export default function Hero() {
               aria-hidden
               initial={{ opacity: 0 }}
               animate={introDone ? { opacity: 1 } : { opacity: 0 }}
-              transition={{ delay: 1.5 }}
+              transition={{ delay: cue(1.5) }}
               style={heroPause.animation}
               className="animate-caret-blink mb-[0.3em] ml-1 h-[0.72em] w-[3px] rounded-full bg-accent-gradient sm:w-1"
             />
@@ -710,7 +918,7 @@ export default function Hero() {
           animate={
             introDone ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 1.02 }
           }
-          transition={{ duration: 0.6, delay: 1.25, ease: EASE }}
+          transition={{ duration: 0.6, delay: cue(1.25), ease: EASE }}
           className="pointer-events-none absolute -inset-x-3 -inset-y-2 hidden md:block"
         >
           <span className="absolute inset-0 rounded-[2px] ring-1 ring-indigo-accent/55" />
@@ -739,9 +947,10 @@ export default function Hero() {
     ),
     actions: (
       <motion.div
+        data-layer="actions"
         initial={{ opacity: 0, y: 18 }}
         animate={introDone ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }}
-        transition={{ duration: 0.9, delay: 1.45, ease: EASE }}
+        transition={{ duration: 0.9, delay: cue(1.45), ease: EASE }}
         className="grid grid-cols-1 items-end gap-8 sm:grid-cols-12 sm:gap-6"
       >
         <p className="text-base text-ink-muted sm:col-span-6 sm:text-lg">
@@ -871,23 +1080,39 @@ export default function Hero() {
         ))}
       </motion.div>
 
-      {/* Shelf minis — the three artworks docked as a centered "asset shelf"
-          row floating above the status bar, so the design-canvas personality
-          survives without the artboard frame. A flex row (cards are relative,
-          not absolute — see GalleryCard's mini branch) because symmetric even
-          spacing is what makes decor read deliberate at this size; absolute
-          scatters/piles read as clipping bugs. Static by design — entrance
-          slide + float bob run, hover pop never fires on touch. Runs to 1023,
-          not 767: a tablet has no room for the side gutters the tuck needs, so
-          the desktop treatment there buried all four cards completely under the
-          glass — visible only as dim ghosts, which read as a rendering bug. The
-          compound media gate (≥680px of height) keeps the shelf off
-          short/landscape viewports where the text stack needs the room; its
-          bottom-20 also keeps card bottoms above the SectionMenu FABs' tops. */}
+      {/* Shelf minis — the three artworks fanned into a centered pile floating
+          above the status bar, so the design-canvas personality survives
+          without the artboard frame. Evenly spaced at even sizes they read as a
+          thumbnail row: three tiles spread over 300px of a 375px screen, tops
+          ragged, bottoms on a hard line. Overlapping them (negative margins in
+          `mobileClassName`, hence no `gap`) around a featured centre card
+          collapses the group into one object with a clear subject — a stack of
+          reference art laid out by hand, which is what the desktop gutters say
+          too. Still a flex row (cards are relative, not absolute — see
+          GalleryCard's mini branch): the overlap is a fixed pixel count no
+          viewport can turn into a crop, which is what sank the absolute
+          scatters. Static by design — entrance slide + float bob run, hover pop
+          never fires on touch. Runs to 1023, not 767: a tablet has no room for
+          the side gutters the tuck needs, so the desktop treatment there buried
+          all four cards completely under the glass — visible only as dim
+          ghosts, which read as a rendering bug. The compound media gate (≥680px
+          of height) keeps the shelf off short/landscape viewports where the
+          text stack needs the room; its bottom-20 also keeps card bottoms above
+          the SectionMenu FABs' tops — the splay angles are capped by that
+          clearance, since tilting a card drops its corner below the row.
+          The copy stack is centred while this is bottom-anchored, so the space
+          between them closes at roughly half the rate the viewport shrinks and
+          the featured card starts tucking behind the CTA at ~745px of height.
+          Scaling the whole pile (rather than resizing one card) keeps the fan's
+          proportions identical on the short end and holds the tuck to the few
+          px it has always been at the 680 gate. Needs origin-bottom to shrink
+          towards the status bar instead of away from it, and it is safe to put
+          a transform class on this element only because framer drives opacity
+          here and nothing else. */}
       <motion.div
         aria-hidden
         style={{ opacity: exitOpacity }}
-        className="pointer-events-none absolute inset-x-0 bottom-20 hidden items-end justify-center gap-5 [@media(min-height:680px)_and_(max-width:1023.98px)]:flex"
+        className="pointer-events-none absolute inset-x-0 bottom-20 hidden origin-bottom items-end justify-center [@media(min-height:680px)_and_(max-width:1023.98px)]:flex [@media(max-height:779px)]:scale-[0.85]"
       >
         {GALLERY.filter((item) => item.mobileClassName).map((item) => (
           <GalleryCard
@@ -938,7 +1163,12 @@ export default function Hero() {
         >
           <LayersPanel
             order={layerOrder}
-            setOrder={setLayerOrder}
+            setOrder={(next) => {
+              setLayerOrder(next);
+              setEdited(true);
+            }}
+            hidden={hiddenLayers}
+            onToggle={toggleLayer}
             selected={selectedLayer}
             onSelect={setSelectedLayer}
             onReset={resetPlayground}
@@ -1019,23 +1249,49 @@ export default function Hero() {
               Fine-pointer only: on touch the drags are inert, so no handles. */}
           {enabled && <FrameHandles onResize={startFrameResize} />}
 
-          {/* Content blocks, rendered in live `layerOrder`. Each is wrapped in a
-              `layout` motion.div so dragging the matching row in the layers panel
-              animates the block to its new slot. `space-y` (not per-block margins)
-              keeps the gaps identical no matter the order. */}
+          {/* Content blocks, rendered in live `layerOrder` minus whatever the
+              eye toggles have switched off. Each is wrapped in a `layout`
+              motion.div so dragging the matching row in the layers panel
+              animates the block to its new slot. `space-y` (not per-block
+              margins) keeps the gaps identical no matter the order.
+
+              Default (sync) presence, not popLayout: an exiting block holds its
+              slot until it has faded, so hiding a layer reads as cause and
+              effect — the block goes, THEN the stack closes over it — instead
+              of both at once. popLayout would also pull the exiting child out
+              of flow while `space-y`'s sibling selector still counted it, which
+              leaves its gap behind for the length of the fade.
+
+              An exit does mean framer owns the unmount, and its frameloop stops
+              with the tab (same hazard the status bar's subject dodges) — but
+              here that only strands a block for the 0.22s fade, and it finishes
+              the moment the tab is looked at again. */}
           <motion.div
             style={{ y: contentY }}
             className="space-y-8 sm:space-y-[clamp(1.5rem,3.5vh,2.5rem)]"
           >
-            {layerOrder.map((id) => (
-              <motion.div
-                key={id}
-                layout="position"
-                transition={{ layout: { duration: 0.55, ease: EASE } }}
-              >
-                {blocks[id]}
-              </motion.div>
-            ))}
+            {/* No `initial={false}`: it reaches every motion element inside a
+                block, not just the wrapper, so the presence/actions entrances
+                would mount at their finished pose — skipping the hero's own
+                staggered arrival and mismatching the SSR markup, which renders
+                the initial one. The wrappers carry no initial pose themselves,
+                so there is nothing here for the flag to suppress anyway. */}
+            <AnimatePresence>
+              {visibleLayers.map((id) => (
+                <motion.div
+                  key={id}
+                  layout="position"
+                  exit={{ opacity: 0, scale: 0.985 }}
+                  transition={{
+                    layout: { duration: 0.55, ease: EASE },
+                    duration: 0.22,
+                    ease: "easeOut",
+                  }}
+                >
+                  {blocks[id]}
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </motion.div>
         </motion.div>
 
@@ -1075,15 +1331,30 @@ export default function Hero() {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         className="border-t border-hairline bg-panel backdrop-blur"
        >
+        {/* Three columns, the outer two `flex-1 basis-0` so they are always
+            exactly equal and the readout between them lands on the section's
+            own centre line — the axis the artboard, its caption and the scroll
+            cue all sit on. Under the old `justify-between` the readout was
+            centred in the LEFTOVER space instead, and since the tool dock is
+            ~110px wider than the coordinates opposite it, that put the text 51px
+            right of everything else on screen. The padding is symmetric for the
+            same reason: the old pl-2/pr-3 pair left the content box's midpoint
+            2px shy of the section's, which equal columns would faithfully
+            reproduce. */}
         <div className="flex h-10 items-center justify-between gap-4 pl-2 pr-3 sm:h-11">
-          {/* Left — accent swatches + tool dock + zoom (sm+). At ≥1440 with a
+          {/* Left — accent picker + tool dock + zoom (sm+). At ≥1440 with a
               fine pointer the picker lives in the Inspect panel's Fill row
               instead, so it's hidden here to avoid two copies; every other
               context (touch, or narrower) keeps it in the status bar. The
               width must track the Inspector's own gate — if this hides where
-              the panel doesn't render, there's no picker anywhere. */}
+              the panel doesn't render, there's no picker anywhere.
+              Below sm the row of swatches ate a third of the bar, so the phone
+              gets the single-field guise instead — same control, one target. */}
           <div className="flex shrink-0 items-center gap-2">
-            <AccentSwitcher className={enabled ? "min-[1440px]:hidden" : ""} />
+            <AccentSwitcher variant="chip" className="sm:hidden" />
+            <AccentSwitcher
+              className={`hidden sm:flex ${enabled ? "min-[1440px]:hidden" : ""}`}
+            />
             <div className="hidden items-center gap-1 sm:flex">
               <div className="flex items-center gap-0.5">
                 {[
@@ -1149,7 +1420,7 @@ export default function Hero() {
             {/* Cursor coordinates only make sense with a cursor — without one
                 they'd sit frozen at 000, so touch devices skip them. */}
             {enabled && (
-              <span className="hidden items-center gap-1.5 tabular-nums sm:flex">
+              <span className="hidden items-center gap-1.5 sm:flex">
                 <span className="text-ink-faint">X</span>
                 <LiveCoord axis="x" />
                 <span className="ml-1 text-ink-faint">Y</span>
@@ -1225,9 +1496,13 @@ function GalleryCard({
               enabled && item.panelClassName ? ` ${item.panelClassName}` : ""
             }`
       }
-      // Half tilt on the shelf: the full scatter angles look tossed, the
-      // docked row wants only a hint of hand-placement.
-      style={{ rotate: `${mini ? item.rotate * 0.5 : item.rotate}deg` }}
+      // The shelf fan carries its own angles (see mobileRotate) — the desktop
+      // scatter is tuned for cards strewn around a frame, not a pile.
+      style={{
+        rotate: `${
+          mini ? item.mobileRotate ?? item.rotate * 0.5 : item.rotate
+        }deg`,
+      }}
     >
       {/* Colour spill onto the canvas under the shelf card — dark drop-shadows
           vanish on the near-black bg, so the card's own gradient is what
@@ -1273,7 +1548,16 @@ function GalleryCard({
             }}
           >
             <div
-              className="animate-float-card overflow-hidden rounded-2xl border border-white/[0.12] shadow-[0_28px_55px_-24px_rgba(0,0,0,0.75)]"
+              // Minis need a heavier edge and a tighter ambient shadow than the
+              // scattered desktop cards: their neighbours slide under them, so
+              // the boundary now falls on artwork rather than the near-black
+              // canvas, where a 12%-white hairline and a shadow thrown 28px
+              // downward both disappear.
+              className={`animate-float-card overflow-hidden rounded-2xl border ${
+                mini
+                  ? "border-white/25 shadow-[0_10px_26px_-8px_rgba(0,0,0,0.9)]"
+                  : "border-white/[0.12] shadow-[0_28px_55px_-24px_rgba(0,0,0,0.75)]"
+              }`}
               style={{
                 animationDelay: `${item.floatDelay}s`,
                 aspectRatio: "3 / 4",
@@ -1364,6 +1648,154 @@ function PlaceholderArt({
 }
 
 /**
+ * The status bar's centre: what is selected, how big it is, and whether the
+ * document has been touched.
+ *
+ * It borrows its parts from the panels it sits under — the frame tab's accent
+ * chip and "Frame 01", the Layers panel's glyphs and lowercase labels, the
+ * Inspector's faint-label/tabular-number pairing — so the bar reads as the same
+ * application reporting on itself rather than as a caption parked in the gap.
+ * Only the subject fades on change; the numbers are MotionValue text, written
+ * into the DOM directly so a drag can update them every frame for free.
+ */
+function SelectionReadout({
+  subject,
+  subjectHidden,
+  dragging,
+  edited,
+  layerCount,
+  geom,
+}: {
+  subject: LayerId | "frame";
+  /** The selected layer's eye is off — it still exists, it just isn't drawn. */
+  subjectHidden: boolean;
+  dragging: HandleRole | "frame" | null;
+  edited: boolean;
+  /** Same count the Layers panel prints in its header — canvas.bg included. */
+  layerCount: number;
+  geom: Geometry;
+}) {
+  const isFrame = subject === "frame";
+  // The dimensions beside the subject are the last box that layer measured, and
+  // there's nothing on the canvas to re-measure them against while it's hidden.
+  // Dimming the pair says "held, not live" — the alternative was zeroing numbers
+  // that the layer gets straight back the moment the eye goes on again.
+  const held = !isFrame && subjectHidden;
+
+  return (
+    <div className="flex items-center gap-2.5 whitespace-nowrap text-[11px] sm:gap-3">
+      {/* Keyed remount, deliberately without AnimatePresence: the new subject
+          fades in and the old one simply goes. An exit animation here would
+          keep the outgoing label mounted until framer retired it, and framer's
+          frameloop stops with the tab — so a visitor who left mid-crossfade
+          would come back to two subjects stacked in the bar. The numbers beside
+          it swap hard anyway, so a cut on the way out is the honest match. */}
+      <motion.span
+        key={subject}
+        initial={{ opacity: 0, y: 3 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.16, ease: "easeOut" }}
+        className="flex shrink-0 items-center gap-1.5 text-ink-muted"
+      >
+        {subject === "frame" ? (
+          <>
+            {/* The frame tab's own chip, so the bar names the artboard with the
+                same mark that labels it up on the top edge. */}
+            <span className="h-2 w-2 shrink-0 rounded-[2px] bg-accent-gradient" />
+            Frame&nbsp;01
+          </>
+        ) : (
+          <>
+            {/* Hidden: the crossed eye stands in for the layer's own glyph, so
+                the bar says WHY nothing on the artboard is highlighted. */}
+            {held ? (
+              <EyeOff
+                className="h-3 w-3 shrink-0 text-ink-faint"
+                strokeWidth={2}
+              />
+            ) : (
+              <span className="w-3 shrink-0 text-center text-[10px] text-[color:var(--accent-soft)]">
+                {LAYER_META[subject].type}
+              </span>
+            )}
+            <span className={held ? "text-ink-faint" : undefined}>
+              {LAYER_META[subject].label}
+            </span>
+          </>
+        )}
+      </motion.span>
+
+      <Divider />
+      {/* Keyed too: switching subject swaps in a different pair of MotionValues,
+          and a remount re-reads them instead of relying on the subscription
+          being re-pointed under a live component. The prefix matters — keys are
+          scoped to siblings, and the subject span next to this one is keyed on
+          the subject itself, so a bare "frame" here would collide with it and
+          React would start duplicating both nodes. */}
+      <Dim
+        key={isFrame ? "dim:frame" : "dim:layer"}
+        w={isFrame ? geom.frameW : geom.selW}
+        h={isFrame ? geom.frameH : geom.selH}
+        held={held}
+      />
+
+      {/* The parameter the current gesture drives. A frame corner only moves the
+          two dimensions already shown, so it adds nothing; the headline handles
+          each change something the W × H pair can't express on its own — an
+          edge drag past the longest word scales the type down rather than
+          clipping it, and that's precisely when it helps to see the number. */}
+      {dragging && dragging !== "frame" && (
+        <>
+          <Divider />
+          {dragging === "v" ? (
+            <Metric
+              label="Leading"
+              value={geom.leading}
+              format={(v) => v.toFixed(2)}
+            />
+          ) : (
+            <Metric
+              label="Scale"
+              value={geom.scale}
+              format={(v) => `${Math.round(v * 100)}%`}
+            />
+          )}
+        </>
+      )}
+
+      {/* Document-level facts, in the order a tool would report them. Both are
+          gated: below sm the centre column only has room for the subject and
+          its dimensions, and the layer count wants the Layers panel on screen
+          to corroborate it — it's the same number that panel prints. */}
+      <span className="hidden lg:contents">
+        <Divider />
+        <span className="shrink-0 text-ink-faint">
+          <span className="font-numeral tabular-nums text-ink-muted">
+            {layerCount}
+          </span>{" "}
+          layers
+        </span>
+      </span>
+      <span className="hidden sm:contents">
+        <Divider />
+        <span
+          className={`shrink-0 transition-colors duration-500 ${
+            edited ? "text-[color:var(--accent-soft)]" : "text-ink-faint"
+          }`}
+        >
+          {edited ? "Edited" : "Saved"}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+/** The status bar's own segment rule, matching the one beside the zoom stepper. */
+function Divider() {
+  return <span className="h-3 w-px shrink-0 bg-hairline" />;
+}
+
+/**
  * One half of the marquee — the tag set repeated `MARQUEE_REPEAT` times so a
  * single half is wide enough to span the container. Two identical halves sit in
  * the animated track; when it slides -50% the second half lands exactly where the
@@ -1372,10 +1804,7 @@ function PlaceholderArt({
  */
 function MarqueeHalf(props: { "aria-hidden"?: boolean }) {
   return (
-    <div
-      {...props}
-      className="flex shrink-0 items-center gap-8 pr-8"
-    >
+    <div {...props} className="flex shrink-0 items-center gap-8 pr-8">
       {Array.from({ length: MARQUEE_REPEAT }).flatMap((_, r) =>
         MARQUEE_TAGS.map((tag, i) => (
           <span
@@ -1388,6 +1817,53 @@ function MarqueeHalf(props: { "aria-hidden"?: boolean }) {
         )),
       )}
     </div>
+  );
+}
+
+/** W × H, live — or the last measured pair, faded, if the layer is hidden. */
+function Dim({
+  w,
+  h,
+  held = false,
+}: {
+  w: MotionValue<number>;
+  h: MotionValue<number>;
+  held?: boolean;
+}) {
+  const round = (v: number) => String(Math.round(v));
+  const wide = useTransform(w, round);
+  const tall = useTransform(h, round);
+  return (
+    <span
+      className={`flex shrink-0 items-center gap-1.5 font-numeral tabular-nums transition-colors ${
+        held ? "text-ink-faint" : "text-ink-muted"
+      }`}
+    >
+      <motion.span>{wide}</motion.span>
+      <span className="text-ink-faint">×</span>
+      <motion.span>{tall}</motion.span>
+    </span>
+  );
+}
+
+/** One label/number pair, pairing the same way the Inspector's fields do. */
+function Metric({
+  label,
+  value,
+  format,
+}: {
+  label: string;
+  value: MotionValue<number>;
+  format: (v: number) => string;
+}) {
+  const text = useTransform(value, format);
+  return (
+    <span className="flex shrink-0 items-center gap-1.5">
+      <span className="text-ink-faint">{label}</span>
+      <motion.span className="font-numeral tabular-nums text-ink-muted">
+        {text}
+      </motion.span>
+    </span>
   );
 }
 
@@ -1482,19 +1958,24 @@ function FrameHandles({
 
 /**
  * Interactive Figma-style layers panel. Drag a row to reorder it and the matching
- * hero block restacks to the same slot — both the panel and the content render
- * from the shared `order`. `canvas.bg` is the locked background: it lives outside
- * the reorderable group and is always pinned to the bottom.
+ * hero block restacks to the same slot; click a row's eye and that block leaves
+ * the artboard — both the panel and the content render from the shared `order`
+ * and `hidden`. `canvas.bg` is the locked background: it lives outside the
+ * reorderable group and is always pinned to the bottom.
  */
 function LayersPanel({
   order,
   setOrder,
+  hidden,
+  onToggle,
   selected,
   onSelect,
   onReset,
 }: {
   order: LayerId[];
   setOrder: (order: LayerId[]) => void;
+  hidden: LayerId[];
+  onToggle: (id: LayerId) => void;
   selected: LayerId;
   onSelect: (id: LayerId) => void;
   onReset: () => void;
@@ -1525,11 +2006,17 @@ function LayersPanel({
         {order.map((id) => {
           const meta = LAYER_META[id];
           const isSelected = selected === id;
+          const isHidden = hidden.includes(id);
           return (
             <Reorder.Item
               key={id}
               value={id}
-              onPointerDown={() => onSelect(id)}
+              // Pressing the row selects it — except on the eye, which is a
+              // control in its own right: switching a layer off shouldn't drag
+              // the selection (and the status bar's readout) onto it.
+              onPointerDown={(e) => {
+                if (!(e.target as HTMLElement).closest("button")) onSelect(id);
+              }}
               whileDrag={{ scale: 1.04 }}
               data-cursor-hover
               className={`group flex cursor-grab items-center gap-1.5 rounded-md px-2 py-1.5 active:cursor-grabbing ${
@@ -1546,20 +2033,45 @@ function LayersPanel({
                 }`}
                 strokeWidth={2}
               />
+              {/* A hidden layer keeps its row and its slot — the name and glyph
+                  just drop back, the way the tool greys out a layer that isn't
+                  on the canvas. The eye itself stays legible: it's the way back. */}
               <span
-                className={`w-3 text-center text-[10px] ${
+                className={`w-3 text-center text-[10px] transition-opacity ${
                   isSelected ? "text-[color:var(--accent-soft)]" : "text-ink-faint"
-                }`}
+                } ${isHidden ? "opacity-40" : ""}`}
               >
                 {meta.type}
               </span>
-              <span className="flex-1 truncate">{meta.label}</span>
-              <Eye
-                className={`h-3 w-3 shrink-0 ${
-                  isSelected ? "text-[color:var(--accent-soft)]" : "text-ink-faint"
+              <span
+                className={`flex-1 truncate transition-opacity ${
+                  isHidden ? "opacity-40" : ""
                 }`}
-                strokeWidth={2}
-              />
+              >
+                {meta.label}
+              </span>
+              {/* Negative margins cancel the padding, so the hit area grows to
+                  20px without moving the icon off the column the lock below
+                  shares or making the row any taller. */}
+              <button
+                type="button"
+                onClick={() => onToggle(id)}
+                aria-pressed={isHidden}
+                aria-label={`${isHidden ? "Show" : "Hide"} ${meta.label} layer`}
+                title={isHidden ? "Show layer" : "Hide layer"}
+                data-cursor-hover
+                className={`-my-1 -mr-1 shrink-0 rounded p-1 transition-colors hover:text-ink-strong ${
+                  isSelected
+                    ? "text-[color:var(--accent-soft)]"
+                    : "text-ink-faint"
+                }`}
+              >
+                {isHidden ? (
+                  <EyeOff className="h-3 w-3" strokeWidth={2} />
+                ) : (
+                  <Eye className="h-3 w-3" strokeWidth={2} />
+                )}
+              </button>
             </Reorder.Item>
           );
         })}
@@ -1651,12 +2163,25 @@ function Field({
   return (
     <div className="flex items-center gap-2 rounded-md bg-glass px-2 py-1.5">
       <span className="text-ink-faint">{label}</span>
-      <span className="tabular-nums text-ink">{children}</span>
+      {/* Same reason as LiveCoord's: without the numeral face these X/Y cells
+          re-flow on every cursor move, and the panel's own rows twitch. */}
+      <span className="font-numeral tabular-nums text-ink">{children}</span>
     </div>
   );
 }
 
-/** Live cursor coordinate readout, updated via MotionValue (no re-render). */
+/**
+ * Live cursor coordinate readout, updated via MotionValue (no re-render).
+ *
+ * font-numeral is load-bearing, not a style choice: DM Sans ships no `tnum`
+ * feature at all, so the `tabular-nums` this used to carry did literally
+ * nothing and every digit had its own width — this cluster's box changed size
+ * on essentially every pointer move. Space Grotesk does have tabular figures
+ * (measured: identical width for 0000/1111/8888/1512), and it's already the
+ * site's face for standalone numerals, so the fix and the design agree. The
+ * fixed 4ch cell covers the one case the face alone can't: X gaining a fourth
+ * digit as it crosses 1000.
+ */
 function LiveCoord({ axis }: { axis: "x" | "y" }) {
   const pointer = usePointer();
   const fallback = useMotionValue(0);
@@ -1664,7 +2189,14 @@ function LiveCoord({ axis }: { axis: "x" | "y" }) {
   const text = useTransform(source, (v) =>
     String(Math.max(0, Math.round(v))).padStart(3, "0"),
   );
-  return <motion.span className="tabular-nums">{text}</motion.span>;
+  // 4ch is exact here — `ch` is the advance of "0", and with tabular figures
+  // every digit matches it — so the cell fits the widest coordinate a 9999px
+  // viewport could produce and never reflows below that.
+  return (
+    <motion.span className="inline-block w-[4ch] text-right font-numeral tabular-nums">
+      {text}
+    </motion.span>
+  );
 }
 
 /** Minimal scroll affordance, bottom-centre above the status bar. */
