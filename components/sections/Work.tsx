@@ -387,14 +387,18 @@ function IndexView({
             key={p.title}
             data-work-row={i}
             variants={rowItem}
-            className="border-b border-hairline"
+            // The whole row answers to the pointer, header and open record
+            // alike — reading a description used to leave the highlight, the
+            // gradient title and the flying card on whichever row the cursor
+            // last crossed on its way down.
+            onMouseEnter={enabled ? () => setHovered(i) : undefined}
+            className="group relative border-b border-hairline"
           >
             <motion.div
               data-cursor-hover
-              onMouseEnter={enabled ? () => setHovered(i) : undefined}
               animate={{ opacity: dim ? 0.32 : 1 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="group relative flex cursor-pointer items-center gap-4 py-6 sm:gap-6 sm:py-8"
+              className="relative flex cursor-pointer items-center gap-4 py-6 sm:gap-6 sm:py-8"
             >
               {/* Index numeral */}
               <span className="w-7 shrink-0 font-numeral text-xs tabular-nums tracking-[0.3em] text-ink-faint sm:w-12">
@@ -473,15 +477,6 @@ function IndexView({
                   strokeWidth={1.5}
                 />
               </motion.span>
-
-              {/* Accent underline wipe on hover (desktop) */}
-              <span
-                aria-hidden
-                className="pointer-events-none absolute -bottom-px left-0 h-px w-full origin-left scale-x-0 transition-transform duration-500 ease-out-expo group-hover:scale-x-100"
-                style={{
-                  background: `linear-gradient(90deg, ${p.from}, ${p.to})`,
-                }}
-              />
             </motion.div>
 
             {/* Expanded record — the open row's cover + full description */}
@@ -497,41 +492,91 @@ function IndexView({
                   onAnimationComplete={resyncHovered}
                   className="overflow-hidden"
                 >
-                  <div className="flex flex-col gap-4 pb-7 sm:flex-row">
-                    {/* The box takes the piece's own proportions, so the record
-                        shows the work whole rather than a fixed letterbox. */}
-                    <div
-                      style={{ aspectRatio: p.cover.ratio }}
-                      className="relative w-full shrink-0 overflow-hidden rounded-xl border border-hairline sm:h-44 sm:w-auto"
-                    >
-                      <ProjectCover
-                        index={i}
-                        from={p.from}
-                        to={p.to}
-                        src={p.cover.src}
-                        position={p.cover.position}
-                        className="h-full w-full"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm leading-relaxed text-ink-muted">
-                        {p.description}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {p.tags.map((t) => (
-                          <span
-                            key={t}
-                            className="rounded-full border border-hairline px-3 py-1 text-[10px] uppercase tracking-wider text-ink-subtle"
-                          >
-                            {t}
-                          </span>
-                        ))}
+                  {/* The record keeps the row's own grid. It used to start hard
+                      against the container edge, which put the cover in the
+                      numeral column — 97px to the left of the title it belongs
+                      to, so the record read as a separate block that had landed
+                      under the row rather than part of it. Same gutter widths as
+                      the header above, and the spine carries on down the side of
+                      the record in the project's colours. */}
+                  <div className="flex gap-4 pb-7 sm:gap-6">
+                    <span aria-hidden className="w-7 shrink-0 sm:w-12" />
+                    <span
+                      aria-hidden
+                      className="w-px shrink-0"
+                      style={{
+                        background: `linear-gradient(${p.from}, ${p.to})`,
+                      }}
+                    />
+
+                    {/* Side by side only from lg. A 256px-tall cover of a
+                        widescreen piece is 455px across — at 640 that leaves
+                        the description about a hundred pixels to live in, so
+                        below lg the cover sits on top of the text instead. */}
+                    <div className="flex min-w-0 flex-1 flex-col gap-5 lg:flex-row lg:gap-8">
+                      {/* The box takes the piece's own proportions, so the
+                          record shows the work whole rather than a fixed
+                          letterbox. Bigger than it was: at h-44 a detailed
+                          illustration came out a 162px stamp, in the one place
+                          on the page that exists to show the piece. */}
+                      <div
+                        style={{ aspectRatio: p.cover.ratio }}
+                        className="relative w-full shrink-0 overflow-hidden rounded-xl border border-hairline sm:max-w-md lg:h-64 lg:w-auto lg:max-w-none"
+                      >
+                        <ProjectCover
+                          index={i}
+                          from={p.from}
+                          to={p.to}
+                          src={p.cover.src}
+                          position={p.cover.position}
+                          className="h-full w-full"
+                        />
+                      </div>
+
+                      {/* Description off the top edge of the cover, keywords
+                          off the bottom: the caption block spans the plate
+                          rather than floating somewhere beside it, and every
+                          record lines up the same way whatever the description
+                          runs to. */}
+                      <div className="flex min-w-0 flex-col justify-between">
+                        {/* Held to a reading measure — ~78 characters a line.
+                            Given the whole row it ran to ~150, one long ribbon
+                            of text with an L-shaped hole beneath it. (Stated in
+                            rem, not ch: DM Sans's zero is wide enough that
+                            `ch` overshoots the real character count by a third.) */}
+                        <p className="max-w-[34rem] text-sm leading-relaxed text-ink-muted">
+                          {p.description}
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {p.tags.map((t) => (
+                            <span
+                              key={t}
+                              className="rounded-full border border-hairline px-3 py-1 text-[10px] uppercase tracking-wider text-ink-subtle"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* Accent underline wipe on hover (desktop). It's the row's bottom
+                rule in the project's colours, so it belongs to the whole row —
+                anchored to the header it stayed put when a record opened and
+                came to rest exactly on the top edge of the expanded cover, a
+                bright hairline welded to the artwork. On the <li> it tracks the
+                real bottom edge, closing the record instead of splitting it. */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -bottom-px left-0 h-px w-full origin-left scale-x-0 transition-transform duration-500 ease-out-expo group-hover:scale-x-100"
+              style={{
+                background: `linear-gradient(90deg, ${p.from}, ${p.to})`,
+              }}
+            />
           </motion.li>
         );
       })}
