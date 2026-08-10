@@ -9,6 +9,7 @@ import {
 } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { usePointer } from "@/components/ui/PointerProvider";
+import { useIntro } from "@/components/ui/IntroProvider";
 
 // Tight follow: at 150/20 the ring trailed far enough behind to visibly
 // orbit the pointer on direction changes — over the hero's dot field that
@@ -44,7 +45,11 @@ function resolveCursor(el: EventTarget | null): CursorState {
 
 export default function CustomCursor() {
   const pointer = usePointer();
-  const enabled = pointer?.enabled ?? false;
+  // Held back until the intro's reveal begins: while the overlay is up the
+  // collaborator cursor is the only one that should be on screen, and the
+  // visitor keeps their own OS cursor (see the data-cursor-ready effect).
+  const { introDone } = useIntro();
+  const enabled = (pointer?.enabled ?? false) && introDone;
 
   // Raw cursor position comes from the shared PointerProvider (one listener for
   // the whole page). Fallback keeps hook order stable if used without a provider.
@@ -140,8 +145,8 @@ export default function CustomCursor() {
   }, [cursor.variant, ringSize, dotSize, ringOpacity, dotOpacity]);
 
   // The OS cursor is hidden by CSS, but only once this component is actually
-  // mounted and drawing a replacement — it loads ssr:false, so between first
-  // paint and hydration (or forever, if the JS never arrives) an unconditional
+  // drawing a replacement — it loads ssr:false and waits out the intro, so
+  // before that (or forever, if the JS never arrives) an unconditional
   // `cursor: none` would leave a fine-pointer visitor with no cursor at all.
   // The attribute name deliberately isn't `data-cursor`: resolveCursor walks
   // ancestors with closest(), and a match on <html> would style every element.
@@ -159,7 +164,17 @@ export default function CustomCursor() {
   const showGlyph = cursor.variant === "move" || cursor.variant === "resize";
 
   return (
-    <>
+    // Zero-size fixed wrapper whose only job is the arrival fade — it hands
+    // over from the intro's collaborator cursor rather than popping in. The
+    // children stay `fixed` (no transform here, so the viewport is still
+    // their containing block) and the z-index keeps the group on top while
+    // the fading opacity holds a stacking context.
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className="pointer-events-none fixed left-0 top-0 z-[9999]"
+    >
       {/* Dot — grows on interactive hover. mix-blend-difference inverts the
           color beneath so the dot always reads against any background. */}
       <motion.div
@@ -238,6 +253,6 @@ export default function CustomCursor() {
           )}
         </motion.svg>
       </motion.div>
-    </>
+    </motion.div>
   );
 }
