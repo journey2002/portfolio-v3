@@ -382,6 +382,18 @@ const GALLERY: GalleryItem[] = [
 // out is the first back under the glass) without hand-maintaining a second list.
 const POP_DELAY_MAX = Math.max(...GALLERY.map((item) => item.popDelay));
 
+// How long the fan stays out after the pointer leaves both the frame and every
+// card (ms). The gutter between the frame's edge and a popped card is real
+// space with nothing in it, so without a grace window the fan reeled back in
+// mid-reach and the cards could never be touched at all.
+const GALLERY_GRACE = 240;
+
+// Slack added around each card's approach zone (px). See the zone's own note in
+// GalleryCard — it pads a target that is otherwise exactly as big as the card,
+// and gives the boundary a little hysteresis so a cursor resting on the edge
+// doesn't chatter across it.
+const ZONE_BLEED = 20;
+
 /**
  * Hero, staged as a live design canvas instead of a conventional headline block.
  *
@@ -751,7 +763,60 @@ export default function Hero() {
   // Hovering the artboard "opens the folder": the artwork cards tucked under
   // its edges spring outward (see GalleryCard). framer's hover events only
   // fire for real pointers, so touch devices simply keep the resting tuck.
-  const [frameHover, setFrameHover] = useState(false);
+  //
+  // The open state belongs to the frame AND the cards, not to the frame alone.
+  // A popped card sits outside the frame, so reaching for one leaves the frame
+  // and — while the frame owned this flag by itself — pulled the fan back in
+  // under the pointer. Both surfaces now open it, and closing runs on a grace
+  // timer that any re-entry cancels, so crossing the empty gutter between them
+  // doesn't read as leaving.
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  /** Card under the pointer: it lifts, its siblings recede. */
+  const [activeCard, setActiveCard] = useState<string | null>(null);
+  /** Card turned over to its spec sheet (see GalleryCard's flip). */
+  const [turnedCard, setTurnedCard] = useState<string | null>(null);
+  const galleryTimer = useRef<number | null>(null);
+  // The timeout below closes over whatever `activeCard` was when it was
+  // scheduled, which is exactly the wrong value — it needs to know whether a
+  // card is under the pointer WHEN IT FIRES.
+  const activeRef = useRef<string | null>(null);
+  const setActive = (id: string | null) => {
+    activeRef.current = id;
+    setActiveCard(id);
+  };
+
+  const openGallery = () => {
+    if (galleryTimer.current !== null) {
+      window.clearTimeout(galleryTimer.current);
+      galleryTimer.current = null;
+    }
+    setGalleryOpen(true);
+  };
+  // Also the safety net for a card that never gets its own pointerleave —
+  // flipping a tucked card's pointer-events back to `none` under a stationary
+  // cursor swallows the event, so the close is what clears the card state too.
+  const closeGallery = () => {
+    if (galleryTimer.current !== null) window.clearTimeout(galleryTimer.current);
+    galleryTimer.current = window.setTimeout(() => {
+      galleryTimer.current = null;
+      // A card sitting under the pointer outranks the frame's own hover-end.
+      // The frame fires one the moment a lifted card rises over it — the
+      // pointer never went anywhere, but the element under it changed — and
+      // acting on that tucked the whole fan away while the visitor was still
+      // holding a card. Leaving the card is what schedules the real close.
+      if (activeRef.current !== null) return;
+      setGalleryOpen(false);
+      setActive(null);
+      setTurnedCard(null);
+    }, GALLERY_GRACE);
+  };
+  useEffect(
+    () => () => {
+      if (galleryTimer.current !== null)
+        window.clearTimeout(galleryTimer.current);
+    },
+    [],
+  );
 
   // True while a hidden layer is the only thing holding --fh (see toggleLayer),
   // so releasing it can't throw away a height set by dragging a frame corner.
@@ -1064,6 +1129,11 @@ export default function Hero() {
           4.75rem here against the frame's 4.5rem: (72px + 80px) / 2 = 76px.
           If the frame's --fwd or the section's horizontal padding changes,
           this must change with it or the cards drift off the frame edge. */}
+      {/* The layer itself never changes stacking — only the ONE card under the
+          pointer climbs above the artboard (see GalleryCard's zIndex). Raising
+          the whole layer moved all four at once, which is what made the frame
+          surface visibly jump: three cards that nobody was touching leapt out
+          from under the frosted glass together. */}
       <motion.div
         aria-hidden
         style={{ opacity: exitOpacity }}
@@ -1073,7 +1143,22 @@ export default function Hero() {
           <GalleryCard
             key={item.id}
             item={item}
-            frameHovered={frameHover}
+            frameHovered={galleryOpen}
+            active={activeCard === item.id}
+            dimmed={activeCard !== null && activeCard !== item.id}
+            turned={turnedCard === item.id}
+            onEnter={() => {
+              openGallery();
+              setActive(item.id);
+            }}
+            onLeave={() => {
+              setActive(null);
+              setTurnedCard((id) => (id === item.id ? null : id));
+              closeGallery();
+            }}
+            onTurn={() =>
+              setTurnedCard((id) => (id === item.id ? null : item.id))
+            }
             enabled={enabled}
             animation={heroPause.animation}
           />
@@ -1227,8 +1312,8 @@ export default function Hero() {
             introDone ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.985 }
           }
           transition={{ duration: 0.9, delay: 0.2, ease: EASE }}
-          onHoverStart={() => setFrameHover(true)}
-          onHoverEnd={() => setFrameHover(false)}
+          onHoverStart={openGallery}
+          onHoverEnd={closeGallery}
           style={{ minHeight: "var(--fh)" }}
           // On phones the artboard card is dropped entirely — the border+panel
           // just shrank the text column and added box-in-box chrome. Content
@@ -1464,12 +1549,27 @@ export default function Hero() {
 function GalleryCard({
   item,
   frameHovered,
+  active = false,
+  dimmed = false,
+  turned = false,
+  onEnter,
+  onLeave,
+  onTurn,
   enabled,
   mini = false,
   animation,
 }: {
   item: GalleryItem;
   frameHovered: boolean;
+  /** This card is under the pointer — it lifts and straightens. */
+  active?: boolean;
+  /** Another card is being read; this one recedes so it doesn't compete. */
+  dimmed?: boolean;
+  /** Turned over to its spec sheet. */
+  turned?: boolean;
+  onEnter?: () => void;
+  onLeave?: () => void;
+  onTurn?: () => void;
   /** Offscreen play-state for the card's float loop — see usePauseOffscreen. */
   animation?: CSSProperties;
   /**
@@ -1487,6 +1587,40 @@ function GalleryCard({
   const inX = item.pop.x * -0.4;
   const inY = item.pop.y * -0.4;
 
+  // Desktop cards are always reachable — see the hit box at the bottom of this
+  // component for why it can be live at rest without stealing anything from the
+  // artboard.
+  const interactive = !mini && enabled;
+
+  // The back reads the real file rather than a hand-kept copy of its numbers:
+  // whatever the image decodes to is what the spec sheet reports.
+  const [file, setFile] = useState<{ px: string; weight: string } | null>(null);
+  const kind = item.label.split(".").pop()?.toUpperCase() ?? "";
+  const index = GALLERY.findIndex((entry) => entry.id === item.id);
+  // Read on both the ref and the load event: an image served from cache is
+  // already `complete` by the time React attaches, and `load` has then been and
+  // gone — the back would report a dash for a file the browser already holds.
+  //
+  // Weight comes off the resource timing entry rather than a HEAD request, and
+  // it's decodedBodySize on purpose: transferSize reads 0 for anything served
+  // from cache, which is most visits.
+  const readFile = (node: HTMLImageElement | null) => {
+    if (!node?.complete || !node.naturalWidth) return;
+    const entry = performance.getEntriesByName(
+      node.currentSrc,
+    )[0] as PerformanceResourceTiming | undefined;
+    const bytes = entry?.decodedBodySize || entry?.transferSize || 0;
+    const next = {
+      px: `${node.naturalWidth} × ${node.naturalHeight}`,
+      weight: bytes ? `${Math.round(bytes / 1024)} KB` : "—",
+    };
+    // The ref fires on every render, and a fresh object never compares equal —
+    // returning the previous one unchanged is what stops that being a loop.
+    setFile((prev) =>
+      prev && prev.px === next.px && prev.weight === next.weight ? prev : next,
+    );
+  };
+
   return (
     <div
       className={
@@ -1498,10 +1632,26 @@ function GalleryCard({
       }
       // The shelf fan carries its own angles (see mobileRotate) — the desktop
       // scatter is tuned for cards strewn around a frame, not a pile.
+      //
+      // This angle is FIXED. Straightening a hovered card happens further in,
+      // on the lift layer, because this element is an ancestor of the hit box:
+      // rotating it swings that box through an arc — up to 20px at the card's
+      // corners — which is enough to slide it off a cursor that never moved.
       style={{
         rotate: `${
           mini ? item.mobileRotate ?? item.rotate * 0.5 : item.rotate
         }deg`,
+        // Only a card TURNED to its spec sheet climbs over the artboard, and
+        // only while it's turned. Two reasons it isn't tied to plain hover.
+        // One card changing plane is a card being picked up; all four at once
+        // is the surface glitching. And this element carries the approach zone,
+        // which is wider than the card — raised on hover, that zone would sit
+        // over the Layers panel's Reset and the accent swatches and swallow
+        // every click meant for them. Left at rest depth, the panels (z-20)
+        // outrank it, so moving onto one simply releases the card. A turned
+        // card is the one case that has to win: its face is 9px type, and type
+        // read through the artboard's frosted glass isn't type.
+        zIndex: turned ? 30 : undefined,
       }}
     >
       {/* Colour spill onto the canvas under the shelf card — dark drop-shadows
@@ -1524,6 +1674,9 @@ function GalleryCard({
               : { opacity: 0, x: inX, y: inY, scale: 0.96 }
           }
           transition={{ duration: 0.7, delay: item.delay, ease: EASE }}
+          // Positioning context for the hit box below, which has to hang off a
+          // layer no gesture animates.
+          className="relative"
         >
           <motion.div
             animate={
@@ -1547,60 +1700,234 @@ function GalleryCard({
               delay: frameHovered ? item.popDelay : POP_DELAY_MAX - item.popDelay,
             }}
           >
-            <div
-              // Minis need a heavier edge and a tighter ambient shadow than the
-              // scattered desktop cards: their neighbours slide under them, so
-              // the boundary now falls on artwork rather than the near-black
-              // canvas, where a 12%-white hairline and a shadow thrown 28px
-              // downward both disappear.
-              className={`animate-float-card overflow-hidden rounded-2xl border ${
-                mini
-                  ? "border-white/25 shadow-[0_10px_26px_-8px_rgba(0,0,0,0.9)]"
-                  : "border-white/[0.12] shadow-[0_28px_55px_-24px_rgba(0,0,0,0.75)]"
-              }`}
-              style={{
-                animationDelay: `${item.floatDelay}s`,
-                aspectRatio: "3 / 4",
-                ...animation,
+            <motion.div
+              // Lift + recede own their own layer so the pop spring keeps its
+              // stagger to itself. Folded into that spring, a card already out
+              // inherited its place in the fan when you hovered it — chair's
+              // lift arriving a third of a second behind the pointer.
+              //
+              // The straighten cancels BOTH angles the card is wearing — its
+              // resting scatter and the swivel the pop adds — so a card being
+              // read sits square rather than merely less crooked. It belongs on
+              // this layer because nothing below it carries the hit box.
+              animate={{
+                scale: active ? 1.38 : 1,
+                rotate: active ? -(item.rotate + item.pop.rotate) : 0,
+                opacity: dimmed ? 0.34 : 1,
               }}
+              // Barely-there overshoot. At damping 22 the lift bounced, and a
+              // card that bounces under the cursor reads as the page being
+              // unsure rather than the card being picked up.
+              transition={{ type: "spring", stiffness: 320, damping: 30 }}
             >
-              {item.src ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={item.src}
-                  alt=""
-                  // On desktop these sit in the first viewport, so the fetch
-                  // starts immediately anyway and any scheduling difference is
-                  // hidden under the intro overlay. Below `md` the whole
-                  // desktop wrapper is display:none and the phone shelf omits
-                  // the cards that have no mobileClassName — lazy is what stops
-                  // a phone downloading art it will never paint.
-                  loading="lazy"
-                  decoding="async"
-                  className="h-full w-full object-cover"
-                  style={
-                    item.zoomOrigin
-                      ? {
-                          transformOrigin: item.zoomOrigin,
-                          transform: `scale(${
-                            frameHovered ? item.zoomScale ?? 1.6 : 1
-                          })`,
-                          transition: "transform 1.4s cubic-bezier(0.16,1,0.3,1)",
+              {/* Perspective has to be tight to read as a TURN. At 900px on a
+                  card 144px wide the projection is all but orthographic: both
+                  halves foreshorten by the same amount, so a rotateY looks like
+                  the card squashing to a line and springing back — a swap, not
+                  a card being turned over. Roughly twice the card's own width
+                  is where the near edge starts visibly swinging toward you and
+                  the far edge falling away, which is the whole tell. Costs
+                  nothing at rest: at 0deg the face sits on the projection plane
+                  and the perspective has no effect on it at all. */}
+              <div
+                className="animate-float-card relative [perspective:320px]"
+                style={{
+                  animationDelay: `${item.floatDelay}s`,
+                  aspectRatio: "3 / 4",
+                  ...animation,
+                  // The bob is charm at rest and noise the moment someone is
+                  // trying to read the card. It freezes where it is rather than
+                  // easing home, so nothing moves under the pointer at all.
+                  ...(active ? { animationPlayState: "paused" } : null),
+                }}
+              >
+                {/* The turn. preserve-3d has to reach both faces intact, which
+                    is why the border, the rounding and the clipping moved onto
+                    the faces themselves: `overflow: hidden` anywhere along this
+                    chain flattens the 3D and the back ends up drawn on the
+                    wrong side of the card. */}
+                <motion.div
+                  className="absolute inset-0"
+                  style={{ transformStyle: "preserve-3d" }}
+                  // The turn comes with a small push toward the camera, which
+                  // is what stops it reading as a flat trick: the card leaves
+                  // the page to turn over and settles nearer than it started,
+                  // held up to be read. A plain value rather than a mid-flight
+                  // keyframe on purpose — a keyframe array is a new array every
+                  // render, and framer would re-fire it on any unrelated state
+                  // change (hover, dim) as a random pulse.
+                  animate={{ rotateY: turned ? 180 : 0, z: turned ? 26 : 0 }}
+                  transition={{
+                    duration: 0.7,
+                    // Accelerates into the edge-on moment and settles as the
+                    // new face swings round — the curve the Work preview's toss
+                    // already uses, so the two turns read as one vocabulary.
+                    ease: [0.45, 0.02, 0.2, 1],
+                  }}
+                >
+                  {/* Front — the artwork. Minis need a heavier edge and a
+                      tighter ambient shadow than the scattered desktop cards:
+                      their neighbours slide under them, so the boundary falls
+                      on artwork rather than the near-black canvas, where a
+                      12%-white hairline and a shadow thrown 28px downward both
+                      disappear. */}
+                  <div
+                    className={`absolute inset-0 overflow-hidden rounded-2xl border ${
+                      mini
+                        ? "border-white/25 shadow-[0_10px_26px_-8px_rgba(0,0,0,0.9)]"
+                        : "border-white/[0.12] shadow-[0_28px_55px_-24px_rgba(0,0,0,0.75)]"
+                    }`}
+                    style={{
+                      backfaceVisibility: "hidden",
+                      WebkitBackfaceVisibility: "hidden",
+                    }}
+                  >
+                    {item.src ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.src}
+                        alt=""
+                        // On desktop these sit in the first viewport, so the
+                        // fetch starts immediately anyway and any scheduling
+                        // difference is hidden under the intro overlay. Below
+                        // `md` the whole desktop wrapper is display:none and the
+                        // phone shelf omits the cards that have no
+                        // mobileClassName — lazy is what stops a phone
+                        // downloading art it will never paint.
+                        loading="lazy"
+                        decoding="async"
+                        ref={readFile}
+                        onLoad={(e) => readFile(e.currentTarget)}
+                        className="h-full w-full object-cover"
+                        style={
+                          item.zoomOrigin
+                            ? {
+                                transformOrigin: item.zoomOrigin,
+                                transform: `scale(${
+                                  frameHovered ? item.zoomScale ?? 1.6 : 1
+                                })`,
+                                transition:
+                                  "transform 1.4s cubic-bezier(0.16,1,0.3,1)",
+                              }
+                            : undefined
                         }
-                      : undefined
-                  }
-                />
-              ) : (
-                <PlaceholderArt
-                  from={item.from}
-                  to={item.to}
-                  glow={item.glow}
-                  label={item.label}
-                  chipClass={item.chipClass}
-                />
-              )}
-            </div>
+                      />
+                    ) : (
+                      <PlaceholderArt
+                        from={item.from}
+                        to={item.to}
+                        glow={item.glow}
+                        label={item.label}
+                        chipClass={item.chipClass}
+                      />
+                    )}
+                  </div>
+
+                  {/* Back — what's written on the reverse of the print. It
+                      reports the FILE, not the picture: the same inspector
+                      vocabulary the artboard's own chrome speaks, so turning a
+                      card over lands you somewhere that belongs to this page
+                      rather than in a caption. */}
+                  <div
+                    className="absolute inset-0 flex flex-col justify-between overflow-hidden rounded-2xl border border-hairline bg-surface p-3 shadow-[0_28px_55px_-24px_rgba(0,0,0,0.75)]"
+                    style={{
+                      backfaceVisibility: "hidden",
+                      WebkitBackfaceVisibility: "hidden",
+                      transform: "rotateY(180deg)",
+                    }}
+                  >
+                    <div>
+                      <p className="font-numeral text-[9px] uppercase tracking-[0.22em] text-[color:var(--accent-soft)]">
+                        asset {String(index + 1).padStart(2, "0")} /{" "}
+                        {String(GALLERY.length).padStart(2, "0")}
+                      </p>
+                      <p className="mt-1.5 truncate font-mono text-[10px] text-ink-strong">
+                        {item.label}
+                      </p>
+                    </div>
+                    <dl className="space-y-1.5 font-mono text-[9px] leading-none text-ink-faint">
+                      {[
+                        ["px", file?.px ?? "—"],
+                        ["type", kind],
+                        ["weight", file?.weight ?? "—"],
+                      ].map(([term, value]) => (
+                        <div
+                          key={term}
+                          className="flex items-baseline justify-between gap-2"
+                        >
+                          <dt>{term}</dt>
+                          <dd className="text-ink-muted">{value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+
+                    {/* The piece's two colour stops, named. They already exist
+                        as the card's identity (they draw the placeholder
+                        duotone and the shelf card's colour spill) — printing
+                        the hex is what turns a decorative pair of chips into
+                        something a design tool would actually tell you. */}
+                    <div className="space-y-1">
+                      {[item.from, item.to].map((swatch) => (
+                        <div key={swatch} className="flex items-center gap-1.5">
+                          <span
+                            className="h-3 w-3 shrink-0 rounded-[3px] border border-white/10"
+                            style={{ background: swatch }}
+                          />
+                          <span className="font-mono text-[9px] uppercase leading-none text-ink-faint">
+                            {swatch}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            </motion.div>
+
           </motion.div>
+
+          {/* The card's APPROACH ZONE — the only thing here that takes a
+              pointer (everything else inherits the layer's pointer-events:
+              none), and deliberately much larger than the card.
+
+              It is one static box spanning everywhere this card can be: its
+              tucked position, its popped position, and the ground between the
+              two, plus a 20px bleed. Three things follow from that shape.
+
+              It never moves, so hovering can't move the thing being hovered.
+              Hang the handlers on the card itself and the target becomes
+              whatever the card is doing — bobbing, springing out, growing,
+              straightening — and it feeds back on itself: enter, lift, the edge
+              slides off a cursor that never moved, leave, drop, enter again.
+
+              It's live at REST, so a card can be pointed at directly instead of
+              being chased. Requiring the frame first made this a two-step
+              gesture — open the fan, then hit a 160px target across a gutter —
+              which is a lot of aim to ask for something this incidental. The
+              tucked half of the zone lies under the artboard, and the artboard
+              is the higher layer, so it still wins every pointer aimed at it;
+              what's left live at rest is the peek and the gutter it fans into.
+
+              And the zones don't overlap each other or the Layers/Inspector
+              panels, which sit in the vertical gap between each side's pair. */}
+          {interactive && (
+            <span
+              className="absolute"
+              style={{
+                pointerEvents: "auto",
+                left: `${-Math.max(0, -item.pop.x) - ZONE_BLEED}px`,
+                right: `${-Math.max(0, item.pop.x) - ZONE_BLEED}px`,
+                top: `${-Math.max(0, -item.pop.y) - ZONE_BLEED}px`,
+                bottom: `${-Math.max(0, item.pop.y) - ZONE_BLEED}px`,
+              }}
+              // Only once the card is actually engaged — the zone reaches into
+              // empty canvas, and a cursor that swells over nothing is a lie.
+              data-cursor-hover={active ? "" : undefined}
+              onPointerEnter={onEnter}
+              onPointerLeave={onLeave}
+              onClick={onTurn}
+            />
+          )}
         </motion.div>
       </MouseParallax>
     </div>
